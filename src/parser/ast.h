@@ -65,5 +65,5 @@ struct ast_node_t {
 };
 
 const char* ast_type_to_str(ast_type_t type);
-void ast_print(const ast_node_t* ast_node);
+void ast_print(const ast_node_t* ast_node, uint32_t indent_level);
 ast_node_t* ast_node_new(ast_node_t ast_node);

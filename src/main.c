@@ -15,6 +15,6 @@ int main() {
 
     // Parsing AST
     ast_node_t* root = parse(&parser);
-    ast_print(root);
+    ast_print(root, 0);
     return 0;
 }
