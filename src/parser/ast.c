@@ -12,7 +12,7 @@ const char* ast_type_to_str(ast_type_t type) {
         case AST_CALL:          return "CALL";
         case AST_FUNCTION:      return "FUNCTION";
         case AST_ASSIGNMENT:    return "ASSIGNMENT";
-        case AST_VARIABLE:      return "VARIABLE";
+        case AST_IDENTIFIER:    return "IDENTIFIER";
         case AST_STATEMENT:     return "STATEMENT";
         case AST_NUMBER:        return "NUMBER";
         case AST_STRING:        return "STRING";
@@ -42,7 +42,7 @@ void ast_print(const ast_node_t* ast_node, uint32_t indent_level) {
             printf("%g\n", ast_node->ast_number.value);
             break;
 
-        case AST_VARIABLE:
+        case AST_IDENTIFIER:
         case AST_STRING:
             // If the node is a variable or string, print its value.
             if (ast_node->ast_string.value)
@@ -77,6 +77,7 @@ void ast_print(const ast_node_t* ast_node, uint32_t indent_level) {
             break;
 
         case AST_FUNCTION:
+        case AST_LAMBDA:
             // If the node is a function, print its name, parameters and the body.
             printf("name: %s\n", ast_node->ast_function.name);
             for (uint32_t i = 0; i < indent_level; ++i) printf("    ");
