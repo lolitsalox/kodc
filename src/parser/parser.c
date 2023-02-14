@@ -87,23 +87,45 @@ static ast_node_t* parse_compound(parser_t* parser) {
     return compound;
 }
 
+/**
+ * @brief Parses a block of code, list, or parameters.
+ * 
+ * @param parser the parser object
+ * @param type the type of AST node to create
+ * @param left_delimiter the left delimiter of the block
+ * @param right_delimiter the right delimiter of the block
+ * @param parse_comma whether to parse comma-separated items
+ * @return the AST node representing the block
+ */
 static ast_node_t* parse_body(
     parser_t* parser, 
     ast_type_t type, 
-    token_type_t left_holder, 
-    token_type_t right_holder,
+    token_type_t left_delimiter, 
+    token_type_t right_delimiter,
     bool parse_comma
 ) {
+    // Create a new AST node for the block
     ast_node_t* body = ast_node_new(((ast_node_t){.ast_type=type}));
-    eat(parser, left_holder);
+
+    // Eat the left delimiter of the block
+    eat(parser, left_delimiter);
+
+    // Skip any newlines before the first item
     skip_newlines(parser);
 
-    while (parser->current_token && parser->current_token->token_type != right_holder) {
+    // Parse each item in the block
+    while (parser->current_token && parser->current_token->token_type != right_delimiter) {
         skip_newlines(parser);
+
+        // Parse the item and add it to the block
         ast_node_t* value = parse_assignment(parser);
         if (!value) continue;
         linked_list_append(&body->ast_compound, value);
+
+        // Skip any newlines after the item
         skip_newlines(parser);
+
+        // If comma-separated items are expected, parse the comma if it exists, or stop parsing if it doesn't
         if (parse_comma) {
             if (parser->current_token && parser->current_token->token_type == TOKEN_COMMA)
                 eat(parser, TOKEN_COMMA);
@@ -111,30 +133,48 @@ static ast_node_t* parse_body(
                 break;
         }
     }
-    
-    eat(parser, right_holder);
+
+    // Eat the right delimiter of the block
+    eat(parser, right_delimiter);
+
+    // Return the AST node representing the block
     return body;
 }
 
+// Parses a list of expressions inside parentheses and returns an AST node for it
 static ast_node_t* parse_list(parser_t* parser) {
     return parse_body(parser, AST_LIST, TOKEN_LPAREN, TOKEN_RPAREN, true);
 }
 
+// Parses a block of expressions inside braces and returns an AST node for it
 static ast_node_t* parse_block(parser_t* parser) {
     return parse_body(parser, AST_BLOCK, TOKEN_LBRACE, TOKEN_RBRACE, false);
 }
 
+/**
+ * @brief Parses an assignment expression of the form "<left-hand side> = <right-hand side>".
+ * 
+ * @param parser the parser object
+ * @return ast_node_t* The AST node representing the assignment
+ */
 static ast_node_t* parse_assignment(parser_t* parser) {
-    ast_node_t* left = parse_add_sub(parser);
+    // Parse the left-hand side of the assignment.
+    ast_node_t* left = parse_logical_or(parser);
 
-    if (parser->current_token && parser->current_token->token_type != TOKEN_EQUALS) return left;
+    // If the current token is not an equals sign, return the left-hand side.
+    if (parser->current_token && parser->current_token->token_type != TOKEN_EQUALS) {
+        return left;
+    }
 
+    // Eat the equals sign.
     eat(parser, TOKEN_EQUALS);
+
+    // Create a new AST node representing the assignment.
     return ast_node_new(((ast_node_t){
         .ast_type=AST_ASSIGNMENT, 
         .ast_assignment={
             .left=left, 
-            .right=parse_add_sub(parser)
+            .right=parse_logical_or(parser)
         }
     }));
 }
