@@ -87,16 +87,29 @@ static ast_node_t* parse_compound(parser_t* parser) {
     return compound;
 }
 
-static ast_node_t* parse_body(parser_t* parser, ast_type_t type, token_type_t left_holder, token_type_t right_holder) {
+static ast_node_t* parse_body(
+    parser_t* parser, 
+    ast_type_t type, 
+    token_type_t left_holder, 
+    token_type_t right_holder,
+    bool parse_comma
+) {
     ast_node_t* body = ast_node_new(((ast_node_t){.ast_type=type}));
     eat(parser, left_holder);
     skip_newlines(parser);
 
     while (parser->current_token && parser->current_token->token_type != right_holder) {
+        skip_newlines(parser);
         ast_node_t* value = parse_assignment(parser);
         if (!value) continue;
         linked_list_append(&body->ast_compound, value);
         skip_newlines(parser);
+        if (parse_comma) {
+            if (parser->current_token && parser->current_token->token_type == TOKEN_COMMA)
+                eat(parser, TOKEN_COMMA);
+            else
+                break;
+        }
     }
     
     eat(parser, right_holder);
@@ -104,11 +117,11 @@ static ast_node_t* parse_body(parser_t* parser, ast_type_t type, token_type_t le
 }
 
 static ast_node_t* parse_list(parser_t* parser) {
-    return parse_body(parser, AST_LIST, TOKEN_LPAREN, TOKEN_RPAREN);
+    return parse_body(parser, AST_LIST, TOKEN_LPAREN, TOKEN_RPAREN, true);
 }
 
 static ast_node_t* parse_block(parser_t* parser) {
-    return parse_body(parser, AST_BLOCK, TOKEN_LBRACE, TOKEN_RBRACE);
+    return parse_body(parser, AST_BLOCK, TOKEN_LBRACE, TOKEN_RBRACE, false);
 }
 
 static ast_node_t* parse_assignment(parser_t* parser) {
@@ -174,54 +187,80 @@ static ast_node_t* parse_mul_div_mod(parser_t* parser) {
 }
 
 static ast_node_t* parse_factor(parser_t* parser) {
-    if (!parser->current_token) return NULL;
+    // If there are no more tokens to parse, return NULL.
+    if (!parser->current_token) {
+        return NULL;
+    }
+
     ast_node_t* ast_node = NULL;
 
     switch (parser->current_token->token_type) {
-        case TOKEN_STRING: ast_node = ast_node_new(((ast_node_t){
-            .ast_type=AST_STRING,
-            .ast_string={
-                .value=(char*)parser->current_token->value,
-                .length=parser->current_token->length
-            }
-        })); 
-        break;
-        case TOKEN_FLOAT:
-        case TOKEN_INT: ast_node = ast_node_new(((ast_node_t){
-                            .ast_type=AST_NUMBER,
-                            .ast_number={.value=strtod(parser->current_token->value, NULL)},
-                            }));
-        break;
-        case TOKEN_ID: ast_node = ast_node_new(((ast_node_t){
-            .ast_type=AST_VARIABLE,
-            .ast_string={
-                .value=(char*)parser->current_token->value,
-                .length=parser->current_token->length
-            }
-        })); 
-        break;
-        case TOKEN_LPAREN: {
-            // (...)
-            ast_node_t* list = parse_list(parser);
+        // If the token is a string literal.
+        case TOKEN_STRING:
+            // Create a new AST node for the string literal.
+            ast_node = ast_node_new(((ast_node_t){
+                .ast_type = AST_STRING,
+                .ast_string = {
+                    .value = (char*)parser->current_token->value,
+                    .length = parser->current_token->length
+                }
+            })); 
+            break;
 
-            // (...) {...}
+        // If the token is a numeric literal.
+        case TOKEN_FLOAT:
+        case TOKEN_INT:
+            // Create a new AST node for the numeric literal.
+            ast_node = ast_node_new(((ast_node_t){
+                .ast_type = AST_NUMBER,
+                .ast_number = {
+                    .value = strtod(parser->current_token->value, NULL)
+                }
+            }));
+            break;
+
+        // If the token is an identifier.
+        case TOKEN_ID:
+            // Create a new AST node for the identifier.
+            ast_node = ast_node_new(((ast_node_t){
+                .ast_type = AST_VARIABLE,
+                .ast_string = {
+                    .value = (char*)parser->current_token->value,
+                    .length = parser->current_token->length
+                }
+            })); 
+            break;
+
+        // If the token is a left parenthesis.
+        case TOKEN_LPAREN: {
+            // Parse a list of expressions inside the parentheses.
+            ast_node_t* list = parse_list(parser);
+            
+            // If the next token is a left brace, it means we have a function definition.
             if (parser->current_token && parser->current_token->token_type == TOKEN_LBRACE) {
+                // Parse a block of expressions to serve as the function body.
                 ast_node_t* block = parse_block(parser);
                 
+                // Create a new AST node for the function.
                 ast_node_t* func = ast_node_new(((ast_node_t){
                     .ast_type=AST_FUNCTION,
                     .ast_function={
-                        .name="<anonymous>",
-                        .parameters=list,
-                        .body=block,
+                        .name="<anonymous>", // The function has no name.
+                        .parameters=list, // The function parameters come from the list we just parsed.
+                        .body=block, // The function body is the block of expressions we just parsed.
                     },
                 }));
-                return func;
+                return func; // Return the function AST node.
             }
 
-            return list;
+            // If there is no left brace, it means we have a simple list of expressions.
+            return list; // Return the list AST node.
         }
+
+        // new line
         case TOKEN_NL: break;
+        
+        // anything else
         default:
             printf("[parser]: Error - unexpected token ");
             token_print(parser->current_token);
