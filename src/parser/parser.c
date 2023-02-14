@@ -10,7 +10,7 @@ static void skip_newlines(parser_t* parser);
 
 static ast_node_t* parse_compound(parser_t* parser);
 
-static ast_node_t* parse_list(parser_t* parser);
+static ast_node_t* parse_list(parser_t* parser, bool lambda);
 static ast_node_t* parse_block(parser_t* parser);
 
 static ast_node_t* parse_assignment(parser_t* parser);       // = -> += -=, etc...
@@ -142,8 +142,10 @@ static ast_node_t* parse_body(
 }
 
 // Parses a list of expressions inside parentheses and returns an AST node for it
-static ast_node_t* parse_list(parser_t* parser) {
-    return parse_body(parser, AST_LIST, TOKEN_LPAREN, TOKEN_RPAREN, true);
+static ast_node_t* parse_list(parser_t* parser, bool lambda) {
+    return lambda ?
+        parse_body(parser, AST_LIST, TOKEN_OR, TOKEN_OR, true) : 
+        parse_body(parser, AST_LIST, TOKEN_LPAREN, TOKEN_RPAREN, true);
 }
 
 // Parses a block of expressions inside braces and returns an AST node for it
@@ -159,7 +161,7 @@ static ast_node_t* parse_block(parser_t* parser) {
  */
 static ast_node_t* parse_assignment(parser_t* parser) {
     // Parse the left-hand side of the assignment.
-    ast_node_t* left = parse_logical_or(parser);
+    ast_node_t* left = parse_add_sub(parser);
 
     // If the current token is not an equals sign, return the left-hand side.
     if (parser->current_token && parser->current_token->token_type != TOKEN_EQUALS) {
@@ -174,7 +176,7 @@ static ast_node_t* parse_assignment(parser_t* parser) {
         .ast_type=AST_ASSIGNMENT, 
         .ast_assignment={
             .left=left, 
-            .right=parse_logical_or(parser)
+            .right=parse_add_sub(parser)
         }
     }));
 }
@@ -263,7 +265,7 @@ static ast_node_t* parse_factor(parser_t* parser) {
         case TOKEN_ID:
             // Create a new AST node for the identifier.
             ast_node = ast_node_new(((ast_node_t){
-                .ast_type = AST_VARIABLE,
+                .ast_type = AST_IDENTIFIER,
                 .ast_string = {
                     .value = (char*)parser->current_token->value,
                     .length = parser->current_token->length
@@ -271,34 +273,44 @@ static ast_node_t* parse_factor(parser_t* parser) {
             })); 
             break;
 
-        // If the token is a left parenthesis.
+        // Case of a list
         case TOKEN_LPAREN: {
             // Parse a list of expressions inside the parentheses.
-            ast_node_t* list = parse_list(parser);
-            
-            // If the next token is a left brace, it means we have a function definition.
-            if (parser->current_token && parser->current_token->token_type == TOKEN_LBRACE) {
-                // Parse a block of expressions to serve as the function body.
-                ast_node_t* block = parse_block(parser);
-                
-                // Create a new AST node for the function.
-                ast_node_t* func = ast_node_new(((ast_node_t){
-                    .ast_type=AST_FUNCTION,
-                    .ast_function={
-                        .name="<anonymous>", // The function has no name.
-                        .parameters=list, // The function parameters come from the list we just parsed.
-                        .body=block, // The function body is the block of expressions we just parsed.
-                    },
-                }));
-                return func; // Return the function AST node.
-            }
-
-            // If there is no left brace, it means we have a simple list of expressions.
-            return list; // Return the list AST node.
+            return parse_list(parser, false);
         }
 
+        // Case of a lambda |x, ...| {...}
+        case TOKEN_OR: {
+            // Parse a list of expressions inside the parentheses.
+            ast_node_t* list = parse_list(parser, true);
+            
+            skip_newlines(parser);
+
+            // Parse a block of expressions to serve as the function body.
+            ast_node_t* block = parse_block(parser);
+            
+            // Create a new AST node for the function.
+            ast_node_t* func = ast_node_new(((ast_node_t){
+                .ast_type=AST_FUNCTION,
+                .ast_function={
+                    .name="<anonymous>", // The function has no name.
+                    .parameters=list, // The function parameters come from the list we just parsed.
+                    .body=block, // The function body is the block of expressions we just parsed.
+                },
+            }));
+            return func; // Return the function AST node.
+        }
+        
+        // Case of a block
+        case TOKEN_LBRACE: {
+            // Parse a list of expressions inside the parentheses.
+            return parse_block(parser);
+        }
+
+
         // new line
-        case TOKEN_NL: break;
+        case TOKEN_NL: 
+        case TOKEN_EOF: break;
         
         // anything else
         default:
