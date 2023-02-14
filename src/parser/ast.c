@@ -12,7 +12,7 @@ const char* ast_type_to_str(ast_type_t type) {
         case AST_CALL:          return "CALL";
         case AST_FUNCTION:      return "FUNCTION";
         case AST_ASSIGNMENT:    return "ASSIGNMENT";
-        case AST_VARIABLE:      return "VARIABLE";
+        case AST_IDENTIFIER:    return "IDENTIFIER";
         case AST_STATEMENT:     return "STATEMENT";
         case AST_NUMBER:        return "NUMBER";
         case AST_STRING:        return "STRING";
@@ -24,50 +24,81 @@ const char* ast_type_to_str(ast_type_t type) {
     }
 }
 
-void ast_print(const ast_node_t* ast_node) {
+void ast_print(const ast_node_t* ast_node, uint32_t indent_level) {
+    // If the AST node is null, print a warning and return.
     if (!ast_node) {
         printf("[ast]: Warning - ast_node is null\n");
         return;
     }
-
+    // Print indentation.
+    for (uint32_t i = 0; i < indent_level; ++i) printf("    ");
+    // Print the type of the AST node.
     printf("(%s): ", ast_type_to_str(ast_node->ast_type));
 
+    // Switch on the type of the AST node.
     switch (ast_node->ast_type) {
         case AST_NUMBER:
+            // If the node is a number, print its value.
             printf("%g\n", ast_node->ast_number.value);
             break;
-        case AST_VARIABLE:
+
+        case AST_IDENTIFIER:
         case AST_STRING:
+            // If the node is a variable or string, print its value.
             if (ast_node->ast_string.value)
                 printf("%.*s\n", ast_node->ast_string.length, ast_node->ast_string.value);
             break;
+
         case AST_ROOT:
         case AST_COMPOUND:
         case AST_LIST:
-        case AST_BLOCK:
+        case AST_BLOCK: {
+            // If the node is a root, compound, list, or block,
+            // print a new line and iterate over each item in the linked list,
+            // recursively printing each item with an increased indentation level.
             printf("\n");
-            linked_list_print(&((ast_node_t*)ast_node)->ast_compound, (void(*)(void*))ast_print);
+            linked_list_node_t* curr = ast_node->ast_compound.head;
+            while (curr) {
+                ast_print(curr->item, indent_level + 1);
+                curr = curr->next;
+            }
             break;
+        }
+
         case AST_ASSIGNMENT:
-            printf("\nleft:\n");
-            ast_print(ast_node->ast_assignment.left);
-            printf("right:\n");
-            ast_print(ast_node->ast_assignment.right);
-            break;
-        case AST_FUNCTION:
-            printf("name: %s\n", ast_node->ast_function.name);
-            printf("params:\n");
-            ast_print(ast_node->ast_function.parameters);
-            printf("body:\n");
-            ast_print(ast_node->ast_function.body);
-            break;
-        case AST_BIN_OP:
-            printf("op: %s\n", token_type_to_str(ast_node->ast_bin_op.op));
+            // If the node is an assignment, print the left and right sides of the assignment
+            printf("\n");
+            for (uint32_t i = 0; i < indent_level; ++i) printf("    ");
             printf("left:\n");
-            ast_print(ast_node->ast_bin_op.left);
+            ast_print(ast_node->ast_assignment.left, indent_level + 1);
+            for (uint32_t i = 0; i < indent_level; ++i) printf("    ");
             printf("right:\n");
-            ast_print(ast_node->ast_bin_op.right);
+            ast_print(ast_node->ast_assignment.right, indent_level + 1);
             break;
+
+        case AST_FUNCTION:
+        case AST_LAMBDA:
+            // If the node is a function, print its name, parameters and the body.
+            printf("name: %s\n", ast_node->ast_function.name);
+            for (uint32_t i = 0; i < indent_level; ++i) printf("    ");
+            printf("params:\n");
+            ast_print(ast_node->ast_function.parameters, indent_level + 1);
+            for (uint32_t i = 0; i < indent_level; ++i) printf("    ");
+            printf("body:\n");
+            ast_print(ast_node->ast_function.body, indent_level + 1);
+            break;
+
+        case AST_BIN_OP:
+            // If the node is a binary operation, print its operator, left and right sides.
+            printf("op: %s\n", token_type_to_str(ast_node->ast_bin_op.op));
+            for (uint32_t i = 0; i < indent_level; ++i) printf("    ");
+            printf("left:\n");
+            ast_print(ast_node->ast_bin_op.left, indent_level + 1);
+            for (uint32_t i = 0; i < indent_level; ++i) printf("    ");
+            printf("right:\n");
+            ast_print(ast_node->ast_bin_op.right, indent_level + 1);
+            break;
+
         default:
             printf("TODO: implement ast_print\n");
             break;
