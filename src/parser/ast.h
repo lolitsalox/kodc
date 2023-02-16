@@ -11,6 +11,8 @@ typedef enum ast_type_t {
     AST_LAMBDA,
     AST_BLOCK,
     AST_CALL,
+    AST_SUBSCRIPT,
+    AST_ACCESS,
     AST_UNARY_OP,
     AST_BIN_OP,
     AST_FUNCTION,
@@ -40,6 +42,11 @@ typedef struct ast_assignment_t {
     ast_node_t* right;
 } ast_assignment_t;
 
+typedef struct ast_unary_op_t {
+    ast_node_t* value;
+    token_type_t op;
+} ast_unary_op_t;
+
 typedef struct ast_bin_op_t {
     ast_node_t* left;
     ast_node_t* right;
@@ -47,10 +54,25 @@ typedef struct ast_bin_op_t {
 } ast_bin_op_t;
 
 typedef struct ast_function_t {
-    char* name;
-    ast_node_t* parameters;
-    ast_node_t* body;
+    ast_string_t name;
+    ast_node_t* parameters; // must be list
+    ast_node_t* body;  // must be block
 } ast_function_t;
+
+typedef struct ast_call_t {
+    ast_node_t* callable;
+    ast_node_t* arguments; // must be list
+} ast_call_t;
+
+typedef struct ast_subscript_t {
+    ast_node_t* value;
+    ast_node_t* subscript; // must be list
+} ast_subscript_t;
+
+typedef struct ast_access_t {
+    ast_node_t* value;
+    ast_node_t* field; // must be id
+} ast_access_t;
 
 struct ast_node_t {
     ast_type_t ast_type;
@@ -60,7 +82,11 @@ struct ast_node_t {
         ast_string_t ast_string;
         ast_assignment_t ast_assignment;
         ast_function_t ast_function;
+        ast_call_t ast_call;
+        ast_unary_op_t ast_unary_op;
         ast_bin_op_t ast_bin_op;
+        ast_subscript_t ast_subscript;
+        ast_access_t ast_access;
     };
     
 };
