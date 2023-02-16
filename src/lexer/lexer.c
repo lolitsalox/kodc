@@ -144,7 +144,16 @@ static token_type_t find_symbol(char* s, uint32_t length) {
             case ':': if (s[1] == s[0]) return TOKEN_NAMESPACE; break;
             case '&': if (s[1] == s[0]) return TOKEN_BOOL_AND;  break;
             case '|': if (s[1] == s[0]) return TOKEN_BOOL_OR;   break;
-            case '*': if (s[1] == s[0]) return TOKEN_POW; break;
+
+            case '*': 
+                if (s[1] == s[0]) return TOKEN_POW;
+                else if (s[1] == '/') return TOKEN_MULTILINE_COMMENT_END;
+                break;
+            
+            case '/': 
+                if (s[1] == s[0]) return TOKEN_LINE_COMMENT; 
+                else if (s[1] == '*') return TOKEN_MULTILINE_COMMENT_START;
+                break;
 
             case '-': 
                 if (s[1] == '>') return TOKEN_POINTER; 
