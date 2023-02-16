@@ -36,7 +36,7 @@ parser_t parser_init(lexer_t* lexer) {
         return (parser_t){0};
     }
 
-    return (parser_t){.lexer=lexer, .current_token=lexer_get_next_token(lexer)};
+    return (parser_t){.lexer=lexer, .current_token=lexer_get_next_token(lexer), .getting_parameters=false};
 }
 
 ast_node_t* parse(parser_t* parser) {
@@ -110,7 +110,6 @@ static ast_node_t* parse_body(
 
     // Eat the left delimiter of the block
     eat(parser, left_delimiter);
-
     // Skip any newlines before the first item
     skip_newlines(parser);
 
@@ -128,7 +127,6 @@ static ast_node_t* parse_body(
 
         // Skip any newlines after the item
         skip_newlines(parser);
-
             
         // If comma-separated items are expected, parse the comma if it exists, or stop parsing if it doesn't
         if (parse_comma) {
@@ -235,7 +233,8 @@ static ast_node_t* parse_bool_and(parser_t* parser) {
 static ast_node_t* parse_bitwise_or(parser_t* parser) {
     ast_node_t* left = parse_bitwise_xor(parser);
 
-    if (parser->current_token && parser->current_token->token_type == TOKEN_OR) {
+    // * Special case because of lambdas...
+    if (!parser->getting_parameters && parser->current_token && parser->current_token->token_type == TOKEN_OR) {
         left = ast_node_new(((ast_node_t){
             .ast_type=AST_BIN_OP, 
             .ast_bin_op={
@@ -592,6 +591,8 @@ static ast_node_t* parse_factor(parser_t* parser) {
 
         // If the token is an identifier.
         case TOKEN_ID:
+            // TODO: add check for statements (e.g. if, while, for)
+
             // Create a new AST node for the identifier.
             ast_node = ast_node_new(((ast_node_t){
                 .ast_type = AST_IDENTIFIER,
@@ -610,9 +611,12 @@ static ast_node_t* parse_factor(parser_t* parser) {
 
         // Case of a lambda |x, ...| {...}
         case TOKEN_OR: {
+
+            parser->getting_parameters = true;
             // Parse a list of expressions inside the parentheses.
             ast_node_t* list = parse_list(parser, true);
-            
+
+            parser->getting_parameters = false;
             skip_newlines(parser);
 
             // Parse a block of expressions to serve as the function body.
@@ -642,8 +646,7 @@ static ast_node_t* parse_factor(parser_t* parser) {
                                             parser->current_token->token_type != TOKEN_EOF)
                 parser->current_token = lexer_get_next_token(parser->lexer);
             
-            if (parser->current_token && parser->current_token->token_type == TOKEN_NL)
-                eat(parser, TOKEN_NL);
+            skip_newlines(parser);
             return NULL;
             
         case TOKEN_MULTILINE_COMMENT_START:
@@ -655,6 +658,7 @@ static ast_node_t* parse_factor(parser_t* parser) {
                 parser->current_token = lexer_get_next_token(parser->lexer);
             }
             eat(parser, TOKEN_MULTILINE_COMMENT_END);
+            skip_newlines(parser);
             return NULL;
 
         // end of expression or whatever

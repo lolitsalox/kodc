@@ -6,6 +6,7 @@
 typedef struct parser_t {
     lexer_t* lexer;
     token_t* current_token;
+    bool getting_parameters;
 } parser_t;
 
 parser_t parser_init(lexer_t* lexer);
