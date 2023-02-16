@@ -169,8 +169,11 @@ static token_type_t find_symbol(char* s, uint32_t length) {
                 else if (s[1] == '=') return TOKEN_BOOL_GTE; 
                 break;
 
-            default: return TOKEN_UNKNOWN;
+            default: {
+                return TOKEN_UNKNOWN;
+            }
         }   
+        return TOKEN_UNKNOWN;
     }
 
     switch (s[0]) {
