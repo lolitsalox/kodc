@@ -12,10 +12,11 @@ static ast_node_t* parse_compound(parser_t* parser);
 
 static ast_node_t* parse_list(parser_t* parser, bool lambda);
 static ast_node_t* parse_block(parser_t* parser);
+static ast_node_t* parse_brackets(parser_t* parser);
 
 static ast_node_t* parse_assignment(parser_t* parser);       // = -> += -=, etc...
-static ast_node_t* parse_logical_or(parser_t* parser);       // ||
-static ast_node_t* parse_logical_and(parser_t* parser);      // &&
+static ast_node_t* parse_bool_or(parser_t* parser);       // ||
+static ast_node_t* parse_bool_and(parser_t* parser);      // &&
 static ast_node_t* parse_bitwise_or(parser_t* parser);       // |
 static ast_node_t* parse_bitwise_xor(parser_t* parser);      // ^
 static ast_node_t* parse_bitwise_and(parser_t* parser);      // &
@@ -25,8 +26,8 @@ static ast_node_t* parse_bitwise_shlr(parser_t* parser);     // << >>
 static ast_node_t* parse_add_sub(parser_t* parser);          // + -
 static ast_node_t* parse_mul_div_mod(parser_t* parser);      // * / %
 static ast_node_t* parse_pow(parser_t* parser);              // **       
-static ast_node_t* parse_second(parser_t* parser);           // + - ! ~ @ # sizeof       
-static ast_node_t* parse_first(parser_t* parser);            // from the right () [] . 
+static ast_node_t* parse_before(parser_t* parser);           // + - ! ~ @ # sizeof       
+static ast_node_t* parse_after(parser_t* parser, ast_node_t* value); // from the right () [] . 
 static ast_node_t* parse_factor(parser_t* parser);           // values
 
 parser_t parser_init(lexer_t* lexer) {
@@ -63,7 +64,7 @@ static void eat(parser_t* parser, token_type_t type) {
         );
         exit(1);
     }
-
+    free(parser->current_token);
     parser->current_token = lexer_get_next_token(parser->lexer);
 }
 
@@ -122,9 +123,13 @@ static ast_node_t* parse_body(
         if (!value) continue;
         linked_list_append(&body->ast_compound, value);
 
+        if (type == AST_BLOCK && parser->current_token && parser->current_token->token_type == TOKEN_SEMI)
+            eat(parser, TOKEN_SEMI);
+
         // Skip any newlines after the item
         skip_newlines(parser);
 
+            
         // If comma-separated items are expected, parse the comma if it exists, or stop parsing if it doesn't
         if (parse_comma) {
             if (parser->current_token && parser->current_token->token_type == TOKEN_COMMA)
@@ -153,6 +158,12 @@ static ast_node_t* parse_block(parser_t* parser) {
     return parse_body(parser, AST_BLOCK, TOKEN_LBRACE, TOKEN_RBRACE, false);
 }
 
+// Parses a list of expressions inside brackets and returns an AST node for it
+static ast_node_t* parse_brackets(parser_t* parser) {
+    return parse_body(parser, AST_LIST, TOKEN_LBRACKET, TOKEN_RBRACKET, true);
+}
+
+
 /**
  * @brief Parses an assignment expression of the form "<left-hand side> = <right-hand side>".
  * 
@@ -161,7 +172,7 @@ static ast_node_t* parse_block(parser_t* parser) {
  */
 static ast_node_t* parse_assignment(parser_t* parser) {
     // Parse the left-hand side of the assignment.
-    ast_node_t* left = parse_add_sub(parser);
+    ast_node_t* left = parse_bool_or(parser);
 
     // If the current token is not an equals sign, return the left-hand side.
     if (parser->current_token && parser->current_token->token_type != TOKEN_EQUALS) {
@@ -176,9 +187,180 @@ static ast_node_t* parse_assignment(parser_t* parser) {
         .ast_type=AST_ASSIGNMENT, 
         .ast_assignment={
             .left=left, 
-            .right=parse_add_sub(parser)
+            .right=parse_bool_or(parser)
         }
     }));
+}
+
+static ast_node_t* parse_bool_or(parser_t* parser) {
+    ast_node_t* left = parse_bool_and(parser);
+
+    if (parser->current_token && parser->current_token->token_type == TOKEN_BOOL_OR) {
+        left = ast_node_new(((ast_node_t){
+            .ast_type=AST_BIN_OP, 
+            .ast_bin_op={
+                .left=left, 
+                .right=NULL,
+                .op=parser->current_token->token_type,
+            }
+        }));
+        // Eating the token
+        eat(parser, parser->current_token->token_type);
+        left->ast_bin_op.right = parse_bool_or(parser);
+    }
+
+    return left;
+} 
+
+static ast_node_t* parse_bool_and(parser_t* parser) {
+    ast_node_t* left = parse_bitwise_or(parser);
+
+    if (parser->current_token && parser->current_token->token_type == TOKEN_BOOL_AND) {
+        left = ast_node_new(((ast_node_t){
+            .ast_type=AST_BIN_OP, 
+            .ast_bin_op={
+                .left=left, 
+                .right=NULL,
+                .op=parser->current_token->token_type,
+            }
+        }));
+        // Eating the token
+        eat(parser, parser->current_token->token_type);
+        left->ast_bin_op.right = parse_bool_and(parser);
+    }
+
+    return left;
+}
+
+static ast_node_t* parse_bitwise_or(parser_t* parser) {
+    ast_node_t* left = parse_bitwise_xor(parser);
+
+    if (parser->current_token && parser->current_token->token_type == TOKEN_OR) {
+        left = ast_node_new(((ast_node_t){
+            .ast_type=AST_BIN_OP, 
+            .ast_bin_op={
+                .left=left, 
+                .right=NULL,
+                .op=parser->current_token->token_type,
+            }
+        }));
+        // Eating the token
+        eat(parser, parser->current_token->token_type);
+        left->ast_bin_op.right = parse_bitwise_or(parser);
+    }
+
+    return left;
+} 
+
+static ast_node_t* parse_bitwise_xor(parser_t* parser) {
+    ast_node_t* left = parse_bitwise_and(parser);
+
+    if (parser->current_token && parser->current_token->token_type == TOKEN_HAT) {
+        left = ast_node_new(((ast_node_t){
+            .ast_type=AST_BIN_OP, 
+            .ast_bin_op={
+                .left=left, 
+                .right=NULL,
+                .op=parser->current_token->token_type,
+            }
+        }));
+        // Eating the token
+        eat(parser, parser->current_token->token_type);
+        left->ast_bin_op.right = parse_bitwise_xor(parser);
+    }
+
+    return left;
+}
+
+static ast_node_t* parse_bitwise_and(parser_t* parser) {
+    ast_node_t* left = parse_bool_equals(parser);
+
+    if (parser->current_token && parser->current_token->token_type == TOKEN_AND) {
+        left = ast_node_new(((ast_node_t){
+            .ast_type=AST_BIN_OP, 
+            .ast_bin_op={
+                .left=left, 
+                .right=NULL,
+                .op=parser->current_token->token_type,
+            }
+        }));
+        // Eating the token
+        eat(parser, parser->current_token->token_type);
+        left->ast_bin_op.right = parse_bitwise_and(parser);
+    }
+
+    return left;
+}
+
+static ast_node_t* parse_bool_equals(parser_t* parser) {
+    ast_node_t* left = parse_bool_gtlt(parser);
+
+    if (parser->current_token && (
+        parser->current_token->token_type == TOKEN_BOOL_EQ ||
+        parser->current_token->token_type == TOKEN_BOOL_NOTE
+    )) {
+        left = ast_node_new(((ast_node_t){
+            .ast_type=AST_BIN_OP, 
+            .ast_bin_op={
+                .left=left, 
+                .right=NULL,
+                .op=parser->current_token->token_type,
+            }
+        }));
+        // Eating the token
+        eat(parser, parser->current_token->token_type);
+        left->ast_bin_op.right = parse_bool_equals(parser);
+    }
+
+    return left;
+}
+
+static ast_node_t* parse_bool_gtlt(parser_t* parser) {
+    ast_node_t* left = parse_bitwise_shlr(parser);
+
+    if (parser->current_token && (
+        parser->current_token->token_type == TOKEN_BOOL_GT ||
+        parser->current_token->token_type == TOKEN_BOOL_GTE || 
+        parser->current_token->token_type == TOKEN_BOOL_LT || 
+        parser->current_token->token_type == TOKEN_BOOL_LTE 
+    )) {
+        left = ast_node_new(((ast_node_t){
+            .ast_type=AST_BIN_OP, 
+            .ast_bin_op={
+                .left=left, 
+                .right=NULL,
+                .op=parser->current_token->token_type,
+            }
+        }));
+        // Eating the token
+        eat(parser, parser->current_token->token_type);
+        left->ast_bin_op.right = parse_bool_gtlt(parser);
+    }
+
+    return left;
+}  
+
+static ast_node_t* parse_bitwise_shlr(parser_t* parser) {
+    ast_node_t* left = parse_add_sub(parser);
+
+    if (parser->current_token && (
+        parser->current_token->token_type == TOKEN_SHL ||
+        parser->current_token->token_type == TOKEN_SHR
+    )) {
+        left = ast_node_new(((ast_node_t){
+            .ast_type=AST_BIN_OP, 
+            .ast_bin_op={
+                .left=left, 
+                .right=NULL,
+                .op=parser->current_token->token_type,
+            }
+        }));
+        // Eating the token
+        eat(parser, parser->current_token->token_type);
+        left->ast_bin_op.right = parse_bitwise_shlr(parser);
+    }
+
+    return left;
 }
 
 static ast_node_t* parse_add_sub(parser_t* parser) {
@@ -205,7 +387,7 @@ static ast_node_t* parse_add_sub(parser_t* parser) {
 }
 
 static ast_node_t* parse_mul_div_mod(parser_t* parser) {
-    ast_node_t* left = parse_factor(parser);
+    ast_node_t* left = parse_pow(parser);
 
     if (parser->current_token && (
         parser->current_token->token_type == TOKEN_MUL ||
@@ -226,6 +408,153 @@ static ast_node_t* parse_mul_div_mod(parser_t* parser) {
     }
 
     return left;
+}
+
+static ast_node_t* parse_pow(parser_t* parser) {
+    ast_node_t* left = parse_before(parser);
+
+    if (parser->current_token && parser->current_token->token_type == TOKEN_POW) {
+        left = ast_node_new(((ast_node_t){
+            .ast_type=AST_BIN_OP, 
+            .ast_bin_op={
+                .left=left, 
+                .right=NULL,
+                .op=parser->current_token->token_type,
+            }
+        }));
+        // Eating the token
+        eat(parser, parser->current_token->token_type);
+        left->ast_bin_op.right = parse_pow(parser);
+    }
+
+    return left;
+}   
+
+static ast_node_t* parse_before(parser_t* parser) {
+    if (
+        parser->current_token && (
+        parser->current_token->token_type == TOKEN_ADD ||
+        parser->current_token->token_type == TOKEN_SUB ||
+        parser->current_token->token_type == TOKEN_NOT ||
+        parser->current_token->token_type == TOKEN_BOOL_NOT
+    )) {
+        ast_node_t* node = ast_node_new((ast_node_t){
+            .ast_type=AST_UNARY_OP, 
+            .ast_unary_op={
+                .value=NULL,
+                .op=parser->current_token->token_type
+            }});
+            eat(parser, parser->current_token->token_type);
+            node->ast_unary_op.value = parse_before(parser);
+            // TODO: make optimizations
+            return node;
+    }
+        
+    return parse_after(parser, NULL);
+} 
+
+/**
+ * @brief This function is called after parsing a factor to handle any operators or other operations
+ * that might appear after the factor. It recursively parses the rest of the expression and returns
+ * the corresponding AST node.
+ * 
+ * @param parser parser object
+ * @param value NULL by default
+ * @return ast_node_t* 
+ */
+static ast_node_t* parse_after(parser_t* parser, ast_node_t* value) {
+    // If 'value' is null, set it to the result of parsing a factor.
+    value = value ? value : parse_factor(parser);
+    // If 'value' or 'current_token' is null, return 'value'.
+    if (!value || !parser->current_token) return value;
+
+    // Check the type of the current token and perform an action based on the type.
+    switch (parser->current_token->token_type) {
+        // Function definition/call
+        case TOKEN_LPAREN: {
+            // Parse a list of arguments/parameters.
+            ast_node_t* list = parse_list(parser, false);
+
+            // If the next token is a left brace, this is a function definition.
+            if (parser->current_token && parser->current_token->token_type == TOKEN_LBRACE) {
+                // Ensure that the value being defined is an identifier.
+                if (value->ast_type != AST_IDENTIFIER) {
+                    printf("[parser]: Error - invalid syntax (can't define a function like that bro)\n");
+                    exit(1);
+                }
+
+                // Create a new function AST node and return it.
+                ast_node_t* func = ast_node_new((ast_node_t){
+                    .ast_type=AST_FUNCTION,
+                    .ast_function={
+                        .name={
+                            .value=value->ast_string.value,
+                            .length=value->ast_string.length
+                        },
+                        .parameters=list,
+                        .body=parse_block(parser),
+                    }
+                });
+                free(value);
+                return func;
+            }
+
+            // This is a function call.
+            ast_node_t* function_call = ast_node_new((ast_node_t){
+                .ast_type=AST_CALL,
+                .ast_call={
+                    .callable=value,
+                    .arguments=list
+                }
+            });
+
+            return parse_after(parser, function_call);
+        }
+
+        // Array subscript
+        case TOKEN_LBRACKET: {
+            // Parse the subscript expression inside the brackets.
+            ast_node_t* subscript = parse_brackets(parser);
+            // Create a new AST node for the array subscript and return it.
+            ast_node_t* array_subscript = ast_node_new((ast_node_t){
+                .ast_type=AST_SUBSCRIPT,
+                .ast_subscript={
+                    .value=value,
+                    .subscript=subscript
+                }
+            });
+
+            return parse_after(parser, array_subscript);
+        }
+
+        // Class access expression (e.g. expr.id)
+        case TOKEN_DOT: {
+            // Eat the dot token and parse the field expression.
+            eat(parser, TOKEN_DOT);
+            ast_node_t* field = parse_factor(parser);
+            // Ensure that the field is an identifier.
+            if (field->ast_type != AST_IDENTIFIER) {
+                printf("[parser]: Error - invalid syntax (can't get a field that is an expression)\n");
+                exit(1);
+            }
+
+            // Create a new AST node for the class access expression and return it.
+            ast_node_t* class_access = ast_node_new((ast_node_t){
+                .ast_type=AST_ACCESS,
+                .ast_access={
+                    .value=value,
+                    .field=field
+                }
+            });
+
+            return parse_after(parser, class_access);
+        }
+
+        // Default case: do nothing.
+        default: break;
+    }
+
+    return value;
 }
 
 static ast_node_t* parse_factor(parser_t* parser) {
@@ -289,11 +618,12 @@ static ast_node_t* parse_factor(parser_t* parser) {
             // Parse a block of expressions to serve as the function body.
             ast_node_t* block = parse_block(parser);
             
+            static char name[] = "<anonymous>";  
             // Create a new AST node for the function.
             ast_node_t* func = ast_node_new(((ast_node_t){
                 .ast_type=AST_FUNCTION,
                 .ast_function={
-                    .name="<anonymous>", // The function has no name.
+                    .name={.value=name, .length=sizeof(name)}, // The function has no name.
                     .parameters=list, // The function parameters come from the list we just parsed.
                     .body=block, // The function body is the block of expressions we just parsed.
                 },
@@ -307,8 +637,27 @@ static ast_node_t* parse_factor(parser_t* parser) {
             return parse_block(parser);
         }
 
+        case TOKEN_LINE_COMMENT:
+            while (parser->current_token && parser->current_token->token_type != TOKEN_NL &&
+                                            parser->current_token->token_type != TOKEN_EOF)
+                parser->current_token = lexer_get_next_token(parser->lexer);
+            
+            if (parser->current_token && parser->current_token->token_type == TOKEN_NL)
+                eat(parser, TOKEN_NL);
+            return NULL;
+            
+        case TOKEN_MULTILINE_COMMENT_START:
+            while (parser->current_token && parser->current_token->token_type != TOKEN_MULTILINE_COMMENT_END) {
+                if (parser->current_token->token_type == TOKEN_EOF) {
+                    printf("[parser]: Error - unexpected end of multi line comment (you forgot to close it with \"*/\")\n");
+                    exit(1);
+                }
+                parser->current_token = lexer_get_next_token(parser->lexer);
+            }
+            eat(parser, TOKEN_MULTILINE_COMMENT_END);
+            return NULL;
 
-        // new line
+        // end of expression or whatever
         case TOKEN_NL: 
         case TOKEN_EOF: break;
         
