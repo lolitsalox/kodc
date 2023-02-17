@@ -67,9 +67,10 @@ const char* token_type_to_str(token_type_t type) {
         case TOKEN_ARROW:           return          "ARROW";             
         case TOKEN_BACKSLASH:       return          "BACKSLASH";         
         case TOKEN_NL:              return          "NL";               
-        case TOKEN_EOF:             return          "EOF";               
-        default:                    return          "UNKNOWN";
+        case TOKEN_EOF:             return          "EOF";   
+        case TOKEN_UNKNOWN:         return          "UNKNOWN";   
     }
+    return "UNKNOWN";
 }
 
 void token_print(const token_t* token) {
