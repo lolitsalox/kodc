@@ -143,7 +143,6 @@ void ast_print(const ast_node_t* ast_node, uint32_t indent_level) {
             printf("arguments:\n");
             ast_print(ast_node->ast_call.arguments, indent_level + 2);
             break;
-
         default:
             printf("TODO: implement ast_print\n");
             break;

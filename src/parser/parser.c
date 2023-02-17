@@ -110,6 +110,7 @@ static ast_node_t* parse_body(
 
     // Eat the left delimiter of the block
     eat(parser, left_delimiter);
+    
     // Skip any newlines before the first item
     skip_newlines(parser);
 
@@ -127,7 +128,7 @@ static ast_node_t* parse_body(
 
         // Skip any newlines after the item
         skip_newlines(parser);
-            
+        
         // If comma-separated items are expected, parse the comma if it exists, or stop parsing if it doesn't
         if (parse_comma) {
             if (parser->current_token && parser->current_token->token_type == TOKEN_COMMA)
@@ -160,7 +161,6 @@ static ast_node_t* parse_block(parser_t* parser) {
 static ast_node_t* parse_brackets(parser_t* parser) {
     return parse_body(parser, AST_LIST, TOKEN_LBRACKET, TOKEN_RBRACKET, true);
 }
-
 
 /**
  * @brief Parses an assignment expression of the form "<left-hand side> = <right-hand side>".
