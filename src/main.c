@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include "parser/parser.h"
-#include "io.h"
+#include "io/io.h"
 
 int main() {
     const char* filename = "script.kod"; 
