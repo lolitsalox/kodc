@@ -10,30 +10,30 @@ static void skip_newlines(parser_t* parser);
 
 static ast_node_t* parse_compound(parser_t* parser);
 
-static ast_node_t* parse_list(parser_t* parser, bool lambda);
-static ast_node_t* parse_block(parser_t* parser);
+static ast_node_t* parse_list    (parser_t* parser, bool lambda);
+static ast_node_t* parse_block   (parser_t* parser);
 static ast_node_t* parse_brackets(parser_t* parser);
 
-static ast_node_t* parse_assignment(parser_t* parser);       // = -> += -=, etc...
-static ast_node_t* parse_bool_or(parser_t* parser);       // ||
-static ast_node_t* parse_bool_and(parser_t* parser);      // &&
-static ast_node_t* parse_bitwise_or(parser_t* parser);       // |
-static ast_node_t* parse_bitwise_xor(parser_t* parser);      // ^
-static ast_node_t* parse_bitwise_and(parser_t* parser);      // &
-static ast_node_t* parse_bool_equals(parser_t* parser);      // == !=
-static ast_node_t* parse_bool_gtlt(parser_t* parser);        // < > <= >=
-static ast_node_t* parse_bitwise_shlr(parser_t* parser);     // << >>
-static ast_node_t* parse_add_sub(parser_t* parser);          // + -
-static ast_node_t* parse_mul_div_mod(parser_t* parser);      // * / %
-static ast_node_t* parse_pow(parser_t* parser);              // **       
-static ast_node_t* parse_before(parser_t* parser);           // + - ! ~ @ # sizeof       
-static ast_node_t* parse_after(parser_t* parser, ast_node_t* value); // from the right () [] . 
-static ast_node_t* parse_factor(parser_t* parser);           // values
+static ast_node_t* parse_assignment     (parser_t* parser);             // = -> += -=, etc...
+static ast_node_t* parse_bool_or        (parser_t* parser);             // ||
+static ast_node_t* parse_bool_and       (parser_t* parser);             // &&
+static ast_node_t* parse_bitwise_or     (parser_t* parser);             // |
+static ast_node_t* parse_bitwise_xor    (parser_t* parser);             // ^
+static ast_node_t* parse_bitwise_and    (parser_t* parser);             // &
+static ast_node_t* parse_bool_equals    (parser_t* parser);             // == !=
+static ast_node_t* parse_bool_gtlt      (parser_t* parser);             // < > <= >=
+static ast_node_t* parse_bitwise_shlr   (parser_t* parser);             // << >>
+static ast_node_t* parse_add_sub        (parser_t* parser);             // + -
+static ast_node_t* parse_mul_div_mod    (parser_t* parser);             // * / %
+static ast_node_t* parse_pow            (parser_t* parser);             // **       
+static ast_node_t* parse_before         (parser_t* parser);             // + - ! ~ @ # sizeof       
+static ast_node_t* parse_after          (parser_t* parser, ast_node_t* value);  // from the right () [] . 
+static ast_node_t* parse_factor         (parser_t* parser);             // values 
 
 parser_t parser_init(lexer_t* lexer) {
     if (!lexer) {
-        printf("[parser]: Warning - lexer is null\n");
-        return (parser_t){0};
+        printf("[parser]: Error - lexer is null\n");
+        exit(1);
     }
 
     return (parser_t){.lexer=lexer, .current_token=lexer_get_next_token(lexer), .getting_parameters=false};
