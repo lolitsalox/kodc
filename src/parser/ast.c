@@ -133,6 +133,17 @@ void ast_print(const ast_node_t* ast_node, uint32_t indent_level) {
             ast_print(ast_node->ast_subscript.value, indent_level + 2);
             break;
 
+        case AST_CALL:
+            // If the node is a call operation, print the callable and the arguments.
+            printf("\n");
+            for (uint32_t i = 0; i < indent_level + 1; ++i) printf("    ");
+            printf("callable:\n");
+            ast_print(ast_node->ast_call.callable, indent_level + 2);
+            for (uint32_t i = 0; i < indent_level + 1; ++i) printf("    ");
+            printf("arguments:\n");
+            ast_print(ast_node->ast_call.arguments, indent_level + 2);
+            break;
+
         default:
             printf("TODO: implement ast_print\n");
             break;
