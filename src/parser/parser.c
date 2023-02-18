@@ -14,6 +14,9 @@ static ast_node_t* parse_list    (parser_t* parser, bool lambda);
 static ast_node_t* parse_block   (parser_t* parser);
 static ast_node_t* parse_brackets(parser_t* parser);
 
+static ast_node_t* parse_statement(parser_t* parser);
+
+static ast_node_t* parse_expression     (parser_t* parser);
 static ast_node_t* parse_assignment     (parser_t* parser);             // = -> += -=, etc...
 static ast_node_t* parse_bool_or        (parser_t* parser);             // ||
 static ast_node_t* parse_bool_and       (parser_t* parser);             // &&
@@ -80,7 +83,7 @@ static ast_node_t* parse_compound(parser_t* parser) {
     
     while (parser->current_token && parser->current_token->token_type != TOKEN_EOF) {
         skip_newlines(parser);
-        ast_node_t* value = parse_assignment(parser);
+        ast_node_t* value = parse_expression(parser);
         if (!value) continue;
         linked_list_append(&compound->ast_compound, value);
     }
@@ -119,7 +122,7 @@ static ast_node_t* parse_body(
         skip_newlines(parser);
 
         // Parse the item and add it to the block
-        ast_node_t* value = parse_assignment(parser);
+        ast_node_t* value = parse_expression(parser);
         if (!value) continue;
         linked_list_append(&body->ast_compound, value);
 
@@ -160,6 +163,58 @@ static ast_node_t* parse_block(parser_t* parser) {
 // Parses a list of expressions inside brackets and returns an AST node for it
 static ast_node_t* parse_brackets(parser_t* parser) {
     return parse_body(parser, AST_LIST, TOKEN_LBRACKET, TOKEN_RBRACKET, true);
+}
+
+// Parses a statement and returns an AST node for it
+static ast_node_t* parse_statement(parser_t* parser) {
+    if (!parser->current_token) return NULL;
+
+    token_t tok = *parser->current_token;
+    keyword_type_t keyword_type = tok.keyword_type;
+    ast_node_t* ast_node = NULL;
+
+    eat(parser, TOKEN_KEYWORD);
+
+
+    switch (keyword_type) {
+        case KEYWORD_IF: 
+        case KEYWORD_WHILE: 
+            ast_node = ast_node_new((ast_node_t){
+                .ast_type=(keyword_type == KEYWORD_IF ? AST_IF_STATEMENT : AST_WHILE_STATEMENT),
+                .ast_conditional_statement={
+                    .expression=parse_expression(parser),
+                    .body=parse_block(parser),
+                },
+            });
+            break;
+        
+        // case KEYWORD_FOR: 
+        //     break;
+        
+        case KEYWORD_RETURN: 
+            ast_node = ast_node_new((ast_node_t){
+                .ast_type=AST_RETURN_STATEMENT,
+                .ast_return_statement={
+                    .value=parse_expression(parser),
+                },
+            });
+            break;
+        
+        case KEYWORD_UNKNOWN: 
+            printf("[parser]: Error - unknown keyword\n");
+            exit(1);
+    
+        default:
+            printf("[parser]: TODO - implement keyword ");
+            token_print(&tok);
+            exit(1);
+    }
+
+    return ast_node;
+}
+
+static ast_node_t* parse_expression(parser_t* parser) {
+    return parse_assignment(parser);
 }
 
 /**
@@ -591,8 +646,6 @@ static ast_node_t* parse_factor(parser_t* parser) {
 
         // If the token is an identifier.
         case TOKEN_ID:
-            // TODO: add check for statements (e.g. if, while, for)
-
             // Create a new AST node for the identifier.
             ast_node = ast_node_new(((ast_node_t){
                 .ast_type = AST_IDENTIFIER,
@@ -602,6 +655,10 @@ static ast_node_t* parse_factor(parser_t* parser) {
                 }
             })); 
             break;
+        
+        // If the token is a keyword.
+        case TOKEN_KEYWORD:
+            return parse_statement(parser);
 
         // Case of a list
         case TOKEN_LPAREN: {
