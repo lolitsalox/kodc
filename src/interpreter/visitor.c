@@ -211,7 +211,11 @@ static void visitor_visit(visitor_t* visitor, ast_node_t* ast_node, bool should_
                 exit(1);
             }
 
-            stack_push(&visitor->function_frame_stack, function_frame_new(function->ast_function));
+            function_frame_t* new_frame = function_frame_new(function->ast_function);
+
+            // TODO: map args to params
+
+            stack_push(&visitor->function_frame_stack, new_frame);
             visitor_visit(visitor, function->ast_function.body, should_push);
             break;
         }
