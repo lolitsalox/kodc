@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "../lexer/lexer.h"
+
 const char* ast_type_to_str(ast_type_t type) {
     switch (type) {
         case AST_ROOT:          return "ROOT";
@@ -180,4 +182,8 @@ ast_node_t* ast_node_new(ast_node_t ast_node) {
 
     *ast_node_pointer = ast_node;
     return ast_node_pointer;
+}
+
+int8_t ast_string_compare(ast_string_t a, ast_string_t b) {
+    return str_compare(a.value, b.value, a.length, b.length);
 }

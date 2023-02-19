@@ -86,6 +86,7 @@ typedef struct ast_return_statement_t {
 
 struct ast_node_t {
     ast_type_t ast_type;
+    
     union {
         linked_list_t ast_compound;
         ast_number_t ast_number;
@@ -106,3 +107,5 @@ struct ast_node_t {
 const char* ast_type_to_str(ast_type_t type);
 void ast_print(const ast_node_t* ast_node, uint32_t indent_level);
 ast_node_t* ast_node_new(ast_node_t ast_node);
+
+int8_t ast_string_compare(ast_string_t a, ast_string_t b);
