@@ -484,6 +484,14 @@ static ast_node_t* parse_pow(parser_t* parser) {
     return left;
 }   
 
+/**
+ * @brief This function checks if the current token is a unary operator and creates a new AST node for it, 
+ * then recursively parses the expression after the operator. If the current token is not a unary operator, 
+ * it calls parse_after to parse the expression after it.
+ * 
+ * @param parser parser object
+ * @return ast_node_t* 
+ */
 static ast_node_t* parse_before(parser_t* parser) {
     if (
         parser->current_token && (
@@ -498,10 +506,11 @@ static ast_node_t* parse_before(parser_t* parser) {
                 .value=NULL,
                 .op=parser->current_token->token_type
             }});
-            eat(parser, parser->current_token->token_type);
-            node->ast_unary_op.value = parse_before(parser);
-            // TODO: make optimizations
-            return node;
+
+        eat(parser, parser->current_token->token_type);
+        node->ast_unary_op.value = parse_before(parser);
+        // TODO: make optimizations
+        return node;
     }
         
     return parse_after(parser, NULL);
