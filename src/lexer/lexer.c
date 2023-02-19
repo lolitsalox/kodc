@@ -12,7 +12,6 @@ static bool can_advance(lexer_t* lexer);
 static bool is_symbol(char c);
 static token_type_t find_symbol(char* s, uint32_t length);
 static keyword_type_t find_keyword(char* s, uint32_t length);
-static int8_t str_compare(char* a, char* b, uint32_t length_a, uint32_t length_b);
 
 static token_t* collect_string(lexer_t* lexer);
 static token_t* collect_number(lexer_t* lexer);
@@ -223,7 +222,7 @@ static token_type_t find_symbol(char* s, uint32_t length) {
     }
 }
 
-static int8_t str_compare(char* a, char* b, uint32_t length_a, uint32_t length_b) {
+int8_t str_compare(char* a, char* b, uint32_t length_a, uint32_t length_b) {
     uint32_t length = MIN(length_a, length_b);
 
     for(uint32_t i = 0; i < length; ++i, ++a, ++b) {

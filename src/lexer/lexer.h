@@ -12,3 +12,5 @@ typedef struct lexer_t {
 
 lexer_t lexer_init(const char* src, uint32_t length);
 token_t* lexer_get_next_token(lexer_t* lexer);
+
+int8_t str_compare(char* a, char* b, uint32_t length_a, uint32_t length_b);
