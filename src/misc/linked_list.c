@@ -1,6 +1,12 @@
 #include "linked_list.h"
 #include <stdlib.h>
 
+void linked_list_init(linked_list_t* list) {
+    list->head = NULL;
+    list->tail = NULL;
+    list->size = 0;
+}
+
 void linked_list_append(linked_list_t* list, void* item) {
     linked_list_node_t* new_node = malloc(sizeof(linked_list_node_t));
     new_node->item = item;
