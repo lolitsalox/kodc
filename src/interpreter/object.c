@@ -1,0 +1,47 @@
+#include "object.h"
+
+#include <stdio.h>
+#include <stdlib.h>
+
+const char* object_type_to_str(kod_object_type_t type) {
+    switch (type) {
+        case OBJECT_NUMBER:     return "NUMBER";
+        case OBJECT_STRING:     return "STRING";
+        case OBJECT_FUNCTION:   return "FUNCTION";
+        case OBJECT_NONE:       return "NONE";
+    }
+    return "UNKNOWN";
+}
+
+void object_print(const kod_object_t* object, uint32_t indent_level) {
+    // If the object node is null, print a warning and return.
+    if (!object) {
+        printf("[object]: Warning - object is null\n");
+        return;
+    }
+
+    // Print indentation.
+    for (uint32_t i = 0; i < indent_level; ++i) printf("    ");
+    // Print the type of the object node.
+    printf("(%s): ", object_type_to_str(object->object_type));
+
+    // Switch on the type of the object node.
+    switch (object->object_type) {
+
+        default:
+            printf("TODO: implement object_print\n");
+            break;
+    }
+
+}
+
+kod_object_t* object_new(kod_object_t object) {
+    kod_object_t* object_pointer = malloc(sizeof(kod_object_t));
+    if (!object_pointer) {
+        printf("[object]: Error - coudln't allocate for object\n");
+        return NULL;
+    }
+
+    *object_pointer = object;
+    return object_pointer;
+}
