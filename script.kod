@@ -1,6 +1,8 @@
 main() {
+    a = 10 * 1
+    print(a)
 
-    if 5 < 10 {
+    if a < 10 {
         while true {
             print("inf loop")
         }
@@ -8,3 +10,5 @@ main() {
 
     return 1
 }
+
+main()
