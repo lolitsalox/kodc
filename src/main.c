@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "parser/parser.h"
+#include "interpreter/visitor.h"
 #include "io/io.h"
 
 int main() {
@@ -15,6 +16,9 @@ int main() {
 
     // Parsing AST
     ast_node_t* root = parse(&parser);
-    ast_print(root, 0);
+    // ast_print(root, 0);
+
+    visitor_t* visitor = visitor_new(root);
+    visitor_run(visitor);
     return 0;
 }
