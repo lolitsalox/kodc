@@ -110,6 +110,7 @@ static ast_node_t* parse_body(
 ) {
     // Create a new AST node for the block
     ast_node_t* body = ast_node_new(((ast_node_t){.ast_type=type}));
+    linked_list_init(&body->ast_compound);
 
     // Eat the left delimiter of the block
     eat(parser, left_delimiter);
