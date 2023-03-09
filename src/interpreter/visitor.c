@@ -88,6 +88,27 @@ static void visitor_visit(visitor_t* visitor, ast_node_t* ast_node, bool should_
             break;
         }
 
+        case AST_IF_STATEMENT: {
+            visitor_visit(visitor, ast_node->ast_conditional_statement.expression, true);
+            ast_node_t* expr = stack_pop(&visitor->stack);
+            if (expr->ast_type == AST_NUMBER && expr->ast_number.value) {
+                visitor_visit(visitor, ast_node->ast_conditional_statement.body, should_push);
+            }
+            break;
+        }
+
+        case AST_WHILE_STATEMENT: {
+            visitor_visit(visitor, ast_node->ast_conditional_statement.expression, true);
+            ast_node_t* expr = stack_pop(&visitor->stack);
+            while(expr->ast_type == AST_NUMBER && expr->ast_number.value) {
+                visitor_visit(visitor, ast_node->ast_conditional_statement.body, should_push);
+                
+                visitor_visit(visitor, ast_node->ast_conditional_statement.expression, true);
+                expr = stack_pop(&visitor->stack);
+            }
+            break;
+        }
+
         case AST_ASSIGNMENT: {
             visitor_visit(visitor, ast_node->ast_assignment.right, true);
 
@@ -115,6 +136,74 @@ static void visitor_visit(visitor_t* visitor, ast_node_t* ast_node, bool should_
             }
 
             var->item = right;
+            break;
+        }
+
+        case AST_UNARY_OP: {
+            visitor_visit(visitor, ast_node->ast_unary_op.value, true);
+
+            ast_node_t* value = stack_pop(&visitor->stack);
+
+            switch (ast_node->ast_unary_op.op) {
+                case TOKEN_ADD: {
+                    if (value->ast_type == AST_NUMBER) {
+                        stack_push(&visitor->stack, value);
+                        return;
+                    }
+
+                    break;
+                }
+                
+                case TOKEN_SUB: {
+                    if (value->ast_type == AST_NUMBER) {
+                        stack_push(&visitor->stack, ast_node_new((ast_node_t){
+                            .ast_type=AST_NUMBER,
+                            .ast_number={
+                                .value= -value->ast_number.value
+                            },
+                        }));
+                        return;
+                    }
+
+                    break;
+                }
+                case TOKEN_NOT: {
+                    if (value->ast_type == AST_NUMBER) {
+                        stack_push(&visitor->stack, ast_node_new((ast_node_t){
+                            .ast_type=AST_NUMBER,
+                            .ast_number={
+                                .value=~(int64_t)value->ast_number.value
+                            },
+                        }));
+                        return;
+                    }
+
+                    break;
+                }
+                case TOKEN_BOOL_NOT: {
+                    if (value->ast_type == AST_NUMBER) {
+                        stack_push(&visitor->stack, ast_node_new((ast_node_t){
+                            .ast_type=AST_NUMBER,
+                            .ast_number={
+                                .value=!value->ast_number.value
+                            },
+                        }));
+                        return;
+                    }
+
+                    break;
+                }
+
+                default:
+                    printf("[visitor]: TODO - implement %s for binary op\n", token_type_to_str(ast_node->ast_bin_op.op));
+                    exit(1);
+            }
+
+            printf("[visitor]: Error - can't use a unary `%s` on a `%s`\n",
+                token_type_to_str(ast_node->ast_bin_op.op),
+                ast_type_to_str(value->ast_type)
+            );
+            exit(1);
             break;
         }
 
