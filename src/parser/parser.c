@@ -501,15 +501,27 @@ static ast_node_t* parse_before(parser_t* parser) {
         parser->current_token->token_type == TOKEN_NOT ||
         parser->current_token->token_type == TOKEN_BOOL_NOT
     )) {
+        token_type_t type = parser->current_token->token_type;
+        eat(parser, type);
+
+        ast_node_t* value = parse_before(parser);
+        if (value->ast_type == AST_NUMBER) {
+            switch (type) {
+                case TOKEN_ADD: return value;
+                case TOKEN_SUB: value->ast_number.value *= -1; return value;
+                case TOKEN_NOT: value->ast_number.value = ~((int64_t)value->ast_number.value); return value;
+                case TOKEN_BOOL_NOT: value->ast_number.value = !value->ast_number.value; return value;
+                default: break;
+            }
+        }
+
         ast_node_t* node = ast_node_new((ast_node_t){
             .ast_type=AST_UNARY_OP, 
             .ast_unary_op={
-                .value=NULL,
-                .op=parser->current_token->token_type
+                .value=value,
+                .op=type
             }});
 
-        eat(parser, parser->current_token->token_type);
-        node->ast_unary_op.value = parse_before(parser);
         // TODO: make optimizations
         return node;
     }
