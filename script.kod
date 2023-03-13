@@ -1,24 +1,13 @@
-main() {
-    a = 12
+a = 10
 
-    print(a, "hello there")
-
-    if a {
-        print("inside if")
-        // a = a + -1
+main(x, y) {
+    z = |a| {
+        print(a, x)
     }
-
+    
+    z(y)
     print(a)
-    print(-a)
-    print(!!!!a)
-    print(~a)
-
 }
 
-// main()
+main(69, 420)
 
-// p = print
-// p(p, main)
-
-
-print(time())
