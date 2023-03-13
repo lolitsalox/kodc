@@ -4,7 +4,7 @@ main() {
     print(a, "hello there")
 
     if a {
-        // print(a)
+        print("inside if")
         // a = a + -1
     }
 
@@ -15,7 +15,10 @@ main() {
 
 }
 
-main()
+// main()
 
-p = print
-p(p, main)
+// p = print
+// p(p, main)
+
+
+print(time())
