@@ -1,6 +1,8 @@
 main() {
     a = 12
 
+    print(a, "hello there")
+
     if a {
         // print(a)
         // a = a + -1
@@ -14,3 +16,6 @@ main() {
 }
 
 main()
+
+p = print
+p(p, main)
