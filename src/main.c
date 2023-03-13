@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include "parser/parser.h"
-#include "interpreter/visitor.h"
 #include "io/io.h"
+#include "runtime/interpreter.h"
 
 int main() {
     const char* filename = "script.kod"; 
@@ -18,7 +18,7 @@ int main() {
     ast_node_t* root = parse(&parser);
     // ast_print(root, 0);
 
-    visitor_t* visitor = visitor_new(root);
-    visitor_run(visitor);
+    eval(root);
+
     return 0;
 }
