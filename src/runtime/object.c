@@ -8,7 +8,7 @@ const char* object_type_to_str(kod_object_type_t type) {
         case OBJECT_NUMBER:     return "NUMBER";
         case OBJECT_STRING:     return "STRING";
         case OBJECT_FUNCTION:   return "FUNCTION";
-        case OBJECT_NATIVE_FUNCTION:   return "OBJECT_NATIVE_FUNCTION";
+        case OBJECT_NATIVE_FUNCTION:   return "NATIVE_FUNCTION";
         case OBJECT_NONE:       return "NONE";
     }
     return "UNKNOWN";
