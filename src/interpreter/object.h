@@ -22,7 +22,7 @@ typedef struct kod_string_t {
 } kod_string_t;
 
 typedef struct kod_function_t {
-    double value;
+    ast_function_t function;
 } kod_function_t;
 
 typedef struct kod_object_t {
@@ -30,8 +30,8 @@ typedef struct kod_object_t {
 
     union {
         kod_number_t number;
-        kod_number_t string;
-        kod_number_t function;
+        kod_string_t string;
+        kod_function_t function;
     };
 } kod_object_t;
 
