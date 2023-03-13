@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 #include "env.h"
 
 #define MAKE_NATIVE_FN(fn_name, fn) \
@@ -15,7 +16,7 @@
             .object_type=OBJECT_NATIVE_FUNCTION, \
             .native_function=(kod_native_function_t){ \
                 .name={.value=fn_name, .length=sizeof(fn_name)}, \
-                .caller=kod_print \
+                .caller=fn \
             } \
         })\
     ); \
@@ -181,6 +182,7 @@ static kod_object_t* visit(env_t* env, ast_node_t* node) {
                 }
 
                 case OBJECT_NATIVE_FUNCTION: {
+                    // printf("%.*s -> %p\n", fn_object->native_function.name.length, fn_object->native_function.name.value, fn_object->native_function.caller);
                     return fn_object->native_function.caller(env, node->ast_call.arguments->ast_compound);
                 }
 
@@ -200,7 +202,7 @@ static kod_object_t* visit(env_t* env, ast_node_t* node) {
     return NULL;
 }
 
-kod_object_t* kod_print(struct env_t* env, linked_list_t params) {
+kod_object_t* kod_print(env_t* env, linked_list_t params) {
     linked_list_node_t* curr = params.head;
     while (curr) {
         object_print(visit(env, curr->item), 0);
@@ -209,9 +211,14 @@ kod_object_t* kod_print(struct env_t* env, linked_list_t params) {
     return NULL;
 }
 
+kod_object_t* kod_time(env_t* env, linked_list_t params) {
+    return MAKE_NUMBER(time(NULL));
+}
+
 kod_object_t* eval(ast_node_t* root) {
     env_t* env = env_new(NULL);
 
     MAKE_NATIVE_FN("print", kod_print);
+    MAKE_NATIVE_FN("time", kod_time);
     return visit(env, root);
 }
