@@ -1,3 +1,6 @@
 a = "hello world"
-a.upper()
 print(a)
+print(a.name)
+a.upper(a)
+print(a)
+print(a.upper(a))

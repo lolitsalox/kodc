@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include "env.h"
+#define isalpha(c) (('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z'))
 
 static kod_object_t* visit(env_t* env, ast_node_t* node);
 
@@ -204,7 +205,6 @@ static kod_object_t* visit(env_t* env, ast_node_t* node) {
             kod_object_t* value = visit(env, node->ast_access.value);
             if (value && value->object_type == OBJECT_STRING) {
                 kod_object_t* str_type = env_get_variable(env, (ast_string_t){.value="string", .length=sizeof("string") - 1});
-                env_print(str_type->type.attributes);
                 kod_object_t* field = visit(str_type->type.attributes, node->ast_access.field);
                 field = env_get_variable(str_type->type.attributes, field->string);
                 return field;
@@ -300,7 +300,15 @@ kod_object_t* kod_print(env_t* env, linked_list_t params) {
                 printf("<function %.*s at %p>", object->function.function_node.name.length, object->function.function_node.name.value, object);
                 break;
             }
-
+            case OBJECT_TYPE: {
+                kod_object_t* name = env_get_variable(object->type.attributes, (ast_string_t){.value="name", .length=sizeof("name") - 1});
+                if (!name || name->object_type != OBJECT_STRING) {
+                    puts("[object]: Error - the type has no name or the name is not a string");
+                    exit(1);
+                }
+                printf("%.*s", name->string.length, name->string.value);
+                break;
+            }
             case OBJECT_NATIVE_FUNCTION: {
                 printf("<native function %.*s>", object->native_function.name.length, object->native_function.name.value);
                 break;
@@ -333,7 +341,7 @@ kod_object_t* kod_string_upper(env_t* env, linked_list_t params) {
     kod_object_t* string = visit(env, params.head->item);
     for (size_t i = 0; i < string->string.length; ++i) {
         char* c = string->string.value + i;
-        if (*c & 32) {
+        if (isalpha(*c) && *c & 32) {
             *c ^= 32;
         }
     }

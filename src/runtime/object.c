@@ -48,9 +48,7 @@ void object_print(kod_object_t* object, uint32_t indent_level) {
             break;
         }
         case OBJECT_TYPE: {
-            
             kod_object_t* name = env_get_variable(object->type.attributes, (ast_string_t){.value="name", .length=sizeof("name") - 1});
-            object_print(name, 0);
             if (!name || name->object_type != OBJECT_STRING) {
                 puts("[object]: Error - the type has no name or the name is not a string");
                 exit(1);
