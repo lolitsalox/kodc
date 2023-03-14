@@ -7,7 +7,7 @@
 
 static kod_object_t* visit(env_t* env, ast_node_t* node);
 
-#define MAKE_NATIVE_FN(fn_name, fn) \
+#define MAKE_NATIVE_FN(env, fn_name, fn) \
     env_set_variable( \
         env, \
         (ast_string_t){ \
@@ -20,6 +20,21 @@ static kod_object_t* visit(env_t* env, ast_node_t* node);
                 .name={.value=fn_name, .length=sizeof(fn_name) - 1}, \
                 .caller=fn \
             } \
+        })\
+    ); \
+
+
+#define MAKE_NATIVE_TYPE(env, type_name) \
+    env_t* type_name##_attributes = env_new(env); \
+    env_set_variable( \
+        env, \
+        (ast_string_t){ \
+            .value=#type_name, \
+            .length=sizeof(#type_name) - 1 \
+        }, \
+        object_new((kod_object_t){ \
+            .object_type=OBJECT_TYPE, \
+            .type={.attributes=type_name##_attributes} \
         })\
     ); \
 
@@ -185,6 +200,18 @@ static kod_object_t* visit(env_t* env, ast_node_t* node) {
             return fn_object;
         }
 
+        case AST_ACCESS: {
+            kod_object_t* value = visit(env, node->ast_access.value);
+            if (value && value->object_type == OBJECT_STRING) {
+                kod_object_t* str_type = env_get_variable(env, (ast_string_t){.value="string", .length=sizeof("string") - 1});
+                env_print(str_type->type.attributes);
+                kod_object_t* field = visit(str_type->type.attributes, node->ast_access.field);
+                field = env_get_variable(str_type->type.attributes, field->string);
+                return field;
+            }
+            break;
+        }
+
         case AST_CALL: {
             kod_object_t* fn_object = visit(env, node->ast_call.callable);
             if (!fn_object) {
@@ -297,12 +324,35 @@ kod_object_t* kod_time(env_t* env, linked_list_t params) {
 //     return fib(n - 1) + fib(n - 2);
 // }
 
+kod_object_t* kod_string_upper(env_t* env, linked_list_t params) {
+    if (!params.size) {
+        puts("[interpreter]: Error - unbound method expected self");
+        exit(1);
+    }
+    // TODO: make not in-place, create a new string, work with that and return it
+    kod_object_t* string = visit(env, params.head->item);
+    for (size_t i = 0; i < string->string.length; ++i) {
+        char* c = string->string.value + i;
+        if (*c & 32) {
+            *c ^= 32;
+        }
+    }
+    return NULL;
+}
+
 kod_object_t* eval(ast_node_t* root) {
     env_t* env = env_new(NULL);
 
-    MAKE_NATIVE_FN("print", kod_print);
-    MAKE_NATIVE_FN("time", kod_time);
+    MAKE_NATIVE_FN(env, "print", kod_print);
+    MAKE_NATIVE_FN(env, "time", kod_time);
 
+    MAKE_NATIVE_TYPE(env, string);
+    MAKE_NATIVE_FN(string_attributes, "upper", kod_string_upper);
+    env_set_variable(
+        string_attributes,
+        (ast_string_t){.value="name", .length=sizeof("name") - 1},
+        MAKE_STRING(((ast_string_t){.value="string", .length=sizeof("string") - 1}))
+    );
     time_t start = time(NULL);
 
     kod_object_t* value = visit(env, root);
