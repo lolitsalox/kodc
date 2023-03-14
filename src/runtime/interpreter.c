@@ -10,12 +10,12 @@
         env, \
         (ast_string_t){ \
             .value=fn_name, \
-            .length=sizeof(fn_name) \
+            .length=sizeof(fn_name) - 1 \
         }, \
         object_new((kod_object_t){ \
             .object_type=OBJECT_NATIVE_FUNCTION, \
             .native_function=(kod_native_function_t){ \
-                .name={.value=fn_name, .length=sizeof(fn_name)}, \
+                .name={.value=fn_name, .length=sizeof(fn_name) - 1}, \
                 .caller=fn \
             } \
         })\
@@ -140,6 +140,33 @@ static kod_object_t* visit(env_t* env, ast_node_t* node) {
             );
             exit(1);
             break;
+        }
+
+        case AST_BIN_OP: {
+            kod_object_t* right = visit(env, node->ast_assignment.right);
+            kod_object_t* left = visit(env, node->ast_assignment.left);
+
+            switch (node->ast_bin_op.op) {
+                case TOKEN_ADD: {
+                    if (left->object_type == OBJECT_NUMBER && right->object_type == OBJECT_NUMBER) {
+                        return MAKE_NUMBER(left->number + right->number);
+                    }
+
+                    break;
+                }
+
+                default:
+                    printf("[interpreter]: TODO - implement %s for binary op\n", 
+                        token_type_to_str(node->ast_bin_op.op));
+                    exit(1);
+            }
+
+            printf("[interpreter]: Error - can't `%s` a `%s` and a `%s`\n",
+                token_type_to_str(node->ast_bin_op.op),
+                object_type_to_str(left->object_type),
+                object_type_to_str(right->object_type)
+            );
+            exit(1);
         }
 
         case AST_FUNCTION: {

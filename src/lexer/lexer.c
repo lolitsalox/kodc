@@ -223,9 +223,10 @@ static token_type_t find_symbol(char* s, uint32_t length) {
 }
 
 int8_t str_compare(char* a, char* b, uint32_t length_a, uint32_t length_b) {
-    uint32_t length = MIN(length_a, length_b);
+    if (length_a < length_b) return 1;
+    if (length_a > length_b) return -1;
 
-    for(uint32_t i = 0; i < length; ++i, ++a, ++b) {
+    for(uint32_t i = 0; i < length_a; ++i, ++a, ++b) {
         if((*a) > (*b))
             return -1;
 
@@ -237,10 +238,10 @@ int8_t str_compare(char* a, char* b, uint32_t length_a, uint32_t length_b) {
 }
 
 static keyword_type_t find_keyword(char* s, uint32_t length) {
-    if (str_compare(s, "if",    length, sizeof("if")) == 0)             return KEYWORD_IF;
-    if (str_compare(s, "while", length, sizeof("while")) == 0)          return KEYWORD_WHILE;
-    if (str_compare(s, "for",   length, sizeof("for")) == 0)            return KEYWORD_FOR;
-    if (str_compare(s, "return",   length, sizeof("return")) == 0)      return KEYWORD_RETURN;
+    if (str_compare(s, "if",    length, sizeof("if") - 1) == 0)             return KEYWORD_IF;
+    if (str_compare(s, "while", length, sizeof("while") - 1) == 0)          return KEYWORD_WHILE;
+    if (str_compare(s, "for",   length, sizeof("for") - 1) == 0)            return KEYWORD_FOR;
+    if (str_compare(s, "return",   length, sizeof("return") - 1) == 0)      return KEYWORD_RETURN;
 
     return KEYWORD_UNKNOWN;
 }
