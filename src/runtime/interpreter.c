@@ -5,6 +5,8 @@
 #include <time.h>
 #include "env.h"
 
+static kod_object_t* visit(env_t* env, ast_node_t* node);
+
 #define MAKE_NATIVE_FN(fn_name, fn) \
     env_set_variable( \
         env, \
@@ -24,6 +26,76 @@
 #define MAKE_NUMBER(val) object_new((kod_object_t){.object_type=OBJECT_NUMBER,.number=val})
 #define MAKE_STRING(ast_str) object_new((kod_object_t){.object_type=OBJECT_STRING,.string=ast_str})
 
+static kod_object_t* eval_unary_op_number(double value, token_type_t op) {
+    switch (op) {
+        case TOKEN_ADD: return MAKE_NUMBER(value);
+        case TOKEN_SUB: return MAKE_NUMBER(-value);
+        case TOKEN_NOT: return MAKE_NUMBER(~(int64_t)value);
+        case TOKEN_BOOL_NOT: return MAKE_NUMBER(!value);
+        default:
+            printf("[interpreter]: Error - Unary `%s` is unimplemented.\n",
+                token_type_to_str(op)
+            );
+            exit(1);
+    }
+    return NULL;
+}
+
+#include <math.h>
+static kod_object_t* eval_binary_op_number(double left, double right, token_type_t op) {
+    switch (op) {
+        case TOKEN_ADD: return MAKE_NUMBER(left + right);
+        case TOKEN_SUB: return MAKE_NUMBER(left - right);
+        case TOKEN_MUL: return MAKE_NUMBER(left * right);
+        case TOKEN_DIV: return MAKE_NUMBER(left / right);
+        case TOKEN_POW: return MAKE_NUMBER(pow(left, right));
+        case TOKEN_BOOL_LT: return MAKE_NUMBER(left < right);
+        default:
+            printf("[interpreter]: Error - Binary `%s` is unimplemented.\n",
+                token_type_to_str(op)
+            );
+            exit(1);
+    }
+    return NULL;
+}
+
+static kod_object_t* eval_unary_op(env_t* env, ast_unary_op_t node) {
+    kod_object_t* value = visit(env, node.value);
+
+    if (!value) return NULL;
+
+    if (value->object_type == OBJECT_NUMBER) {
+        return eval_unary_op_number(value->number, node.op);
+    }
+
+    printf("[interpreter]: Error - can't use a unary `%s` on a `%s`\n",
+                token_type_to_str(node.op),
+                object_type_to_str(value->object_type)
+            );
+    exit(1);
+    return NULL;
+}
+
+static kod_object_t* eval_binary_op(env_t* env, ast_bin_op_t node) {
+    kod_object_t* left = visit(env, node.left);
+    kod_object_t* right = visit(env, node.right);
+
+    if (!left || !right) return NULL;
+
+    if (left->object_type == OBJECT_NUMBER &&
+        right->object_type == OBJECT_NUMBER) {
+            return eval_binary_op_number(left->number, right->number, node.op);
+    }
+
+    printf("[interpreter]: Error - can't `%s` a `%s` and a `%s`\n",
+                token_type_to_str(node.op),
+                object_type_to_str(left->object_type),
+                object_type_to_str(right->object_type)
+            );
+    exit(1);
+    return NULL;
+}
+
 static kod_object_t* visit(env_t* env, ast_node_t* node) {
     switch (node->ast_type) {
         case AST_ROOT:
@@ -32,7 +104,6 @@ static kod_object_t* visit(env_t* env, ast_node_t* node) {
             while (curr) {
                 kod_object_t* value = visit(env, curr->item);
                 if (env->does_return) {
-                    env->does_return = false;
                     return value;
                 }
                 curr = curr->next;
@@ -80,9 +151,9 @@ static kod_object_t* visit(env_t* env, ast_node_t* node) {
         case AST_IF_STATEMENT: {
             kod_object_t* expr = visit(env, node->ast_conditional_statement.expression);
             if (expr->object_type == OBJECT_NUMBER && expr->number) {
-                visit(env, node->ast_conditional_statement.body);
+                expr = visit(env, node->ast_conditional_statement.body);
             }
-            break;
+            return expr;
         }
 
         case AST_WHILE_STATEMENT: {
@@ -95,79 +166,11 @@ static kod_object_t* visit(env_t* env, ast_node_t* node) {
             break;
         }
 
-        case AST_UNARY_OP: {
-            kod_object_t* value = visit(env, node->ast_unary_op.value);
-            // TODO: split into functions
-            switch (node->ast_unary_op.op) {
-                case TOKEN_ADD: {
-                    if (value->object_type == OBJECT_NUMBER) {
-                        return value;
-                    }
+        case AST_UNARY_OP:
+            return eval_unary_op(env, node->ast_unary_op);
 
-                    break;
-                }
-                
-                case TOKEN_SUB: {
-                    if (value->object_type == OBJECT_NUMBER) {
-                        return MAKE_NUMBER(-value->number);
-                    }
-
-                    break;
-                }
-                case TOKEN_NOT: {
-                    if (value->object_type == OBJECT_NUMBER) {
-                        return MAKE_NUMBER(~(int64_t)value->number);
-                    }
-
-                    break;
-                }
-                case TOKEN_BOOL_NOT: {
-                    if (value->object_type == OBJECT_NUMBER) {
-                        return MAKE_NUMBER(!value->number);
-                    }
-
-                    break;
-                }
-
-                default:
-                    printf("[interpreter]: TODO - implement %s for binary op\n", token_type_to_str(node->ast_bin_op.op));
-                    exit(1);
-            }
-
-            printf("[interpreter]: Error - can't use a unary `%s` on a `%s`\n",
-                token_type_to_str(node->ast_bin_op.op),
-                object_type_to_str(value->object_type)
-            );
-            exit(1);
-            break;
-        }
-
-        case AST_BIN_OP: {
-            kod_object_t* right = visit(env, node->ast_assignment.right);
-            kod_object_t* left = visit(env, node->ast_assignment.left);
-
-            switch (node->ast_bin_op.op) {
-                case TOKEN_ADD: {
-                    if (left->object_type == OBJECT_NUMBER && right->object_type == OBJECT_NUMBER) {
-                        return MAKE_NUMBER(left->number + right->number);
-                    }
-
-                    break;
-                }
-
-                default:
-                    printf("[interpreter]: TODO - implement %s for binary op\n", 
-                        token_type_to_str(node->ast_bin_op.op));
-                    exit(1);
-            }
-
-            printf("[interpreter]: Error - can't `%s` a `%s` and a `%s`\n",
-                token_type_to_str(node->ast_bin_op.op),
-                object_type_to_str(left->object_type),
-                object_type_to_str(right->object_type)
-            );
-            exit(1);
-        }
+        case AST_BIN_OP:
+            return eval_binary_op(env, node->ast_bin_op);
 
         case AST_FUNCTION: {
             kod_object_t* fn_object = object_new((kod_object_t){
@@ -184,6 +187,11 @@ static kod_object_t* visit(env_t* env, ast_node_t* node) {
 
         case AST_CALL: {
             kod_object_t* fn_object = visit(env, node->ast_call.callable);
+            if (!fn_object) {
+                printf("[interpreter]: Error - cannot call a null object.\n");
+                exit(1);
+            }
+
             switch (fn_object->object_type) {
 
                 case OBJECT_FUNCTION: {
@@ -215,7 +223,8 @@ static kod_object_t* visit(env_t* env, ast_node_t* node) {
                         curr_param = curr_param->next;
                     }
 
-                    return visit(new_env, fn_object->function.function_node.body);
+                    kod_object_t* value = visit(new_env, fn_object->function.function_node.body);
+                    return value;
                 }
 
                 case OBJECT_NATIVE_FUNCTION: {
@@ -242,9 +251,40 @@ static kod_object_t* visit(env_t* env, ast_node_t* node) {
 kod_object_t* kod_print(env_t* env, linked_list_t params) {
     linked_list_node_t* curr = params.head;
     while (curr) {
-        object_print(visit(env, curr->item), 0);
+        kod_object_t* object = visit(env, curr->item);
         curr = curr->next;
+
+        if (!object) {
+            printf("null");
+            continue;
+        }
+        // Switch on the type of the object node.
+        switch (object->object_type) {
+            case OBJECT_NUMBER: {
+                printf("%g", object->number);
+                break;
+            }
+            case OBJECT_STRING: {
+                printf("%.*s", object->string.length, object->string.value);
+                break;
+            }
+
+            case OBJECT_FUNCTION: {
+                printf("<function %.*s at %p>", object->function.function_node.name.length, object->function.function_node.name.value, object);
+                break;
+            }
+
+            case OBJECT_NATIVE_FUNCTION: {
+                printf("<native function %.*s>", object->native_function.name.length, object->native_function.name.value);
+                break;
+            }
+            default:
+                printf("%s", object_type_to_str(object->object_type));
+                break;
+        }
+        if (curr) printf(" ");
     }
+    printf("\n");
     return NULL;
 }
 
@@ -252,10 +292,31 @@ kod_object_t* kod_time(env_t* env, linked_list_t params) {
     return MAKE_NUMBER(time(NULL));
 }
 
+// int fib(int n) {
+//     if (n < 2) return n;
+//     return fib(n - 1) + fib(n - 2);
+// }
+
 kod_object_t* eval(ast_node_t* root) {
     env_t* env = env_new(NULL);
 
     MAKE_NATIVE_FN("print", kod_print);
     MAKE_NATIVE_FN("time", kod_time);
-    return visit(env, root);
+
+    time_t start = time(NULL);
+
+    kod_object_t* value = visit(env, root);
+    
+    time_t delta = time(NULL) - start;
+    struct tm* ptm = localtime(&delta);
+    printf("Finished in: %02d:%02d\n",ptm->tm_min, ptm->tm_sec);
+
+    // start = time(NULL);
+    // for (int i = 1; i < 30; ++i) {
+    //     printf("%d\n", fib(i));
+    // }
+    // delta = time(NULL) - start;
+    // ptm = localtime(&delta);
+    // printf("Finished in: %02d:%02d\n",ptm->tm_min, ptm->tm_sec);
+    return value;
 }

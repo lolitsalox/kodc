@@ -38,12 +38,12 @@ void object_print(const kod_object_t* object, uint32_t indent_level) {
         }
 
         case OBJECT_FUNCTION: {
-            printf("<fn %.*s>\n", object->function.function_node.name.length, object->function.function_node.name.value);
+            printf("<function %.*s at %p>\n", object->function.function_node.name.length, object->function.function_node.name.value, object);
             break;
         }
 
         case OBJECT_NATIVE_FUNCTION: {
-            printf("<native fn %.*s>\n", object->native_function.name.length, object->native_function.name.value);
+            printf("<native function %.*s>\n", object->native_function.name.length, object->native_function.name.value);
             break;
         }
         default:

@@ -241,7 +241,7 @@ static ast_node_t* parse_assignment(parser_t* parser) {
         .ast_type=AST_ASSIGNMENT, 
         .ast_assignment={
             .left=left, 
-            .right=parse_bool_or(parser)
+            .right=parse_assignment(parser)
         }
     }));
 }
@@ -698,7 +698,6 @@ static ast_node_t* parse_factor(parser_t* parser) {
             ast_node_t* list = parse_list(parser, true);
 
             parser->getting_parameters = false;
-            skip_newlines(parser);
 
             // Parse a block of expressions to serve as the function body.
             ast_node_t* block = parse_block(parser);

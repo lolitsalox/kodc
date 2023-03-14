@@ -1,12 +1,13 @@
-a = 10
 
-make_adder(fn) {
-    return fn(a)
+fib = |n| {
+    if n < 2 {
+        return n
+    }
+    return fib(n - 1) + fib(n - 2)
 }
 
-a = 5
-res = make_adder(|x| => x + 10)
-
-print(res)
-
-
+n = 1
+while n < 30 {
+    print(fib(n))
+    n = n + 1
+}
