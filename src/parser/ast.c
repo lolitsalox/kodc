@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "../lexer/lexer.h"
+
 const char* ast_type_to_str(ast_type_t type) {
     switch (type) {
         case AST_ROOT:          return "ROOT";
@@ -12,18 +14,23 @@ const char* ast_type_to_str(ast_type_t type) {
         case AST_CALL:          return "CALL";
         case AST_SUBSCRIPT:     return "SUBSCRIPT";
         case AST_ACCESS:        return "ACCESS";
+        case AST_SUBSCRIPT:     return "SUBSCRIPT";
+        case AST_ACCESS:        return "ACCESS";
         case AST_FUNCTION:      return "FUNCTION";
+        case AST_LAMBDA:        return "LAMBDA";
         case AST_LAMBDA:        return "LAMBDA";
         case AST_ASSIGNMENT:    return "ASSIGNMENT";
         case AST_IDENTIFIER:    return "IDENTIFIER";
-        case AST_STATEMENT:     return "STATEMENT";
         case AST_NUMBER:        return "NUMBER";
         case AST_STRING:        return "STRING";
         case AST_BOOL:          return "BOOL";
+        case AST_BOOL:          return "BOOL";
         case AST_BIN_OP:        return "BIN_OP";
         case AST_UNARY_OP:      return "UNARY_OP";
-        case AST_UNARY_STATEMENT:           return "UNARY_STATEMENT";
-        case AST_CONDITIONAL_STATEMENT:     return "CONDITIONAL_STATEMENT";
+        case AST_IF_STATEMENT:          return "IF_STATEMENT";
+        case AST_WHILE_STATEMENT:       return "WHILE_STATEMENT";
+        case AST_FOR_STATEMENT:         return "FOR_STATEMENT";
+        case AST_RETURN_STATEMENT:      return "RETURN_STATEMENT";
     }
     return "UNKNOWN";
 }
@@ -143,6 +150,37 @@ void ast_print(const ast_node_t* ast_node, uint32_t indent_level) {
             printf("arguments:\n");
             ast_print(ast_node->ast_call.arguments, indent_level + 2);
             break;
+
+        case AST_IF_STATEMENT:
+        case AST_WHILE_STATEMENT:
+            // If the node is an if/while statement, print the expression and the body.
+            printf("\n");
+            for (uint32_t i = 0; i < indent_level + 1; ++i) printf("    ");
+            printf("expression:\n");
+            ast_print(ast_node->ast_conditional_statement.expression, indent_level + 2);
+            for (uint32_t i = 0; i < indent_level + 1; ++i) printf("    ");
+            printf("body:\n");
+            ast_print(ast_node->ast_conditional_statement.body, indent_level + 2);
+            break;
+
+        case AST_RETURN_STATEMENT:
+            // If the node is return statement, print the value.
+            printf("\n");
+            for (uint32_t i = 0; i < indent_level + 1; ++i) printf("    ");
+            printf("value:\n");
+            ast_print(ast_node->ast_return_statement.value, indent_level + 2);
+            break;
+
+        case AST_CALL:
+            // If the node is a call operation, print the callable and the arguments.
+            printf("\n");
+            for (uint32_t i = 0; i < indent_level + 1; ++i) printf("    ");
+            printf("callable:\n");
+            ast_print(ast_node->ast_call.callable, indent_level + 2);
+            for (uint32_t i = 0; i < indent_level + 1; ++i) printf("    ");
+            printf("arguments:\n");
+            ast_print(ast_node->ast_call.arguments, indent_level + 2);
+            break;
         default:
             printf("TODO: implement ast_print\n");
             break;
@@ -158,4 +196,8 @@ ast_node_t* ast_node_new(ast_node_t ast_node) {
 
     *ast_node_pointer = ast_node;
     return ast_node_pointer;
+}
+
+int8_t ast_string_compare(ast_string_t a, ast_string_t b) {
+    return str_compare(a.value, b.value, a.length, b.length);
 }

@@ -1,28 +1,13 @@
-main() {
-    result = ((a + b - c) * (d / 2)) % 5 ** 2
+a = 10
 
-    add = |a, b| {
-        return a + b
+main(x, y) {
+    z = |a| {
+        print(a, x)
     }
-
-    a = add(1, 3)
-
-    x = "hello"
     
-    y[2] = '4'
-    
-    z.some_field['key'] = 1
-    
-    arr[index].field = "something"
-
-    x = 4; y = 10
-
-    // single line comment
-
-    /*
-    multi line
-    comment
-    */
-
-    distance = math.sqrt((point1[0]-point2[0])**2 + (point1[1]-point2[1])**2 + (point1[2]-point2[2])**2)
+    z(y)
+    print(a)
 }
+
+main(69, 420)
+

@@ -4,11 +4,14 @@
 #include <stdbool.h>
 #include <ctype.h>
 
+#define MIN(a, b) (a < b ? a : a > b ? b : a)
+
 static void skip_whitespace(lexer_t* lexer);
 static void advance(lexer_t* lexer);
 static bool can_advance(lexer_t* lexer);
 static bool is_symbol(char c);
 static token_type_t find_symbol(char* s, uint32_t length);
+static keyword_type_t find_keyword(char* s, uint32_t length);
 
 static token_t* collect_string(lexer_t* lexer);
 static token_t* collect_number(lexer_t* lexer);
@@ -21,6 +24,7 @@ static token_t* create_token(lexer_t* lexer, token_type_t type) {
                 .token_type=type, 
                 .value=NULL,
                 .length=0,
+                .keyword_type=KEYWORD_UNKNOWN,
                 .row=lexer->current_line,
                 .column=lexer->current_column,
             }
@@ -218,6 +222,29 @@ static token_type_t find_symbol(char* s, uint32_t length) {
     }
 }
 
+int8_t str_compare(char* a, char* b, uint32_t length_a, uint32_t length_b) {
+    uint32_t length = MIN(length_a, length_b);
+
+    for(uint32_t i = 0; i < length; ++i, ++a, ++b) {
+        if((*a) > (*b))
+            return -1;
+
+        if((*a) < (*b))
+            return 1;
+    }
+
+    return 0;
+}
+
+static keyword_type_t find_keyword(char* s, uint32_t length) {
+    if (str_compare(s, "if",    length, sizeof("if")) == 0)             return KEYWORD_IF;
+    if (str_compare(s, "while", length, sizeof("while")) == 0)          return KEYWORD_WHILE;
+    if (str_compare(s, "for",   length, sizeof("for")) == 0)            return KEYWORD_FOR;
+    if (str_compare(s, "return",   length, sizeof("return")) == 0)      return KEYWORD_RETURN;
+
+    return KEYWORD_UNKNOWN;
+}
+
 token_t* collect_string(lexer_t* lexer) {
     char* value = NULL;
     uint32_t row = 0, column = 0, length = 0;
@@ -264,6 +291,7 @@ token_t* collect_string(lexer_t* lexer) {
             .token_type=TOKEN_STRING,
             .value=value,
             .length=length,
+            .keyword_type=KEYWORD_UNKNOWN,
             .row=row,
             .column=column,
             }
@@ -297,6 +325,7 @@ static token_t* collect_number(lexer_t* lexer) {
             .token_type=(dot ? TOKEN_FLOAT : TOKEN_INT),
             .value=value,
             .length=length,
+            .keyword_type=KEYWORD_UNKNOWN,
             .row=row,
             .column=column,
             }
@@ -333,6 +362,7 @@ static token_t* collect_symbol(lexer_t* lexer) {
             .token_type=type,
             .value=value,
             .length=length,
+            .keyword_type=KEYWORD_UNKNOWN,
             .row=row,
             .column=column,
             }
@@ -353,12 +383,20 @@ static token_t* collect_id(lexer_t* lexer) {
         ++length;
         advance(lexer);
     }
+
+    token_type_t token_type = TOKEN_ID;
+    keyword_type_t keyword_type = KEYWORD_UNKNOWN;
+
+    if ((keyword_type = find_keyword(value, length)) != KEYWORD_UNKNOWN) {
+        token_type = TOKEN_KEYWORD;
+    }
     
     return token_new(
         (token_t){
-            .token_type=TOKEN_ID,
+            .token_type=token_type,
             .value=value,
             .length=length,
+            .keyword_type=keyword_type,
             .row=row,
             .column=column,
             }

@@ -14,6 +14,7 @@ typedef struct linked_list_t {
     size_t size;
 } linked_list_t;
 
+void linked_list_init(linked_list_t* list);
 void linked_list_append(linked_list_t* list, void* item);
 void linked_list_remove_if(linked_list_t* list, bool (*condition)(void* item));
 void linked_list_remove(linked_list_t* list, void* item);

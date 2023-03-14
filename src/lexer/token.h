@@ -64,11 +64,21 @@ typedef enum token_type_t {
     TOKEN_UNKNOWN,
 } token_type_t;
 
+typedef enum keyword_type_t {
+    KEYWORD_IF,
+    KEYWORD_WHILE,
+    KEYWORD_FOR,
+    KEYWORD_RETURN,
+    KEYWORD_UNKNOWN,
+} keyword_type_t;
+
 typedef struct token_t{
     token_type_t token_type;
+
     char const* value;
     uint32_t length;
-
+    keyword_type_t keyword_type;
+    
     uint32_t row, column;
 } token_t;
 
