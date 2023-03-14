@@ -34,6 +34,21 @@ kod_object_t* env_get_variable(env_t* env, ast_string_t var_name) {
 }
 
 void env_set_variable(env_t* env, ast_string_t var_name, kod_object_t* value) {
+    if (!env) return;
+
+    linked_list_node_t* curr = env->locals.head;
+
+    while (curr) {
+        kod_object_pair_t* pair = (kod_object_pair_t*)curr->item;
+
+        if (ast_string_compare(pair->name, var_name) == 0) {
+            pair->object = value;
+            return;
+        }
+
+        curr = curr->next;
+    }
+
     kod_object_pair_t* pair = malloc(sizeof(kod_object_pair_t));
     pair->name = var_name;
     pair->object = value;

@@ -1,10 +1,11 @@
 a = 10
 
 make_adder(fn) {
-    return fn(10)
+    return fn(a)
 }
 
-res = make_adder(|x| {return x + 10 })
+a = 5
+res = make_adder(|x| => x + 10)
 
 print(res)
 
