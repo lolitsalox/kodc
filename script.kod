@@ -3,9 +3,10 @@ a = 10
 main(x, y) {
     z = |a| {
         print(a, x)
+        return 5
     }
     
-    z(y)
+    a = z(y)
     print(a)
 }
 

@@ -9,6 +9,7 @@ typedef struct env_t env_t;
 struct env_t {
     env_t* parent;
     linked_list_t locals;
+    bool does_return;
 };
 
 env_t* env_new(env_t* parent);

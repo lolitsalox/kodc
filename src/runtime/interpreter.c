@@ -30,7 +30,11 @@ static kod_object_t* visit(env_t* env, ast_node_t* node) {
         case AST_BLOCK: {
             linked_list_node_t* curr = node->ast_compound.head;
             while (curr) {
-                visit(env, curr->item);
+                kod_object_t* value = visit(env, curr->item);
+                if (env->does_return) {
+                    env->does_return = false;
+                    return value;
+                }
                 curr = curr->next;
             }
             break;
@@ -66,6 +70,11 @@ static kod_object_t* visit(env_t* env, ast_node_t* node) {
 
         case AST_NUMBER: {
             return MAKE_NUMBER(node->ast_number.value);
+        }
+
+        case AST_RETURN_STATEMENT: {
+            env->does_return = true;
+            return visit(env, node->ast_return_statement.value);
         }
 
         case AST_IF_STATEMENT: {

@@ -10,6 +10,7 @@ typedef struct kod_object_pair_t {
 env_t* env_new(env_t* parent) {
     env_t* env = malloc(sizeof(env_t));
     env->parent = parent;
+    env->does_return = false;
     linked_list_init(&env->locals);
     return env;
 }
