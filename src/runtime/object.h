@@ -13,11 +13,13 @@ typedef enum kod_object_type_t {
     OBJECT_NATIVE_FUNCTION,
 } kod_object_type_t;
 
+struct env_t;
+
 typedef struct kod_function_t {
     ast_function_t function_node;
+    struct env_t* env;
 } kod_function_t;
 
-struct env_t;
 
 typedef struct kod_native_function_t {
     ast_string_t name;

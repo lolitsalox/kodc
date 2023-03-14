@@ -1,14 +1,11 @@
 a = 10
 
-main(x, y) {
-    z = |a| {
-        print(a, x)
-        return 5
-    }
-    
-    a = z(y)
-    print(a)
+make_adder(fn) {
+    return fn(10)
 }
 
-main(69, 420)
+res = make_adder(|x| {return x + 10 })
+
+print(res)
+
 

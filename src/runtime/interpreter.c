@@ -173,7 +173,8 @@ static kod_object_t* visit(env_t* env, ast_node_t* node) {
             kod_object_t* fn_object = object_new((kod_object_t){
                 .object_type=OBJECT_FUNCTION,
                 .function={
-                    .function_node=node->ast_function
+                    .function_node=node->ast_function,
+                    .env=env
                 }
             });
 
@@ -186,7 +187,7 @@ static kod_object_t* visit(env_t* env, ast_node_t* node) {
             switch (fn_object->object_type) {
 
                 case OBJECT_FUNCTION: {
-                    env_t* new_env = env_new(env);
+                    env_t* new_env = env_new(fn_object->function.env);
 
                     linked_list_t args = node->ast_call.arguments->ast_compound;
                     linked_list_t params = fn_object->function.function_node.parameters->ast_compound;
