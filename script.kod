@@ -1,6 +1,28 @@
 a = "hello world"
-print(a)
-print(a.name)
-a.upper(a)
-print(a)
-print(a.upper(a))
+d = a
+print(d)
+a = "Byeee"
+
+main() {
+    z = "ZZZ"
+    return z
+}
+
+print(main().name, a)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+a = 5
+z = 10
+print(a.__add__(z))
