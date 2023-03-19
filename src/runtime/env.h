@@ -1,6 +1,5 @@
 #pragma once
 
-#include "../parser/ast.h"
 #include "../misc/linked_list.h"
 #include <stdbool.h>
 
@@ -11,12 +10,15 @@ struct env_t {
     env_t* parent;
     linked_list_t locals;
     bool does_return;
+    bool is_global;
 };
 
 void env_init(env_t* env, env_t* parent);
 
 env_t* env_new(env_t* parent);
 
-kod_object_t* env_get_variable(env_t* env, ast_string_t var_name);
-void env_set_variable(env_t* env, ast_string_t var_name, kod_object_t* value);
+kod_object_t* env_get_variable(env_t* env, char* var_name);
+void env_set_variable(env_t* env, char* var_name, kod_object_t* value);
 void env_print(env_t* env);
+
+void env_free(env_t* env); 
