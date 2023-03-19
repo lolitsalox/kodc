@@ -575,6 +575,28 @@ static ast_node_t* parse_after(parser_t* parser, ast_node_t* value) {
                 return func;
             }
 
+            if (value->ast_type == AST_ACCESS) {
+                // This is a method call.
+                linked_list_node_t* old_head = list->ast_compound.head;
+
+                linked_list_node_t* new_head = malloc(sizeof(linked_list_node_t));  // the first param will be the `this`
+                new_head->item = value->ast_access.value;
+                new_head->next = old_head;
+                list->ast_compound.size++;
+                list->ast_compound.head = new_head;
+
+                ast_node_t* method_call = ast_node_new((ast_node_t){
+                    .ast_type=AST_METHOD_CALL,
+                    .ast_method_call={
+                        .callable=value->ast_access.field,
+                        .arguments=list,
+                        .this=value->ast_access.value // dont really need this...
+                    }
+                });
+
+                return parse_after(parser, method_call);
+            }
+
             // This is a function call.
             ast_node_t* function_call = ast_node_new((ast_node_t){
                 .ast_type=AST_CALL,

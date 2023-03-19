@@ -11,6 +11,7 @@ typedef enum ast_type_t {
     AST_LAMBDA,
     AST_BLOCK,
     AST_CALL,
+    AST_METHOD_CALL,
     AST_SUBSCRIPT,
     AST_ACCESS,
     AST_UNARY_OP,
@@ -65,6 +66,12 @@ typedef struct ast_call_t {
     ast_node_t* arguments; // must be list
 } ast_call_t;
 
+typedef struct ast_method_call_t {
+    ast_node_t* callable;
+    ast_node_t* arguments; // must be list
+    ast_node_t* this;
+} ast_method_call_t;
+
 typedef struct ast_subscript_t {
     ast_node_t* value;
     ast_node_t* subscript; // must be list
@@ -94,6 +101,7 @@ struct ast_node_t {
         ast_assignment_t ast_assignment;
         ast_function_t ast_function;
         ast_call_t ast_call;
+        ast_method_call_t ast_method_call;
         ast_unary_op_t ast_unary_op;
         ast_bin_op_t ast_bin_op;
         ast_subscript_t ast_subscript;
