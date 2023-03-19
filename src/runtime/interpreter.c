@@ -6,6 +6,9 @@
 #include "env.h"
 #define isalpha(c) (('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z'))
 
+env_t string_attributes;
+env_t int_attributes;
+
 static kod_object_t* visit(env_t* env, ast_node_t* node);
 
 #define MAKE_NATIVE_FN(env, fn_name, fn) \
@@ -39,8 +42,8 @@ static kod_object_t* visit(env_t* env, ast_node_t* node);
         })\
     ); \
 
-#define MAKE_NUMBER(val) object_new((kod_object_t){.object_type=OBJECT_NUMBER,.number=val})
-#define MAKE_STRING(ast_str) object_new((kod_object_t){.object_type=OBJECT_STRING,.string=ast_str})
+#define MAKE_NUMBER(val) object_new((kod_object_t){.object_type=OBJECT_NUMBER,.number=val,.attributes=&int_attributes})
+#define MAKE_STRING(ast_str) object_new((kod_object_t){.object_type=OBJECT_STRING,.string=ast_str,.attributes=&string_attributes})
 
 static kod_object_t* eval_unary_op_number(double value, token_type_t op) {
     switch (op) {
@@ -203,12 +206,10 @@ static kod_object_t* visit(env_t* env, ast_node_t* node) {
 
         case AST_ACCESS: {
             kod_object_t* value = visit(env, node->ast_access.value);
-            if (value && value->object_type == OBJECT_STRING) {
-                kod_object_t* str_type = env_get_variable(env, (ast_string_t){.value="string", .length=sizeof("string") - 1});
-                kod_object_t* field = visit(str_type->type.attributes, node->ast_access.field);
-                field = env_get_variable(str_type->type.attributes, field->string);
-                return field;
+            if (value) {
+                return visit(value->attributes, node->ast_access.field);
             }
+
             break;
         }
 
@@ -345,21 +346,36 @@ kod_object_t* kod_string_upper(env_t* env, linked_list_t params) {
             *c ^= 32;
         }
     }
-    return NULL;
+    return string;
 }
 
 kod_object_t* eval(ast_node_t* root) {
+    env_init(&string_attributes, NULL);
+    env_init(&int_attributes, NULL);
+
     env_t* env = env_new(NULL);
 
     MAKE_NATIVE_FN(env, "print", kod_print);
     MAKE_NATIVE_FN(env, "time", kod_time);
 
-    MAKE_NATIVE_TYPE(env, string);
-    MAKE_NATIVE_FN(string_attributes, "upper", kod_string_upper);
+    // MAKE_NATIVE_TYPE(env, string);
+    env_set_variable( 
+        env, 
+        (ast_string_t){ 
+            .value="str", 
+            .length=sizeof("str") - 1 
+        }, 
+        object_new((kod_object_t){ 
+            .object_type=OBJECT_TYPE, 
+            .type={.attributes=&string_attributes} 
+        })
+    );
+
+    MAKE_NATIVE_FN(&string_attributes, "upper", kod_string_upper);
     env_set_variable(
-        string_attributes,
+        &string_attributes,
         (ast_string_t){.value="name", .length=sizeof("name") - 1},
-        MAKE_STRING(((ast_string_t){.value="string", .length=sizeof("string") - 1}))
+        MAKE_STRING(((ast_string_t){.value="str", .length=sizeof("str") - 1}))
     );
     time_t start = time(NULL);
 

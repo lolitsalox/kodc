@@ -32,6 +32,7 @@ typedef struct kod_type_t {
 
 struct kod_object_t {
     kod_object_type_t object_type;
+    struct env_t* attributes;
 
     union {
         double number;
