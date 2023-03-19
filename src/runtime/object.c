@@ -2,10 +2,12 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 const char* object_type_to_str(kod_object_type_t type) {
     switch (type) {
-        case OBJECT_NUMBER:     return "NUMBER";
+        case OBJECT_INT:        return "INT";
+        case OBJECT_FLOAT:      return "FLOAT";
         case OBJECT_STRING:     return "STRING";
         case OBJECT_FUNCTION:   return "FUNCTION";
         case OBJECT_NATIVE_FUNCTION:   return "NATIVE_FUNCTION";
@@ -29,31 +31,36 @@ void object_print(kod_object_t* object, uint32_t indent_level) {
 
     // Switch on the type of the object node.
     switch (object->object_type) {
-        case OBJECT_NUMBER: {
-            printf("%g\n", object->number);
+        case OBJECT_INT: {
+            printf("%lld\n", object->_int);
+            break;
+        }
+        case OBJECT_FLOAT: {
+            printf("%f\n", object->_float);
             break;
         }
         case OBJECT_STRING: {
-            printf("%.*s\n", object->string.length, object->string.value);
+            printf("%s\n", object->_string);
             break;
         }
 
         case OBJECT_FUNCTION: {
-            printf("<function %.*s at %p>\n", object->function.function_node.name.length, object->function.function_node.name.value, object);
+            printf("<function %.*s at %p>\n", object->_function.function_node.name.length, object->_function.function_node.name.value, object);
             break;
         }
 
         case OBJECT_NATIVE_FUNCTION: {
-            printf("<native function %.*s>\n", object->native_function.name.length, object->native_function.name.value);
+            printf("<native function %.*s>\n", object->_native_function.name.length, object->_native_function.name.value);
             break;
         }
         case OBJECT_TYPE: {
-            kod_object_t* name = env_get_variable(object->type.attributes, (ast_string_t){.value="name", .length=sizeof("name") - 1});
+            kod_object_t* name = env_get_variable(object->attributes, "name");
+
             if (!name || name->object_type != OBJECT_STRING) {
-                puts("[object]: Error - the type has no name or the name is not a string");
+                puts("[object]: Error - name is not a string or name is null");
                 exit(1);
             }
-            printf("<type %.*s at %p>", name->string.length, name->string.value, object);
+            printf("<type %s at %p>", name->_string, object);
             break;
         }
         default:
@@ -69,7 +76,41 @@ kod_object_t* object_new(kod_object_t object) {
         printf("[object]: Error - coudln't allocate for object\n");
         return NULL;
     }
-
+    object.ref_count = 0;
+    object.from_return = false;
     *object_pointer = object;
     return object_pointer;
+}
+
+void object_free(kod_object_t* object) {
+    if (!object) {
+        return;
+    }
+
+    switch (object->object_type) {
+        case OBJECT_STRING:
+            free(object->_string);
+            break;
+
+        default: break;
+    }
+
+    // printf(">>> FREEING %s\n", object_type_to_str(object->object_type));
+    if (object->attributes && !object->attributes->is_global)
+        env_free(object->attributes);
+
+    free(object);
+}
+
+void object_inc_ref(kod_object_t* object) {
+    if (!object) return;
+    object->ref_count++;
+}
+
+void object_dec_ref(kod_object_t* object) {
+    if (!object) return;
+    object->ref_count--;
+    if (object->ref_count <= 0) {
+        object_free(object);
+    }
 }
