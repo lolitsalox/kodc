@@ -6,17 +6,16 @@
 
 int main() {
 
-//     char arr[] = "a = \"hello world\"\n\
-// d = a\n\
-// print(d)\n\
-// a = \"Byeee\"\n\
-// \n\
-// main() {\n\
-//     z = \"ZZZ\"\n\
-//     return z\n\
+//     char arr[] = "\
+// f(n) {\n\
+//     return n + 1\n\
 // }\n\
-// print(main(), a)\n\
-// main()\n\
+// \n\
+// i = 0\n\
+// while i < 11 {\n\
+//     print(f(i))\n\
+//     i = i + 1\n\
+// }\n\
 // ";
 
     const char* filename = "script.kod"; 

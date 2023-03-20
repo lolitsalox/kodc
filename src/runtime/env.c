@@ -51,6 +51,7 @@ void env_set_variable(env_t* env, char* var_name, kod_object_t* value) {
 
         if (strcmp(pair->name, var_name) == 0) {
             object_dec_ref(pair->object);
+            object_inc_ref(value);
             pair->object = value;
             return;
         }

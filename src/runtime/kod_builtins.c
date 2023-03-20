@@ -91,26 +91,22 @@ kod_object_t* kod_builtin_str_upper(env_t* env, linked_list_t params) {
 }
 
 kod_object_t* kod_builtin_int_add(env_t* env, linked_list_t params) {
+    if (params.size < 2) {
+        printf("Not enough args\n");
+        exit(1);
+    }
+
     linked_list_node_t* curr = params.head;
-    if (!curr) {
+    if (!curr || !curr->next) {
         printf("no args??!!!\n");
         exit(1);
     }
 
     kod_object_t* left = visit(env, curr->item);
-    if (!left) {
-        printf("left is null!!!\n");
-        exit(1);
-    }
-
-    if (!curr->next) {
-        printf("not enough args\n");
-        exit(1);
-    }
-
     kod_object_t* right = visit(env, curr->next->item);
-    if (!right) {
-        printf("right is null!!!\n");
+
+    if (!left || !right) {
+        printf("left or right are null!!!\n");
         exit(1);
     }
 
@@ -120,6 +116,122 @@ kod_object_t* kod_builtin_int_add(env_t* env, linked_list_t params) {
     }
 
     kod_object_t* new_object = make_int(left->_int + right->_int);
+    return new_object;
+}
+
+kod_object_t* kod_builtin_int_sub(env_t* env, linked_list_t params) {
+    if (params.size < 2) {
+        printf("Not enough args\n");
+        exit(1);
+    }
+
+    linked_list_node_t* curr = params.head;
+    if (!curr || !curr->next) {
+        printf("no args??!!!\n");
+        exit(1);
+    }
+
+    kod_object_t* left = visit(env, curr->item);
+    kod_object_t* right = visit(env, curr->next->item);
+
+    if (!left || !right) {
+        printf("left or right are null!!!\n");
+        exit(1);
+    }
+
+    if (right->object_type != OBJECT_INT) {
+        printf("can't add from this type to an int\n");
+        exit(1);
+    }
+
+    kod_object_t* new_object = make_int(left->_int - right->_int);
+    return new_object;
+}
+
+kod_object_t* kod_builtin_int_gt(env_t* env, linked_list_t params) {
+    if (params.size < 2) {
+        printf("Not enough args\n");
+        exit(1);
+    }
+
+    linked_list_node_t* curr = params.head;
+    if (!curr || !curr->next) {
+        printf("no args??!!!\n");
+        exit(1);
+    }
+
+    kod_object_t* left = visit(env, curr->item);
+    kod_object_t* right = visit(env, curr->next->item);
+
+    if (!left || !right) {
+        printf("left or right are null!!!\n");
+        exit(1);
+    }
+
+    if (right->object_type != OBJECT_INT) {
+        printf("can't add from this type to an int\n");
+        exit(1);
+    }
+
+    kod_object_t* new_object = make_int(left->_int > right->_int);
+    return new_object;
+}
+
+kod_object_t* kod_builtin_int_lt(env_t* env, linked_list_t params) {
+    if (params.size < 2) {
+        printf("Not enough args\n");
+        exit(1);
+    }
+
+    linked_list_node_t* curr = params.head;
+    if (!curr || !curr->next) {
+        printf("no args??!!!\n");
+        exit(1);
+    }
+
+    kod_object_t* left = visit(env, curr->item);
+    kod_object_t* right = visit(env, curr->next->item);
+
+    if (!left || !right) {
+        printf("left or right are null!!!\n");
+        exit(1);
+    }
+
+    if (right->object_type != OBJECT_INT) {
+        printf("can't add from this type to an int\n");
+        exit(1);
+    }
+
+    kod_object_t* new_object = make_int(left->_int < right->_int);
+    return new_object;
+}
+
+kod_object_t* kod_builtin_int_mul(env_t* env, linked_list_t params) {
+    if (params.size < 2) {
+        printf("Not enough args\n");
+        exit(1);
+    }
+
+    linked_list_node_t* curr = params.head;
+    if (!curr || !curr->next) {
+        printf("no args??!!!\n");
+        exit(1);
+    }
+
+    kod_object_t* left = visit(env, curr->item);
+    kod_object_t* right = visit(env, curr->next->item);
+
+    if (!left || !right) {
+        printf("left or right are null!!!\n");
+        exit(1);
+    }
+
+    if (right->object_type != OBJECT_INT) {
+        printf("can't add from this type to an int\n");
+        exit(1);
+    }
+
+    kod_object_t* new_object = make_int(left->_int * right->_int);
     return new_object;
 }
 
@@ -215,6 +327,10 @@ void init_int(env_t* global_env) {
     );
 
     make_native_fn(&global_int_attributes, "__add__", kod_builtin_int_add);
+    make_native_fn(&global_int_attributes, "__sub__", kod_builtin_int_sub);
+    make_native_fn(&global_int_attributes, "__gt__", kod_builtin_int_gt);
+    make_native_fn(&global_int_attributes, "__lt__", kod_builtin_int_lt);
+    make_native_fn(&global_int_attributes, "__mul__", kod_builtin_int_mul);
 }
 
 

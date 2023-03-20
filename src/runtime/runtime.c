@@ -124,8 +124,104 @@ kod_object_t* visit(env_t* env, ast_node_t* node) {
         // case AST_UNARY_OP:
             // return eval_unary_op(env, node->ast_unary_op);
 
-        // case AST_BIN_OP:
-        //     return eval_binary_op(env, node->ast_bin_op);
+        case AST_BIN_OP: {
+            kod_object_t* left = visit(env, node->ast_bin_op.left);
+            if (!left) return NULL;
+
+            kod_object_t* fn_object = NULL;
+            
+            switch (node->ast_bin_op.op) {
+                case TOKEN_ADD: fn_object = env_get_variable(left->attributes, "__add__"); break;
+                case TOKEN_SUB: fn_object = env_get_variable(left->attributes, "__sub__"); break;
+                case TOKEN_MUL: fn_object = env_get_variable(left->attributes, "__mul__"); break;
+                case TOKEN_DIV: fn_object = env_get_variable(left->attributes, "__div__"); break;
+                case TOKEN_MOD: fn_object = env_get_variable(left->attributes, "__mod__"); break;
+                case TOKEN_POW: fn_object = env_get_variable(left->attributes, "__pow__"); break;
+                case TOKEN_BOOL_AND: fn_object =    env_get_variable(left->attributes, "__bool_and__"); break;
+                case TOKEN_BOOL_OR: fn_object =     env_get_variable(left->attributes, "__bool_or__"); break;
+                case TOKEN_BOOL_NOT: fn_object =    env_get_variable(left->attributes, "__bool_not__"); break;
+                case TOKEN_BOOL_NOTE: fn_object =   env_get_variable(left->attributes, "__noteq__"); break;
+                case TOKEN_BOOL_EQ: fn_object =     env_get_variable(left->attributes, "__eq__"); break;
+                case TOKEN_BOOL_GT: fn_object =     env_get_variable(left->attributes, "__gt__"); break;
+                case TOKEN_BOOL_GTE: fn_object =    env_get_variable(left->attributes, "__gte__"); break;
+                case TOKEN_BOOL_LT: fn_object =     env_get_variable(left->attributes, "__lt__"); break;
+                case TOKEN_BOOL_LTE: fn_object =    env_get_variable(left->attributes, "__lte__"); break;
+                case TOKEN_AND: fn_object = env_get_variable(left->attributes, "__and__"); break;
+                case TOKEN_OR: fn_object =  env_get_variable(left->attributes, "__or__"); break;
+                case TOKEN_HAT: fn_object = env_get_variable(left->attributes, "__xor__"); break;
+                case TOKEN_SHR: fn_object = env_get_variable(left->attributes, "__shr__"); break;
+                case TOKEN_SHL: fn_object = env_get_variable(left->attributes, "__shl__"); break;
+                case TOKEN_NOT: fn_object = env_get_variable(left->attributes, "__not__"); break;
+                
+                default:
+                printf("[interpreter]: Error - a function for %s was not found\n", token_type_to_str(node->ast_bin_op.op));
+                exit(1);
+            }
+            
+            if (!fn_object) {
+                printf("[interpreter]: Error - cannot call a null object.\n");
+                exit(1);
+            }
+
+            linked_list_t params;
+            linked_list_init(&params);
+            linked_list_append(&params, node->ast_bin_op.left);
+            linked_list_append(&params, node->ast_bin_op.right);
+
+            switch (fn_object->object_type) {
+                case OBJECT_FUNCTION: {
+                    printf("TODO: bin op regular function\n");
+                    exit(1);
+                    // env_t* new_env = env_new(fn_object->_function.env);
+
+                    // linked_list_t args = node->ast_call.arguments->ast_compound;
+                    // linked_list_t params = fn_object->_function.function_node.parameters->ast_compound;
+
+                    // if (args.size != params.size) {
+                    //     printf("[interpreter]: Error - arguments size does not match parameters size\n");
+                    //     exit(1);
+                    // }
+
+                    // linked_list_node_t* curr_arg = args.head;
+                    // linked_list_node_t* curr_param = params.head;
+                    
+                    // while (curr_arg && curr_param) {
+                    //     kod_object_t* arg = visit(env, curr_arg->item);
+                    //     ast_node_t* param = (ast_node_t*)curr_param->item;
+                    //     if (param->ast_type != AST_IDENTIFIER) {
+                    //         printf("[interpreter]: Error - param is not an identifer\n");
+                    //         exit(1);
+                    //     }
+
+                    //     // mapping arg to param
+                    //     char* tmp = malloc(param->ast_string.length + 1);
+                    //     strncpy(tmp, param->ast_string.value, param->ast_string.length);
+                    //     tmp[param->ast_string.length] = 0;
+
+                    //     env_set_variable(new_env, tmp, arg);
+
+                    //     curr_arg = curr_arg->next;
+                    //     curr_param = curr_param->next;
+                    // }
+
+                    // kod_object_t* value = visit(new_env, fn_object->_function.function_node.body);
+                    // object_inc_ref(value);
+                    // value->from_return = true;
+                    // env_free(new_env);
+                    // return value;
+                }
+
+                case OBJECT_NATIVE_FUNCTION: {
+                    return fn_object->_native_function.caller(env, params);
+                }
+
+                default: printf("[interpreter]: Error - object from type %s is not callable\n",
+                object_type_to_str(fn_object->object_type));
+                exit(1);
+            }
+        
+            // return eval_binary_op(env, node->ast_bin_op);
+        }
 
         case AST_FUNCTION: {
             kod_object_t* fn_object = object_new((kod_object_t){
@@ -148,10 +244,8 @@ kod_object_t* visit(env_t* env, ast_node_t* node) {
             kod_object_t* value = visit(env, node->ast_access.value);
             if (value) {
                 kod_object_t* res = visit(value->attributes, node->ast_access.field);
-                object_dec_ref(value);
                 return res;
             }
-            object_dec_ref(value);
             break;
         }
 
@@ -215,7 +309,6 @@ kod_object_t* visit(env_t* env, ast_node_t* node) {
                 }
 
             }
-            object_dec_ref(this);
             return NULL;
         }
 
