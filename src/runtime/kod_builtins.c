@@ -71,7 +71,7 @@ kod_object_t* kod_builtin_print(env_t* env, linked_list_t params) {
 kod_object_t* kod_builtin_str_upper(env_t* env, linked_list_t params) {
     linked_list_node_t* curr = params.head;
     if (!curr) {
-        printf("no args??!!!\n");
+        printf("no args!!\n");
         exit(1);
     }
 
@@ -97,12 +97,20 @@ kod_object_t* kod_builtin_int_add(env_t* env, linked_list_t params) {
     }
 
     linked_list_node_t* curr = params.head;
+
     if (!curr || !curr->next) {
-        printf("no args??!!!\n");
+        printf("no args!!\n");
         exit(1);
     }
 
+
     kod_object_t* left = visit(env, curr->item);
+    if (left->object_type == OBJECT_TYPE) {
+        object_dec_ref(left);
+        curr = curr->next;
+        left = visit(env, curr->item);
+    }
+    
     kod_object_t* right = visit(env, curr->next->item);
 
     if (!left || !right) {
@@ -127,7 +135,7 @@ kod_object_t* kod_builtin_int_sub(env_t* env, linked_list_t params) {
 
     linked_list_node_t* curr = params.head;
     if (!curr || !curr->next) {
-        printf("no args??!!!\n");
+        printf("no args!!\n");
         exit(1);
     }
 
@@ -156,7 +164,7 @@ kod_object_t* kod_builtin_int_gt(env_t* env, linked_list_t params) {
 
     linked_list_node_t* curr = params.head;
     if (!curr || !curr->next) {
-        printf("no args??!!!\n");
+        printf("no args!!\n");
         exit(1);
     }
 
@@ -185,7 +193,7 @@ kod_object_t* kod_builtin_int_lt(env_t* env, linked_list_t params) {
 
     linked_list_node_t* curr = params.head;
     if (!curr || !curr->next) {
-        printf("no args??!!!\n");
+        printf("no args!!\n");
         exit(1);
     }
 
@@ -214,7 +222,7 @@ kod_object_t* kod_builtin_int_mul(env_t* env, linked_list_t params) {
 
     linked_list_node_t* curr = params.head;
     if (!curr || !curr->next) {
-        printf("no args??!!!\n");
+        printf("no args!!\n");
         exit(1);
     }
 
@@ -232,6 +240,93 @@ kod_object_t* kod_builtin_int_mul(env_t* env, linked_list_t params) {
     }
 
     kod_object_t* new_object = make_int(left->_int * right->_int);
+    return new_object;
+}
+
+kod_object_t* kod_builtin_int_shl(env_t* env, linked_list_t params) {
+    if (params.size < 2) {
+        printf("Not enough args\n");
+        exit(1);
+    }
+
+    linked_list_node_t* curr = params.head;
+    if (!curr || !curr->next) {
+        printf("no args!!\n");
+        exit(1);
+    }
+
+    kod_object_t* left = visit(env, curr->item);
+    kod_object_t* right = visit(env, curr->next->item);
+
+    if (!left || !right) {
+        printf("left or right are null!!!\n");
+        exit(1);
+    }
+
+    if (right->object_type != OBJECT_INT) {
+        printf("can't add from this type to an int\n");
+        exit(1);
+    }
+
+    kod_object_t* new_object = make_int(left->_int << right->_int);
+    return new_object;
+}
+
+kod_object_t* kod_builtin_int_shr(env_t* env, linked_list_t params) {
+    if (params.size < 2) {
+        printf("Not enough args\n");
+        exit(1);
+    }
+
+    linked_list_node_t* curr = params.head;
+    if (!curr || !curr->next) {
+        printf("no args!!\n");
+        exit(1);
+    }
+
+    kod_object_t* left = visit(env, curr->item);
+    kod_object_t* right = visit(env, curr->next->item);
+
+    if (!left || !right) {
+        printf("left or right are null!!!\n");
+        exit(1);
+    }
+
+    if (right->object_type != OBJECT_INT) {
+        printf("can't add from this type to an int\n");
+        exit(1);
+    }
+
+    kod_object_t* new_object = make_int(left->_int >> right->_int);
+    return new_object;
+}
+
+kod_object_t* kod_builtin_int_and(env_t* env, linked_list_t params) {
+    if (params.size < 2) {
+        printf("Not enough args\n");
+        exit(1);
+    }
+
+    linked_list_node_t* curr = params.head;
+    if (!curr || !curr->next) {
+        printf("no args!!\n");
+        exit(1);
+    }
+
+    kod_object_t* left = visit(env, curr->item);
+    kod_object_t* right = visit(env, curr->next->item);
+
+    if (!left || !right) {
+        printf("left or right are null!!!\n");
+        exit(1);
+    }
+
+    if (right->object_type != OBJECT_INT) {
+        printf("can't add from this type to an int\n");
+        exit(1);
+    }
+
+    kod_object_t* new_object = make_int(left->_int & right->_int);
     return new_object;
 }
 
@@ -269,6 +364,8 @@ kod_object_t* make_string(char* val) {
 }
 
 void init_string(env_t* global_env) {
+    env_t* type_str_attributes = env_new(global_env);
+
     env_init(&global_string_attributes, NULL);
     global_string_attributes.is_global = true;
 
@@ -281,16 +378,16 @@ void init_string(env_t* global_env) {
         type_name, 
         object_new((kod_object_t){ 
             .object_type=OBJECT_TYPE, 
-            .attributes=&global_string_attributes, 
+            .attributes=type_str_attributes, 
         })
     );
 
-    name_size = sizeof("name");
+    name_size = sizeof("__name__");
     char* field_name = malloc(name_size);
-    strncpy(field_name, "name", name_size);
+    strncpy(field_name, "__name__", name_size);
 
     env_set_variable( 
-        &global_string_attributes, 
+        type_str_attributes, 
         field_name, 
         make_string(type_name)
     );
@@ -299,6 +396,8 @@ void init_string(env_t* global_env) {
 }
 
 void init_int(env_t* global_env) {
+    env_t* type_int_attributes = env_new(global_env);
+
     env_init(&global_int_attributes, NULL);
     global_int_attributes.is_global = true;
 
@@ -311,26 +410,30 @@ void init_int(env_t* global_env) {
         type_name, 
         object_new((kod_object_t){ 
             .object_type=OBJECT_TYPE, 
-            .attributes=&global_int_attributes, 
+            .attributes=type_int_attributes, 
         })
     );
 
-    
-    name_size = sizeof("name");
+    name_size = sizeof("__name__");
     char* field_name = malloc(name_size);
-    strncpy(field_name, "name", name_size);
+    strncpy(field_name, "__name__", name_size);
 
     env_set_variable( 
-        &global_int_attributes, 
+        type_int_attributes, 
         field_name, 
         make_string(type_name)
     );
+
+    make_native_fn(type_int_attributes, "__add__", kod_builtin_int_add);
 
     make_native_fn(&global_int_attributes, "__add__", kod_builtin_int_add);
     make_native_fn(&global_int_attributes, "__sub__", kod_builtin_int_sub);
     make_native_fn(&global_int_attributes, "__gt__", kod_builtin_int_gt);
     make_native_fn(&global_int_attributes, "__lt__", kod_builtin_int_lt);
     make_native_fn(&global_int_attributes, "__mul__", kod_builtin_int_mul);
+    make_native_fn(&global_int_attributes, "__shl__", kod_builtin_int_shl);
+    make_native_fn(&global_int_attributes, "__shr__", kod_builtin_int_shr);
+    make_native_fn(&global_int_attributes, "__and__", kod_builtin_int_and);
 }
 
 

@@ -19,7 +19,8 @@ const char* ast_type_to_str(ast_type_t type) {
         case AST_LAMBDA:        return "LAMBDA";
         case AST_ASSIGNMENT:    return "ASSIGNMENT";
         case AST_IDENTIFIER:    return "IDENTIFIER";
-        case AST_NUMBER:        return "NUMBER";
+        case AST_INT:           return "INT";
+        case AST_FLOAT:         return "FLOAT";
         case AST_STRING:        return "STRING";
         case AST_BOOL:          return "BOOL";
         case AST_BIN_OP:        return "BIN_OP";
@@ -45,9 +46,12 @@ void ast_print(const ast_node_t* ast_node, uint32_t indent_level) {
 
     // Switch on the type of the AST node.
     switch (ast_node->ast_type) {
-        case AST_NUMBER:
-            // If the node is a number, print its value.
-            printf("%g\n", ast_node->ast_number.value);
+        case AST_INT:
+            printf("%lld\n", ast_node->ast_int);
+            break;
+
+        case AST_FLOAT:
+            printf("%f\n", ast_node->ast_float);
             break;
 
         case AST_IDENTIFIER:

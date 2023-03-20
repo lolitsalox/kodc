@@ -94,8 +94,8 @@ kod_object_t* visit(env_t* env, ast_node_t* node) {
             return make_string(tmp);
         }
 
-        case AST_NUMBER: {
-            return make_int(node->ast_number.value); // todo change ast nodes to int and float
+        case AST_INT: {
+            return make_int(node->ast_int); // todo change ast nodes to int and float
         }
 
         case AST_RETURN_STATEMENT: {
@@ -151,7 +151,7 @@ kod_object_t* visit(env_t* env, ast_node_t* node) {
                 case TOKEN_HAT: fn_object = env_get_variable(left->attributes, "__xor__"); break;
                 case TOKEN_SHR: fn_object = env_get_variable(left->attributes, "__shr__"); break;
                 case TOKEN_SHL: fn_object = env_get_variable(left->attributes, "__shl__"); break;
-                case TOKEN_NOT: fn_object = env_get_variable(left->attributes, "__not__"); break;
+                case TOKEN_NOT: fn_object = env_get_variable(left->attributes, "__sub__"); break;
                 
                 default:
                 printf("[interpreter]: Error - a function for %s was not found\n", token_type_to_str(node->ast_bin_op.op));
@@ -356,7 +356,8 @@ kod_object_t* visit(env_t* env, ast_node_t* node) {
 
                     kod_object_t* value = visit(new_env, fn_object->_function.function_node.body);
                     object_inc_ref(value);
-                    value->from_return = true;
+                    if (value)
+                        value->from_return = true;
                     env_free(new_env);
                     return value;
                 }

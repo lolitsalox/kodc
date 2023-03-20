@@ -19,7 +19,8 @@ typedef enum ast_type_t {
     AST_FUNCTION,
     AST_ASSIGNMENT,
     AST_IDENTIFIER,
-    AST_NUMBER,
+    AST_INT,
+    AST_FLOAT,
     AST_STRING,
     AST_BOOL,
     AST_IF_STATEMENT,
@@ -29,10 +30,6 @@ typedef enum ast_type_t {
 } ast_type_t;
 
 typedef struct ast_node_t ast_node_t;
-
-typedef struct ast_number_t {
-    double value;
-} ast_number_t;
 
 typedef struct ast_string_t {
     char* value;
@@ -96,7 +93,8 @@ struct ast_node_t {
     
     union {
         linked_list_t ast_compound;
-        ast_number_t ast_number;
+        int64_t ast_int;
+        double ast_float;
         ast_string_t ast_string;
         ast_assignment_t ast_assignment;
         ast_function_t ast_function;

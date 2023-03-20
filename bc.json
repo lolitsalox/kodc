@@ -1,0 +1,28 @@
+{
+    "filename": "main.kod",
+    "version": 0.1,
+    "name_pool_size": 2,
+    "name_pool": [
+        "x",
+        "main"
+    ],
+    "constant_pool_size": 3,
+    "constant_pool": [
+        {
+            "tag": "CONST_INT",
+            "value": 10
+        },
+        {
+            "tag": "CONST_STRING",
+            "size": 5,
+            "value": "Hello"
+        },
+        {
+            "tag": "CONST_CODE",
+            "code_size": 5,
+            "code": [123, 14, 124, 124, 2]
+        }
+    ],
+    "code_size": 10,
+    "entry_code": [1, 2, 4, 5, 3, 5, 1, 3, 4]
+}

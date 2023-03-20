@@ -505,12 +505,21 @@ static ast_node_t* parse_before(parser_t* parser) {
         eat(parser, type);
 
         ast_node_t* value = parse_before(parser);
-        if (value->ast_type == AST_NUMBER) {
+
+        if (value->ast_type == AST_INT) {
             switch (type) {
                 case TOKEN_ADD: return value;
-                case TOKEN_SUB: value->ast_number.value *= -1; return value;
-                case TOKEN_NOT: value->ast_number.value = ~((int64_t)value->ast_number.value); return value;
-                case TOKEN_BOOL_NOT: value->ast_number.value = !value->ast_number.value; return value;
+                case TOKEN_SUB: value->ast_int *= -1; return value;
+                case TOKEN_NOT: value->ast_int = ~((int64_t)value->ast_int); return value;
+                case TOKEN_BOOL_NOT: value->ast_int = !value->ast_int; return value;
+                default: break;
+            }
+        } else if (value->ast_type == AST_FLOAT) {
+            switch (type) {
+                case TOKEN_ADD: return value;
+                case TOKEN_SUB: value->ast_float *= -1; return value;
+                case TOKEN_BOOL_NOT: value->ast_float = !value->ast_float; return value;
+                case TOKEN_NOT: printf("[parser] - Error: can't use ~ on a float.\n"); exit(1);
                 default: break;
             }
         }
@@ -678,13 +687,17 @@ static ast_node_t* parse_factor(parser_t* parser) {
 
         // If the token is a numeric literal.
         case TOKEN_FLOAT:
+            // Create a new AST node for the float literal.
+            ast_node = ast_node_new(((ast_node_t){
+                .ast_type = AST_FLOAT,
+                .ast_float = strtod(parser->current_token->value, NULL)
+            }));
+            break;
         case TOKEN_INT:
             // Create a new AST node for the numeric literal.
             ast_node = ast_node_new(((ast_node_t){
-                .ast_type = AST_NUMBER,
-                .ast_number = {
-                    .value = strtod(parser->current_token->value, NULL)
-                }
+                .ast_type = AST_INT,
+                .ast_int = _strtoi64(parser->current_token->value, NULL, 10)
             }));
             break;
 
@@ -709,7 +722,11 @@ static ast_node_t* parse_factor(parser_t* parser) {
         // Case of a list
         case TOKEN_LPAREN: {
             // Parse a list of expressions inside the parentheses.
-            return parse_list(parser, false);
+            ast_node_t* list = parse_list(parser, false);
+            if (list && list->ast_compound.size == 1) {
+                return list->ast_compound.head->item;
+            }
+            return list;
         }
 
         // Case of a lambda |x, ...| {...}
@@ -765,6 +782,7 @@ static ast_node_t* parse_factor(parser_t* parser) {
 
         // end of expression or whatever
         case TOKEN_NL: 
+        case TOKEN_SEMI: 
         case TOKEN_EOF: break;
         
         // anything else

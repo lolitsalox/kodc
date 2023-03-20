@@ -11,37 +11,6 @@
 
 // static kod_object_t* visit(env_t* env, ast_node_t* node);
 
-// #define MAKE_NATIVE_FN(env, fn_name, fn) \
-//     env_set_variable( \
-//         env, \
-//         (ast_string_t){ \
-//             .value=fn_name, \
-//             .length=sizeof(fn_name) - 1 \
-//         }, \
-//         object_new((kod_object_t){ \
-//             .object_type=OBJECT_NATIVE_FUNCTION, \
-//             .native_function=(kod_native_function_t){ \
-//                 .name={.value=fn_name, .length=sizeof(fn_name) - 1}, \
-//                 .caller=fn \
-//             } \
-//         })\
-//     ); \
-
-
-// #define MAKE_NATIVE_TYPE(env, type_name) \
-//     env_t* type_name##_attributes = env_new(env); \
-//     env_set_variable( \
-//         env, \
-//         (ast_string_t){ \
-//             .value=#type_name, \
-//             .length=sizeof(#type_name) - 1 \
-//         }, \
-//         object_new((kod_object_t){ \
-//             .object_type=OBJECT_TYPE, \
-//             .type={.attributes=type_name##_attributes} \
-//         })\
-//     ); \
-
 // #define MAKE_NUMBER(val) object_new((kod_object_t){.object_type=OBJECT_NUMBER,.number=val,.attributes=&int_attributes})
 // #define MAKE_STRING(ast_str) object_new((kod_object_t){.object_type=OBJECT_STRING,.string=ast_str,.attributes=&string_attributes})
 
