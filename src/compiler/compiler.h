@@ -54,6 +54,11 @@ typedef struct CompiledModule {
 // ...
 // >>> x = 5 -> AST(ASSIGNMENT(x, 5))
 // >>> print(x)
-CompiledModule* new_compiled_module(char* filename, unit16_t major, unit16_t minor);
+CompiledModule* new_compiled_module(char* filename, uint16_t major, uint16_t minor);
+
+CompiledModule* new_compiled_module(char* filename, uint16_t major, uint16_t minor);
 enum CompilationStatus compile_module(ast_node_t* root, CompiledModule* compiled_module);
-void free_module(CompiledModule** compile_module);
+void free_module(CompiledModule* compile_module);
+
+void print_name_pool(NamePool* name_pool);
+void print_constant_pool(ConstPool* constant_pool);
