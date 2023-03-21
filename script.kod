@@ -1,4 +1,4 @@
-sleep(seconds) {
+/*sleep(seconds) {
     tick = 0
     time_to_wait = seconds * 1000000
     while tick < time_to_wait {
@@ -6,14 +6,17 @@ sleep(seconds) {
     }
 }
 
-x = 1.23
-print(x)
-/*
 print("hello")
 sleep(1)
 print("there")
 sleep(2)
 print("Alex")
+// ye let us implement it
 */
 
-+++++++++++++++++x
+main(x) {
+    y = 10
+    z = 40 // too many prints and I don't like it. Also, I'm heading to bed
+}
+
+h = "hi"//ye got it
