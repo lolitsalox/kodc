@@ -16,19 +16,10 @@ print("Alex")
 */
 // ye let us implement it
 
-/*
+
 main(x) {
     y = 10
     z = 40 // too many prints and I don't like it. Also, I'm heading to bed
 }
 
 h = "hi"//ye got it
-*/
-
-f() {
-    return 1
-
-}
-g = | | {
-    
-}
