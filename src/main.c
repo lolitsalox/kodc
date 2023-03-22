@@ -45,6 +45,8 @@ f(n) {\n\
         print_name_pool(&module->name_pool); // it wouldn't have shown different byte code if it were the same memory
 
         print_code(&module->entry, "\n");
+
+        save_module_to_file(module, "out.bkod");
         puts("\x1b[32m!!!Compilation success!!!\x1b[0m");
     }
     else {

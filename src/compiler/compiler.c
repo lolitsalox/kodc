@@ -550,3 +550,53 @@ void free_module(CompiledModule* compile_module) {
 
     free(compile_module);
 }
+
+void save_module_to_file(CompiledModule* compiled_module, char* filename) {
+    FILE* fp = fopen(filename, "wb");
+    if (!fp) {
+        fputs("Error - could not open the file to save the module to", stderr);
+        return;
+    }
+    size_t module_filename_size = strlen(compiled_module->filename) + 1;
+    fwrite(&module_filename_size, sizeof(module_filename_size), 1, fp);
+
+    if (fwrite(compiled_module->filename, module_filename_size, 1, fp) != 1) {
+        fputs("Error while writing", stderr);
+    }
+    fwrite(&compiled_module->major_version, sizeof(uint16_t), 1, fp);
+    fwrite(&compiled_module->minor_version, sizeof(uint16_t), 1, fp);
+
+    fwrite(&compiled_module->name_pool.size, sizeof(size_t), 1, fp);
+    for (size_t i = 0; i < compiled_module->name_pool.size; ++i) {
+        fwrite(compiled_module->name_pool.data[i], strlen(compiled_module->name_pool.data[i]) + 1, 1, fp);
+    }
+
+    fwrite(&compiled_module->constant_pool.size, sizeof(size_t), 1, fp);
+    for (size_t i = 0; i < compiled_module->constant_pool.size; ++i) {
+        ConstantInformation ci = compiled_module->constant_pool.data[i];
+        fwrite(&ci.tag, sizeof(ci.tag), 1, fp);
+        switch (ci.tag) {
+            case CONSTANT_NULL: break;
+            case CONSTANT_BOOL: fwrite(&ci._bool, sizeof(ci._bool), 1, fp); break;
+            case CONSTANT_INTEGER: fwrite(&ci._int, sizeof(ci._int), 1, fp); break;
+            case CONSTANT_FLOAT: fwrite(&ci._float, sizeof(ci._float), 1, fp); break;
+            case CONSTANT_ASCII: fwrite(ci._string, strlen(ci._string) + 1, 1, fp); break;
+            case CONSTANT_CODE: {
+                // name
+                fwrite(ci._code.name, strlen(ci._code.name) + 1, 1, fp);
+                // params (size, strings)
+                fwrite(&ci._code.params.size, sizeof(ci._code.params.size), 1, fp);
+                for (size_t j = 0; j < ci._code.params.size; ++j) {
+                    fwrite(ci._code.params.items[j], strlen(ci._code.params.items[j]) + 1, 1, fp);
+                }
+                // code (size, uint8 array)
+                fwrite(&ci._code.size, sizeof(ci._code.size), 1, fp);
+                fwrite(ci._code.code, ci._code.size, 1, fp);
+                break;
+            }
+        }
+    }
+    fwrite(&compiled_module->entry.size, sizeof(size_t), 1, fp);
+    fwrite(compiled_module->entry.code, compiled_module->entry.size, 1, fp);
+    fclose(fp);
+}
