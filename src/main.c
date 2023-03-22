@@ -8,16 +8,22 @@
 #include "compiler/compiler.h"
 
 int main() {
+    char* filename = malloc(sizeof("script.kod"));
+    strncpy(filename, "script.kod", sizeof("script.kod"));
 
 #if 0
     char arr[] = "\
-print(int.__add__(5, 10))\
+n = 0\n\
+f(n) {\n\
+    x = n\n\
+    m(d) {\n\
+        z = n\n\
+    }\n\
+}\n\
 ";
     lexer_t lexer = lexer_init(arr, sizeof(arr));
 #else
     // const char* filename = "script.kod"; 
-    char* filename = malloc(sizeof("script.kod"));
-    strncpy(filename, "script.kod", sizeof("script.kod"));
     char* buffer = NULL;
 
     // Reading into buffer
@@ -34,11 +40,16 @@ print(int.__add__(5, 10))\
 
     
     CompiledModule* module = new_compiled_module(filename, 0, 1);
-    compile_module(root, module, &module->entry);
-    print_constant_pool(&module->constant_pool);
-    print_name_pool(&module->name_pool); // it wouldn't have shown different byte code if it were the same memory
+    if (compile_module(root, module, &module->entry) == STATUS_OK) {
+        print_constant_pool(&module->constant_pool);
+        print_name_pool(&module->name_pool); // it wouldn't have shown different byte code if it were the same memory
 
-    print_code(&module->entry, "\n");
+        print_code(&module->entry, "\n");
+        puts("\x1b[32m!!!Compilation success!!!\x1b[0m");
+    }
+    else {
+        fputs("\x1b[31m!!!Error while compiling!!!\x1b[0m", stderr);
+    }
     free_module(module);
 
     // eval(root);

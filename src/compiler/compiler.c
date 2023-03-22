@@ -6,27 +6,35 @@
 #include <stdlib.h>
 #include <string.h>
 
-static void write_8(Code* code, uint8_t data) {
+static size_t write_8(Code* code, uint8_t data) {
     code->code = realloc(code->code, ++code->size * sizeof(uint8_t));
-    code->code[code->size - 1] = data;
+    uint8_t* ptr = (uint8_t*)(code->code + code->size - 1);
+    *ptr = data;
+    return code->size - 1;
 }
 
-static void write_16(Code* code, uint16_t data) {
+static size_t write_16(Code* code, uint16_t data) {
     code->size += 2;
     code->code = realloc(code->code, code->size * sizeof(uint8_t));
-    *(uint16_t*)(code->code + code->size - 2) = data;
+    uint16_t* ptr = (uint16_t*)(code->code + code->size - 2);
+    *ptr = data;
+    return code->size - 2;
 }
 
-static void write_32(Code* code, uint32_t data) {
+static size_t write_32(Code* code, uint32_t data) {
     code->size += 4;
     code->code = realloc(code->code, code->size * sizeof(uint8_t));
-    *(uint32_t*)(code->code + code->size - 4) = data;
+    uint32_t* ptr = (uint32_t*)(code->code + code->size - 4);
+    *ptr = data;
+    return code->size - 4;
 }
 
-static void write_64(Code* code, uint64_t data) {
+static size_t write_64(Code* code, uint64_t data) {
     code->size += 8;
     code->code = realloc(code->code, code->size * sizeof(uint8_t));
-    *(uint64_t*)(code->code + code->size - 8) = data;
+    uint64_t* ptr = (uint64_t*)(code->code + code->size - 8);
+    *ptr = data;
+    return code->size - 8;
 }
 
 void print_name_pool(NamePool* name_pool) {
@@ -39,23 +47,29 @@ void print_name_pool(NamePool* name_pool) {
 
 static char* constant_tag_to_str(enum ConstantTag constant_tag) {
     switch(constant_tag) {
-        case CONSTANT_ASCII: return "CONST_ASCII";
-        case CONSTANT_CODE: return "CONST_CODE";
+        case CONSTANT_NULL: return "CONST_NULL";
+        case CONSTANT_BOOL: return "CONST_BOOL";
         case CONSTANT_INTEGER: return "CONST_INTEGER";
         case CONSTANT_FLOAT: return "CONST_FLOAT";
+        case CONSTANT_ASCII: return "CONST_ASCII";
+        case CONSTANT_CODE: return "CONST_CODE";
     }
     return "CONST_UNKNOWN";
 }
 
 void print_code(Code* code, char* end) {
-    for(size_t i = 0; i < code->size; ++i) {
-        printf("%02x ", code->code[i]);
-    }
-    puts("");
+    // for(size_t i = 0; i < code->size; ++i) {
+    //     printf("%02x ", code->code[i]);
+    // }
+    puts(code->name);
 
     for(size_t i = 0; i < code->size; ++i) {
+        printf("\t\t%02lld: ", i);
         enum Operation op = code->code[i];
         switch(op) {
+            case OP_POP_JUMP_IF_FALSE:
+            case OP_JUMP:
+            case OP_LOAD_NAME:
             case OP_LOAD_CONST:
             case OP_STORE_NAME:
                 printf("%s ", op_to_str(op));
@@ -68,44 +82,51 @@ void print_code(Code* code, char* end) {
                 printf("%llu\n", *(uint64_t*)(code->code + i));
                 i += 7;
                 break;
-            case OP_FUNCTION_DEFNITION:
-                printf("%s ", op_to_str(op));
-                i++;
-                if (code->size < i + 8) {
-                    fputs("can't print", stderr);
-                    return;
-                }
-
-                printf("%llu\n", *(uint64_t*)(code->code + i));
-                // FUNCTION_DEFINITION should take no direct arguments
-                // create a function object on the stack
-                // because you only need to know how many arguments to give when calling
-                // TODO: ok let's have code objects store their uh parameter names
-                // that too hand in hand in the Code struct right? ye
-
-
-                // LOAD_CONST
-                // FUNCTION_DEFINITION
-                // because function definition makes a (callable) function out of the code object
-                // STORE_NAME (actual functions only)
-                i += 7;
+            case OP_CALL:
+            case OP_RETURN:
+            case OP_UNARY_ADD:
+            case OP_UNARY_SUB:
+            case OP_UNARY_NOT:
+            case OP_UNARY_BOOL_NOT:
+            case OP_BINARY_ADD:
+            case OP_BINARY_SUB:
+            case OP_BINARY_MUL:
+            case OP_BINARY_DIV:
+            case OP_BINARY_MOD:
+            case OP_BINARY_POW:
+            case OP_BINARY_AND:
+            case OP_BINARY_OR:
+            case OP_BINARY_XOR:
+            case OP_BINARY_LEFT_SHIFT:
+            case OP_BINARY_RIGHT_SHIFT:
+            case OP_BINARY_BOOLEAN_AND:
+            case OP_BINARY_BOOLEAN_OR:
+            case OP_BINARY_BOOLEAN_EQUAL:
+            case OP_BINARY_BOOLEAN_NOT_EQUAL:
+            case OP_BINARY_BOOLEAN_GREATER_THAN:
+            case OP_BINARY_BOOLEAN_GREATER_THAN_OR_EQUAL_TO:
+            case OP_BINARY_BOOLEAN_LESS_THAN:
+            case OP_BINARY_BOOLEAN_LESS_THAN_OR_EQUAL_TO:
+                puts(op_to_str(op));
                 break;
             default:
-                printf("[print_code] - Warning : can't print operation %hhu\n", code->code[i]);
+                printf("[print_code] - Warning : can't print operation '%s'\n", op_to_str(code->code[i]));
                 return;
         }
     }
-    printf("%s", end);
+    printf(end);
 }
 
 void print_constant_information(ConstantInformation* constant_information) {
     printf("%s: ", constant_tag_to_str(constant_information->tag));
     switch (constant_information->tag) {
+                case CONSTANT_NULL: printf("null"); break;
+                case CONSTANT_BOOL: printf("%d", constant_information->_bool); break;
                 case CONSTANT_ASCII: printf("%s", constant_information->_string); break;
                 case CONSTANT_CODE: print_code(&constant_information->_code, ""); break;
                 case CONSTANT_INTEGER: printf("%lld", constant_information->_int); break;
                 case CONSTANT_FLOAT: printf("%f", constant_information->_float); break;
-                default: printf("??? %u", constant_information->tag); break;
+                default: printf("??? (tag=%u)", constant_information->tag); break;
             }
 }
 
@@ -163,16 +184,32 @@ static size_t find_constant_pool(ConstPool* constant_pool, ConstantInformation c
     for (; i < constant_pool->size; ++i) {
         if (constant_information.tag == constant_pool->data[i].tag) {
             switch (constant_information.tag) {
-                case CONSTANT_ASCII: if (strcmp(constant_information._string, constant_pool->data[i]._string) == 0) return i;
-                case CONSTANT_CODE: if (constant_information._code.size == 
-                                        constant_pool->data[i]._code.size && 
-                                            (memcmp(
-                                                constant_information._code.code, 
-                                                constant_pool->data[i]._code.code, 
-                                                constant_information._code.size) == 0)
-                                    ) return i;
-                case CONSTANT_INTEGER: if (constant_information._int == constant_pool->data[i]._int) return i;
-                case CONSTANT_FLOAT: if (constant_information._float == constant_pool->data[i]._float) return i;
+                case CONSTANT_NULL: return i;
+                case CONSTANT_BOOL: if (constant_information._bool == constant_pool->data[i]._bool) return i; else break;
+
+                case CONSTANT_ASCII: 
+                    if (strcmp(constant_information._string, constant_pool->data[i]._string) == 0)
+                        return i;
+                    break;
+                
+                case CONSTANT_CODE: 
+                    if ( strcmp(constant_information._code.name, constant_pool->data[i]._code.name) == 0 &&
+                        constant_information._code.size == constant_pool->data[i]._code.size &&  (
+                            memcmp(
+                                constant_information._code.code, 
+                                constant_pool->data[i]._code.code, 
+                                constant_information._code.size) == 0
+                            )
+                    ) return i;
+                    break;
+                
+                case CONSTANT_INTEGER: 
+                    if (constant_information._int == constant_pool->data[i]._int) return i;
+                    break;
+                
+                case CONSTANT_FLOAT: 
+                if (constant_information._float == constant_pool->data[i]._float) return i;
+                    break;
             }
         }
     }
@@ -201,7 +238,7 @@ static CompiledModule init_compiled_module(char* filename, uint16_t major, uint1
         .minor_version=minor,
         .name_pool={0},
         .constant_pool={0},
-        .entry={0},
+        .entry={.code=NULL, .params=init_string_array(), .size=0}
     };
 }
 
@@ -217,14 +254,11 @@ CompiledModule* new_compiled_module(char* filename, uint16_t major, uint16_t min
 }
 
 enum CompilationStatus compile_module(ast_node_t* root, CompiledModule* compiled_module, Code* code) {
-    if (!compiled_module) return STATUS_FAIL;
+    if (!compiled_module || !root) return STATUS_FAIL;
 
     switch (root->ast_type) {
         case AST_ROOT:
         case AST_BLOCK: {
-            // the AST_ROOT and AST_BLOCK should have different instructions made though
-            // because of LOAD_FAST and STORE_FAST
-            // and AST_BLOCK exists for statements as well as for functions
             linked_list_node_t* node = root->ast_compound.head;
             while (node) {
                 if (compile_module(node->item, compiled_module, code) != STATUS_OK) return STATUS_FAIL;
@@ -295,35 +329,174 @@ enum CompilationStatus compile_module(ast_node_t* root, CompiledModule* compiled
             break;
         }
 
+        case AST_IDENTIFIER: {
+            char* name = malloc(root->ast_string.length + 1);
+            strncpy(name, root->ast_string.value, root->ast_string.length);
+            name[root->ast_string.length] = 0;
+
+            size_t index = update_name_pool(
+                &compiled_module->name_pool, 
+                name
+            );            
+
+            write_8(code, OP_LOAD_NAME);
+            write_64(code, index);
+            break;
+        }
+
+        case AST_UNARY_OP: {
+            if (compile_module(root->ast_unary_op.value, compiled_module, code) != STATUS_OK) return STATUS_FAIL;
+            enum Operation op;
+            switch (root->ast_unary_op.op) {
+                case TOKEN_ADD: op = OP_UNARY_ADD; break;
+                case TOKEN_SUB: op = OP_UNARY_SUB; break; 
+                case TOKEN_NOT: op = OP_UNARY_NOT; break; 
+                case TOKEN_BOOL_NOT: op = OP_UNARY_BOOL_NOT; break; 
+                default: return STATUS_FAIL;
+            }
+            
+            write_8(code, op);
+            break;
+        }
+
+        case AST_BIN_OP: {
+            if (compile_module(root->ast_bin_op.left, compiled_module, code) != STATUS_OK) return STATUS_FAIL;
+            if (compile_module(root->ast_bin_op.right, compiled_module, code) != STATUS_OK) return STATUS_FAIL;
+            enum Operation op;
+
+            switch (root->ast_bin_op.op) {
+                case TOKEN_ADD: op = OP_BINARY_ADD; break;
+                case TOKEN_SUB: op = OP_BINARY_SUB; break;
+                case TOKEN_MUL: op = OP_BINARY_MUL; break;
+                case TOKEN_DIV: op = OP_BINARY_DIV; break;
+                case TOKEN_MOD: op = OP_BINARY_MOD; break;
+                case TOKEN_POW: op = OP_BINARY_POW; break;
+                case TOKEN_AND: op = OP_BINARY_AND; break;
+                case TOKEN_OR:  op = OP_BINARY_OR; break;
+                case TOKEN_HAT: op = OP_BINARY_XOR; break;
+                case TOKEN_SHL: op = OP_BINARY_LEFT_SHIFT; break;
+                case TOKEN_SHR: op = OP_BINARY_RIGHT_SHIFT; break;
+                case TOKEN_BOOL_AND:    op = OP_BINARY_BOOLEAN_AND; break;
+                case TOKEN_BOOL_OR:     op = OP_BINARY_BOOLEAN_OR; break;
+                case TOKEN_BOOL_EQ:     op = OP_BINARY_BOOLEAN_EQUAL; break;
+                case TOKEN_BOOL_NOTE:   op = OP_BINARY_BOOLEAN_NOT_EQUAL; break;
+                case TOKEN_BOOL_GT:     op = OP_BINARY_BOOLEAN_GREATER_THAN; break;
+                case TOKEN_BOOL_GTE:    op = OP_BINARY_BOOLEAN_GREATER_THAN_OR_EQUAL_TO; break;
+                case TOKEN_BOOL_LT:     op = OP_BINARY_BOOLEAN_LESS_THAN; break;
+                case TOKEN_BOOL_LTE:    op = OP_BINARY_BOOLEAN_LESS_THAN_OR_EQUAL_TO; break;
+                default: return STATUS_FAIL;
+            }
+
+            write_8(code, op);
+            break;
+        }
+
+        case AST_IF_STATEMENT: {
+            if (compile_module(root->ast_conditional_statement.expression, compiled_module, code) != STATUS_OK) return STATUS_FAIL;
+            write_8(code, OP_POP_JUMP_IF_FALSE);
+            size_t offset = write_64(code, 0); // temporary
+            if (compile_module(root->ast_conditional_statement.body, compiled_module, code) != STATUS_OK) return STATUS_FAIL;
+            *(uint64_t*)(code->code + offset) = code->size;
+            break;
+        }
+
+        case AST_WHILE_STATEMENT: {
+            size_t expr_offset = code->size;
+            if (compile_module(root->ast_conditional_statement.expression, compiled_module, code) != STATUS_OK) return STATUS_FAIL;
+
+            write_8(code, OP_POP_JUMP_IF_FALSE);
+            size_t offset = write_64(code, 0); // temporary
+
+            if (compile_module(root->ast_conditional_statement.body, compiled_module, code) != STATUS_OK) return STATUS_FAIL;
+            
+            write_8(code, OP_JUMP);
+            write_64(code, expr_offset);
+
+            *(uint64_t*)(code->code + offset) = code->size;
+            break;
+        }
+        
+        case AST_RETURN_STATEMENT: {
+            ast_node_t* value = root->ast_return_statement.value;
+            if (!value) {
+                // loading null
+                size_t index = update_constant_pool(&compiled_module->constant_pool, (ConstantInformation){.tag=CONSTANT_NULL});
+                write_8(code, OP_LOAD_CONST);
+                write_64(code, index);
+            } else if (compile_module(value, compiled_module, code) != STATUS_OK) return STATUS_FAIL;
+            
+            write_8(code, OP_RETURN);
+            break;
+        }
+
+        case AST_CALL: {
+            linked_list_node_t* curr_arg = root->ast_call.arguments->ast_compound.head;
+            while (curr_arg) {
+                if (compile_module((ast_node_t*)curr_arg->item, compiled_module, code) != STATUS_OK) return STATUS_FAIL;
+                curr_arg = curr_arg->next;
+            }
+            
+            if (compile_module(root->ast_call.callable, compiled_module, code) != STATUS_OK) return STATUS_FAIL;
+            write_8(code, OP_CALL);
+            break;
+        }
+
         case AST_FUNCTION: {
             ConstantInformation constant_code = (ConstantInformation){
                     .tag=CONSTANT_CODE,
-                    ._code={0},
+                    ._code={{0}},
             };
+
+            linked_list_node_t* curr_param = root->ast_function.parameters->ast_compound.head;
+            while (curr_param) {
+                ast_node_t* ident = ((ast_node_t*)curr_param->item);
+                if (ident->ast_type != AST_IDENTIFIER) {
+                    puts("[param is not an identifier]");
+                    exit(0);
+                }
+                
+                char* param_name = malloc(ident->ast_string.length + 1);
+                strncpy(param_name, ident->ast_string.value, ident->ast_string.length);
+                param_name[ident->ast_string.length] = 0;
+
+                update_name_pool(
+                    &compiled_module->name_pool,
+                    param_name
+                );    
+
+                append_string_array(&constant_code._code.params, ident->ast_string.value, ident->ast_string.length);
+                curr_param = curr_param->next;
+            }
             
+            // Compiling function body
             if (compile_module(root->ast_function.body, compiled_module, &constant_code._code) != STATUS_OK) return STATUS_FAIL;
+
+            
+            char* fn_name = malloc(root->ast_function.name.length + 1);
+            strncpy(fn_name, root->ast_function.name.value, root->ast_function.name.length);
+            fn_name[root->ast_function.name.length] = 0;
+            
+            constant_code._code.name = fn_name;
+            
+            // Adding code object to constant pool
             size_t index = update_constant_pool(&compiled_module->constant_pool, constant_code);
             
             write_8(code, OP_LOAD_CONST);
             write_64(code, index);
-            
-            // I'm saying make FUNCTION_DEFINITION take no direct arguments, only a single stack argument (the code object to make a function object from)
-            // 
-            // define function
-            write_8(code, OP_FUNCTION_DEFNITION);
-            write_64(code, root->ast_function.parameters->ast_compound.size); // param size
 
-            char* fn_name = malloc(root->ast_function.name.length + 1);
-            strncpy(fn_name, root->ast_function.name.value, root->ast_function.name.length);
-            fn_name[root->ast_function.name.length] = 0;
+            if (ast_string_compare(root->ast_function.name, (ast_string_t){.value="<anonymous>",.length=sizeof("<anonymous>")}) != 0) {
+                fn_name = malloc(root->ast_function.name.length + 1);
+                strncpy(fn_name, root->ast_function.name.value, root->ast_function.name.length);
+                fn_name[root->ast_function.name.length] = 0;
 
-            index = update_name_pool(
-                &compiled_module->name_pool, 
-                fn_name
-            );            
+                index = update_name_pool(
+                    &compiled_module->name_pool, 
+                    fn_name
+                );            
 
-            write_8(code, OP_STORE_NAME);
-            write_64(code, index); // fn name index
+                write_8(code, OP_STORE_NAME);
+                write_64(code, index);
+            }
             break;
         }
 
@@ -343,11 +516,15 @@ static void free_name_pool(NamePool name_pool) {
 }
 
 static void free_code(Code code) {
+    free(code.name);
+    free_string_array(&code.params);
     free(code.code);
 }
 
 static void free_constant(ConstantInformation constant_info) {
     switch (constant_info.tag) {
+        case CONSTANT_NULL:
+        case CONSTANT_BOOL:
         case CONSTANT_INTEGER:
         case CONSTANT_FLOAT: break;
 

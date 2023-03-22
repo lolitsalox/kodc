@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../parser/ast.h"
+#include "../misc/StringArray.h"
 
 enum CompilationStatus {
     STATUS_OK,
@@ -8,6 +9,8 @@ enum CompilationStatus {
 };
 
 enum ConstantTag {
+    CONSTANT_NULL,
+    CONSTANT_BOOL,
     CONSTANT_INTEGER,
     CONSTANT_FLOAT,
     CONSTANT_ASCII,
@@ -15,6 +18,8 @@ enum ConstantTag {
 };
 
 typedef struct Code {
+    StringArray params;
+    char* name;
     size_t size;
     uint8_t* code;
 } Code;
@@ -22,6 +27,7 @@ typedef struct Code {
 typedef struct ConstantInformation {
     enum ConstantTag tag;
     union {
+        bool    _bool;
         int64_t _int;
         double  _float;
         char*   _string;
@@ -58,7 +64,12 @@ CompiledModule* new_compiled_module(char* filename, uint16_t major, uint16_t min
 
 CompiledModule* new_compiled_module(char* filename, uint16_t major, uint16_t minor);
 enum CompilationStatus compile_module(ast_node_t* root, CompiledModule* compiled_module, Code* code);
-void free_module(CompiledModule* compile_module);
+
+// TODO:
+void save_module_to_file(CompiledModule* compiled_module, char* filename);
+CompiledModule* load_module_from_file(char* filename);
+
+void free_module(CompiledModule* compiled_module);
 
 void print_code(Code* code, char* end);
 void print_constant_information(ConstantInformation* constant_information);

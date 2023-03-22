@@ -4,49 +4,70 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "../parser/ast.h"
+#include "../misc/StringArray.h"
+#include "../compiler/compiler.h"
 
-typedef struct kod_object_t kod_object_t;
+typedef struct Object Object;
 
-typedef enum kod_object_type_t {
-    OBJECT_NONE,
+enum ObjectType {
+    OBJECT_NULL,
     OBJECT_INT,
     OBJECT_FLOAT,
     OBJECT_STRING,
-    OBJECT_FUNCTION,
+    OBJECT_CODE,
     OBJECT_NATIVE_FUNCTION,
     OBJECT_TYPE,
-} kod_object_type_t;
+};
 
-typedef struct kod_function_t {
-    ast_function_t function_node;
-    struct env_t* env;
-} kod_function_t;
+typedef struct NativeFunctionObject {
+    char* name;
+    Object* (*caller)(Environment* env, linked_list_t params);
+} NativeFunctionObject;
 
-
-typedef struct kod_native_function_t {
-    ast_string_t name;
-    kod_object_t* (*caller)(struct env_t* env, linked_list_t params);
-} kod_native_function_t;
-
-struct kod_object_t {
-    kod_object_type_t object_type;
-    struct env_t* attributes;
+struct Object {
+    enum ObjectType type;
+    Environment* attributes;
     int ref_count;
-    bool from_return;
 
     union {
         int64_t _int;
         double _float;
         char* _string;
-        kod_function_t _function;
-        kod_native_function_t _native_function;
+        Code _code;
+        NativeFunctionObject _native_function;
     };
 };
 
-const char* object_type_to_str(kod_object_type_t type);
-void object_print(kod_object_t* object, uint32_t indent_level);
-kod_object_t* object_new(kod_object_t object);
-void object_free(kod_object_t* object);
+const char* object_type_to_str(enum ObjectType type);
+void print_object(Object* object, uint32_t indent_level);
+Object* new_object(Object object);
+bool delete_object(Object* object);
+void free_object(Object* object);
 
-void object_inc_ref(kod_object_t* object);
-void object_dec_ref(kod_object_t* object);
+void ref_object(Object* object);
+void deref_object(Object* object);
+
+typedef struct ObjectNode {
+    Object* object;
+    struct ObjectNode* down;
+} ObjectNode;
+
+ObjectNode init_object_node();
+ObjectNode* new_object_node();
+bool delete_object_node(ObjectNode* object_node);
+void free_object_node(ObjectNode* object_node);
+
+typedef struct ObjectStack {
+    ObjectNode* top;
+    bool empty;
+} ObjectStack;
+
+ObjectStack init_object_stack();
+ObjectStack* new_object_stack();
+
+void object_stack_push(ObjectStack* object_stack, Object object);
+Object object_stack_top(ObjectStack* object_stack);
+Object object_stack_pop(ObjectStack* object_stack);
+
+bool delete_object_stack(ObjectStack* object_stack);
+void free_object_stack(ObjectStack* object_stack);

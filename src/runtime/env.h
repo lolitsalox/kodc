@@ -1,24 +1,36 @@
 #pragma once
 
 #include "../misc/linked_list.h"
-#include <stdbool.h>
 
-typedef struct env_t env_t;
-typedef struct kod_object_t kod_object_t;
+typedef struct Environment Environment;
+typedef struct Object Object;
 
-struct env_t {
-    env_t* parent;
-    linked_list_t locals;
-    bool does_return;
-    bool is_global;
+typedef struct ObjectNamePair {
+    char* name;
+    Object object;
+} ObjectNamePair;
+
+bool delete_object_name_pair(ObjectNamePair* object_name_pair);
+
+typedef struct ObjectNamePairNode {
+    ObjectNamePair object_name_pair;
+    struct ObjectNamePairNode* next;
+} ObjectNamePairNode;
+
+bool delete_object_name_pair_node(ObjectNamePairNode* object_name_pair_node);
+void free_object_name_pair_node(ObjectNamePairNode* object_name_pair_node);
+
+struct Environment {
+    ObjectNamePairNode* pairs;
 };
 
-void env_init(env_t* env, env_t* parent);
+Environment init_env(Environment* env);
 
-env_t* env_new(env_t* parent);
+Environment* new_env();
 
-kod_object_t* env_get_variable(env_t* env, char* var_name);
-void env_set_variable(env_t* env, char* var_name, kod_object_t* value);
-void env_print(env_t* env);
+Object* env_get_variable(Environment* env, char* var_name);
+void env_set_variable(Environment* env, char* var_name, Object* value);
+void print_env(Environment* env);
 
-void env_free(env_t* env); 
+bool delete_env(Environment* env);
+void free_env(Environment* env);
