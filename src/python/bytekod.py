@@ -222,6 +222,37 @@ class VirtualMachine:
                     frame.ip += calcsize("Q")
                     obj = frame.stack.pop()
                     frame.environment[self.module.name_pool[index]] = obj
+                case Operation.LOAD_NAME:
+                    frame.ip += 1
+                    index = unpack("Q", code.code[frame.ip:frame.ip + calcsize("Q")])[0]
+                    frame.ip += calcsize("Q")
+                    name = self.module.name_pool[index]
+                    curr_frame = frame
+                    while name not in curr_frame.environment:
+                        curr_frame = curr_frame.parent
+                        if curr_frame is None:
+                            raise NameError(f"{name} is not defined")
+                    
+                    obj = curr_frame[self.module.name_pool[index]]
+                    frame.stack.append(obj)
+                case Operation.CALL:
+                    frame.ip += 1
+                    obj = frame.stack.pop()
+                    if not isinstance(obj, CodeObject):
+                        raise RuntimeError
+                    self.run_code_object(obj.value, frame)
+                case Operation.JUMP:
+                    frame.ip += 1
+                    addr = unpack("Q", code.code[frame.ip:frame.ip + calcsize("Q")])[0]
+                    frame.ip = addr
+                case Operation.POP_JUMP_IF_FALSE:
+                    frame.ip += 1
+                    addr = unpack("Q", code.code[frame.ip:frame.ip + calcsize("Q")])[0]
+                    obj = frame.stack.pop()
+                    if obj. #TODO NATIVE BOOL:
+                        frame.ip = addr
+                        
+                    
                 case op:
                     op = Operation(op)
                     print(f"Operation {op.name} has not been implemented yet.")
