@@ -46,6 +46,8 @@ enum Operation {
     // LOOPs
     OP_JUMP,                // direct: relative byte offset, stack: none
     OP_POP_JUMP_IF_FALSE,   // direct: relative byte offset, stack: object
+
+    OP_KEEP_ALIVE,
 };
 
 char* op_to_str(enum Operation op) {
@@ -83,6 +85,7 @@ char* op_to_str(enum Operation op) {
         case OP_BINARY_BOOLEAN_GREATER_THAN_OR_EQUAL_TO:    return "BINARY_BOOLEAN_GREATER_THAN_OR_EQUAL_TO";
         case OP_BINARY_BOOLEAN_LESS_THAN:       return "BINARY_BOOLEAN_LESS_THAN";
         case OP_BINARY_BOOLEAN_LESS_THAN_OR_EQUAL_TO:       return "BINARY_BOOLEAN_LESS_THAN_OR_EQUAL_TO";
+        case OP_KEEP_ALIVE:       return "OP_KEEP_ALIVE";
     }
     return "OP_UNKNOWN";
 }

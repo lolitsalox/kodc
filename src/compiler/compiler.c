@@ -72,6 +72,7 @@ void print_code(Code* code, char* end) {
             case OP_LOAD_NAME:
             case OP_LOAD_CONST:
             case OP_STORE_NAME:
+            case OP_CALL:
                 printf("%s ", op_to_str(op));
                 i++;
                 if (code->size < i + 8) {
@@ -82,7 +83,6 @@ void print_code(Code* code, char* end) {
                 printf("%llu\n", *(uint64_t*)(code->code + i));
                 i += 7;
                 break;
-            case OP_CALL:
             case OP_RETURN:
             case OP_UNARY_ADD:
             case OP_UNARY_SUB:
@@ -107,6 +107,7 @@ void print_code(Code* code, char* end) {
             case OP_BINARY_BOOLEAN_GREATER_THAN_OR_EQUAL_TO:
             case OP_BINARY_BOOLEAN_LESS_THAN:
             case OP_BINARY_BOOLEAN_LESS_THAN_OR_EQUAL_TO:
+            case OP_KEEP_ALIVE:
                 puts(op_to_str(op));
                 break;
             default:
@@ -242,6 +243,7 @@ static CompiledModule init_compiled_module(char* filename, uint16_t major, uint1
     };
 }
 
+bool keep_alive = false;
 CompiledModule* new_compiled_module(char* filename, uint16_t major, uint16_t minor) {
     CompiledModule* compiled_module = malloc(sizeof(CompiledModule));
     if (!compiled_module) {
@@ -269,7 +271,6 @@ enum CompilationStatus compile_module(ast_node_t* root, CompiledModule* compiled
         }
 
         case AST_ASSIGNMENT: {
-            // compiled_module->entry.code;
             if (compile_module(root->ast_assignment.right, compiled_module, code) != STATUS_OK) {
                 return STATUS_FAIL;
             } // LOAD_CONST 0 (3)
@@ -430,14 +431,15 @@ enum CompilationStatus compile_module(ast_node_t* root, CompiledModule* compiled
         }
 
         case AST_CALL: {
-            linked_list_node_t* curr_arg = root->ast_call.arguments->ast_compound.head;
+            linked_list_node_t* curr_arg = root->ast_call.arguments->ast_compound.tail;
             while (curr_arg) {
                 if (compile_module((ast_node_t*)curr_arg->item, compiled_module, code) != STATUS_OK) return STATUS_FAIL;
-                curr_arg = curr_arg->next;
+                curr_arg = curr_arg->prev;
             }
             
             if (compile_module(root->ast_call.callable, compiled_module, code) != STATUS_OK) return STATUS_FAIL;
             write_8(code, OP_CALL);
+            write_64(code, root->ast_call.arguments->ast_compound.size);
             break;
         }
 

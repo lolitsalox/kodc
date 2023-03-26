@@ -1,25 +1,27 @@
-/*sleep(seconds) {
-    tick = 0
-    time_to_wait = seconds * 1000000
-    while tick < time_to_wait {
-        tick = tick + 1
+sleep(seconds) {
+    start = time()
+    end = start + seconds
+    while time() < end {}
+}
+
+fib(n) {
+    if n < 2 {
+        return 1
     }
-    return
+    return fib(n - 1) + fib(n - 2)
 }
-*/
+
+_ = print("hello")
+_ = sleep(4)
+_ = print("there")
+_ = sleep(4)
+_ = print("Alex")
+
+
 /*
-print("hello")
-sleep(1)
-print("there")
-sleep(2)
-print("Alex")
-*/
-// ye let us implement it
-
-
-main(x) {
-    y = 10
-    z = 40 // too many prints and I don't like it. Also, I'm heading to bed
+i = 0
+while i < 25 {
+    print(fib(i))
+    i = i + 1
 }
-
-h = "hi"//ye got it
+*/

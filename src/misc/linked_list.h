@@ -6,6 +6,7 @@
 typedef struct linked_list_node_t {
     void* item;
     struct linked_list_node_t* next;
+    struct linked_list_node_t* prev;
 } linked_list_node_t;
 
 typedef struct linked_list_t {

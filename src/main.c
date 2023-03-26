@@ -41,12 +41,12 @@ f(n) {\n\
     
     CompiledModule* module = new_compiled_module(filename, 0, 1);
     if (compile_module(root, module, &module->entry) == STATUS_OK) {
+        save_module_to_file(module, "out.bkod");
+
         print_constant_pool(&module->constant_pool);
         print_name_pool(&module->name_pool); // it wouldn't have shown different byte code if it were the same memory
-
         print_code(&module->entry, "\n");
 
-        save_module_to_file(module, "out.bkod");
         puts("\x1b[32m!!!Compilation success!!!\x1b[0m");
     }
     else {
