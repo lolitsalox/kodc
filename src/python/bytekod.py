@@ -12,6 +12,7 @@ class Operation(IntEnum):
     LOAD_ATTRIBUTE = auto() 
     STORE_NAME = auto()     
     STORE_ATTRIBUTE = auto()
+    POP_TOP   = auto()
     UNARY_ADD = auto()
     UNARY_SUB = auto()
     UNARY_NOT = auto()
@@ -40,7 +41,6 @@ class Operation(IntEnum):
     RETURN = auto()              
     JUMP = auto()                
     POP_JUMP_IF_FALSE = auto()   
-    KEEP_ALIVE = auto()
 
 class Tag(IntEnum):
     NULL    = 0
@@ -288,6 +288,9 @@ class VirtualMachine:
         code_size = len(code.code)
         while frame.ip < code_size:
             match code.code[frame.ip]:
+                case Operation.POP_TOP:
+                    frame.ip += 1
+                    frame.stack.pop()
                 case Operation.LOAD_CONST:
                     frame.ip += 1
                     index = unpack("Q", code.code[frame.ip:frame.ip + calcsize("Q")])[0]
@@ -354,7 +357,8 @@ class VirtualMachine:
                     obj.deref()
                 case Operation.RETURN:
                     frame.ip += 1
-                    return frame.stack.pop() # popping result object
+                    return_value = frame.stack.pop() # popping result object
+                    frame.ip = len(code.code)
                 case Operation.JUMP:
                     frame.ip += 1
                     addr = unpack("Q", code.code[frame.ip:frame.ip + calcsize("Q")])[0]
@@ -518,7 +522,7 @@ class VirtualMachine:
                     op = Operation(op)
                     print(f"Operation {op.name} has not been implemented yet.")
                     break
-
+        # print(frame.stack)
         # for obj in frame.stack:  # for every leftover object in the stack
         #     if obj.deref():  # dereference
         #         if obj != return_value:  # unless it's the return value, free

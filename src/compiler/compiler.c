@@ -107,7 +107,7 @@ void print_code(Code* code, char* end) {
             case OP_BINARY_BOOLEAN_GREATER_THAN_OR_EQUAL_TO:
             case OP_BINARY_BOOLEAN_LESS_THAN:
             case OP_BINARY_BOOLEAN_LESS_THAN_OR_EQUAL_TO:
-            case OP_KEEP_ALIVE:
+            case OP_POP_TOP:
                 puts(op_to_str(op));
                 break;
             default:
@@ -263,8 +263,19 @@ enum CompilationStatus compile_module(ast_node_t* root, CompiledModule* compiled
         case AST_BLOCK: {
             linked_list_node_t* node = root->ast_compound.head;
             while (node) {
+                
                 if (compile_module(node->item, compiled_module, code) != STATUS_OK) return STATUS_FAIL;
-
+                switch (((ast_node_t*)node->item)->ast_type) {
+                    case AST_ASSIGNMENT:
+                    case AST_IF_STATEMENT:
+                    case AST_WHILE_STATEMENT:
+                    case AST_FUNCTION:
+                    case AST_RETURN_STATEMENT:
+                    case AST_BLOCK:
+                        break;
+                    default:
+                        write_8(code, OP_POP_TOP);
+                }
                 node = node->next;
             }
             break;

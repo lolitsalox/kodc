@@ -2,6 +2,7 @@ sleep(seconds) {
     start = time()
     end = start + seconds
     while time() < end {}
+    return 5
 }
 
 fib(n) {
@@ -11,17 +12,24 @@ fib(n) {
     return fib(n - 1) + fib(n - 2)
 }
 
-_ = print("hello")
-_ = sleep(4)
-_ = print("there")
-_ = sleep(4)
-_ = print("Alex")
-
+fac(n) {
+    if n < 2 {
+        return 1
+    }
+    return n * fac(n - 1)
+}
 
 /*
+print("hello")
+print(sleep(1))
+print("there")
+sleep(1)
+print("Alex")
+*/
+
+
 i = 0
 while i < 25 {
-    print(fib(i))
+    print(i**i)
     i = i + 1
 }
-*/
