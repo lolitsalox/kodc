@@ -65,11 +65,12 @@ CompiledModule* new_compiled_module(char* filename, uint16_t major, uint16_t min
 CompiledModule* new_compiled_module(char* filename, uint16_t major, uint16_t minor);
 enum CompilationStatus compile_module(ast_node_t* root, CompiledModule* compiled_module, Code* code);
 
-// TODO:
 void save_module_to_file(CompiledModule* compiled_module, char* filename);
 CompiledModule* load_module_from_file(char* filename);
 
 void free_module(CompiledModule* compiled_module);
+
+void free_code(Code code);
 
 void print_code(Code* code, char* end);
 void print_constant_information(ConstantInformation* constant_information);

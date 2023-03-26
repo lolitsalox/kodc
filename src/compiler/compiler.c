@@ -6,6 +6,58 @@
 #include <stdlib.h>
 #include <string.h>
 
+static size_t read_until_null(FILE* fp, char** buffer) {
+    char c = 0;
+    char* data = calloc(1, sizeof(char));
+    size_t size = 1;
+    while ((c = fgetc(fp))) {
+        data = realloc(data, ++size);
+        data[size-2] = c;
+    }
+    data[size-1] = 0;
+    *buffer = data;
+    return size;
+}
+
+static char* constant_tag_to_str(enum ConstantTag constant_tag);
+
+static ConstantInformation read_constant(FILE* fp) {
+    ConstantInformation constant;
+
+    fread(&constant.tag, sizeof(constant.tag), 1, fp);
+    switch (constant.tag) {
+        case CONSTANT_NULL:
+            break;
+        case CONSTANT_INTEGER:
+            fread(&constant._int, sizeof(constant._int), 1, fp);
+            break;
+        case CONSTANT_FLOAT:
+            fread(&constant._float, sizeof(constant._float), 1, fp);
+            break;
+        case CONSTANT_ASCII:
+            read_until_null(fp, &constant._string);
+            break;
+        case CONSTANT_CODE:
+            read_until_null(fp, &constant._code.name);
+            size_t params_size = 0;
+            fread(&params_size, sizeof(size_t), 1, fp);
+            constant._code.params = init_string_array();
+            for (size_t i = 0; i < params_size; ++i) {
+                String param;
+                size_t len = read_until_null(fp, &param);
+                append_string_array(&constant._code.params, param, len);
+            }
+            fread(&constant._code.size, sizeof(size_t), 1, fp);
+            constant._code.code = malloc(constant._code.size);
+            fread(constant._code.code, constant._code.size, 1, fp);
+            break;
+        default:
+            fputs("[read_constant] weird constant tag", stderr);
+            break;
+    }
+    return constant;
+}
+
 static size_t write_8(Code* code, uint8_t data) {
     code->code = realloc(code->code, ++code->size * sizeof(uint8_t));
     uint8_t* ptr = (uint8_t*)(code->code + code->size - 1);
@@ -62,7 +114,6 @@ void print_code(Code* code, char* end) {
     //     printf("%02x ", code->code[i]);
     // }
     puts(code->name);
-
     for(size_t i = 0; i < code->size; ++i) {
         printf("\t\t%02lld: ", i);
         enum Operation op = code->code[i];
@@ -528,10 +579,12 @@ static void free_name_pool(NamePool name_pool) {
     free(name_pool.data);
 }
 
-static void free_code(Code code) {
-    free(code.name);
+void free_code(Code code) {
+    if (code.name)
+        free(code.name);
     free_string_array(&code.params);
-    free(code.code);
+    if (code.code)
+        free(code.code);
 }
 
 static void free_constant(ConstantInformation constant_info) {
@@ -571,7 +624,6 @@ void save_module_to_file(CompiledModule* compiled_module, char* filename) {
         return;
     }
     size_t module_filename_size = strlen(compiled_module->filename) + 1;
-    fwrite(&module_filename_size, sizeof(module_filename_size), 1, fp);
 
     if (fwrite(compiled_module->filename, module_filename_size, 1, fp) != 1) {
         fputs("Error while writing", stderr);
@@ -612,4 +664,46 @@ void save_module_to_file(CompiledModule* compiled_module, char* filename) {
     fwrite(&compiled_module->entry.size, sizeof(size_t), 1, fp);
     fwrite(compiled_module->entry.code, compiled_module->entry.size, 1, fp);
     fclose(fp);
+}
+
+CompiledModule* load_module_from_file(char* filename) {
+    FILE* fp = fopen(filename, "rb");
+    if (!fp) {
+        puts("Can't open file.");
+        return NULL;
+    }
+    
+    char* file_name = NULL;
+    size_t file_name_size = read_until_null(fp, &file_name);
+    
+    unsigned short major_version, minor_version;
+    fread(&major_version, sizeof(uint16_t), 1, fp);
+    fread(&minor_version, sizeof(uint16_t), 1, fp);
+    NamePool name_pool;
+    fread(&name_pool.size, sizeof(size_t), 1, fp);
+    name_pool.data = calloc(name_pool.size, sizeof(char*));
+    
+    for (size_t i = 0; i < name_pool.size; ++i) {
+        read_until_null(fp, name_pool.data + i);
+    }
+    
+    ConstPool constant_pool;
+    fread(&constant_pool.size, sizeof(size_t), 1, fp);
+    constant_pool.data = malloc(constant_pool.size * sizeof(ConstantInformation));
+    for (size_t i = 0; i < constant_pool.size; ++i) {
+        constant_pool.data[i] = read_constant(fp);
+    }
+    
+    CompiledModule* compiled_module = new_compiled_module(file_name, major_version, minor_version);
+    compiled_module->name_pool = name_pool;
+    compiled_module->constant_pool = constant_pool;
+    
+    compiled_module->entry.name = malloc(sizeof "__main__");
+    strcpy(compiled_module->entry.name, "__main__");
+    fread(&compiled_module->entry.size, sizeof(size_t), 1, fp);
+    compiled_module->entry.code = malloc(compiled_module->entry.size);
+    fread(compiled_module->entry.code, compiled_module->entry.size, 1, fp);
+    
+    fclose(fp);
+    return compiled_module;
 }

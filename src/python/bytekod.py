@@ -53,7 +53,7 @@ class Tag(IntEnum):
 @dataclass
 class Code:
     name: str
-    params: list[str]
+    params: tuple[str, ...]
     code: bytes
 
 @dataclass
@@ -93,8 +93,7 @@ def read_constant(fp: BufferedIOBase) -> ConstantInformation:
 class KodModule:
     def __init__(self, file_name: str) -> None:
         with open(file_name, "rb") as f:
-            file_name_size = unpack("Q", f.read(calcsize("Q")))[0]
-            file_name = f.read(file_name_size)[:-1].decode()
+            file_name = read_until_null(f)
             major_version = unpack("H", f.read(calcsize("H")))[0]
             minor_version = unpack("H", f.read(calcsize("H")))[0]
             name_pool_size = unpack("Q", f.read(calcsize("Q")))[0]
@@ -114,8 +113,7 @@ class KodModule:
 class Object:
     def __init__(self, attributes: dict[str, Self]) -> None:
         self.attributes = attributes
-        self.ref_count = 0
-        self.keep_alive: bool = False
+        self.ref_count = 1
     
     def ref(self):
         self.ref_count += 1

@@ -29,7 +29,7 @@ print("Alex")
 
 
 i = 0
-while i < 25 {
-    print(i**i)
+while i < 15 {
+    print(fib(i))
     i = i + 1
 }
