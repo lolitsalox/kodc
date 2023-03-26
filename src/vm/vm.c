@@ -16,8 +16,8 @@ CallFrame init_call_frame(CallFrame* parent, Environment* globals) {
 }
 
 void free_call_frame(CallFrame* frame) {
-    free_object_stack(&frame->stack);
-    free_environment(&frame->env);
+    // free_object_stack(&frame->stack);
+    // free_environment(&frame->env);
 }
 
 static bool initialized = false;
@@ -66,7 +66,7 @@ extern Kod_Object* run_code_object(VirtualMachine* vm, Code* code, CallFrame* pa
                 char* name = vm->module->name_pool.data[index];
                 Kod_Object* object = object_stack_pop(&frame.stack);
                 set_environment(&frame.env, (ObjectNamePair){name, object});
-                deref_object(object);
+                // deref_object(object);
                 break;
             }
 
@@ -107,7 +107,7 @@ extern Kod_Object* run_code_object(VirtualMachine* vm, Code* code, CallFrame* pa
                         for (size_t i = 0; i < fn_object->_code.params.size; ++i) {
                             Kod_Object* arg = object_stack_pop(&frame.stack);
                             set_environment(new_env, (ObjectNamePair){.name=fn_object->_code.params.items[i], .object=arg});
-                            deref_object(arg);
+                            // deref_object(arg);
                         }
                         return_value = run_code_object(vm, &fn_object->_code, &frame, new_env);
                         object_stack_push(&frame.stack, return_value);
@@ -148,7 +148,7 @@ extern Kod_Object* run_code_object(VirtualMachine* vm, Code* code, CallFrame* pa
                         return_value = fn_object->_function.callable(args, 1);
                         if (return_value->type == OBJECT_INTEGER && !return_value->_int)
                             frame.ip = addr;
-                        deref_object(return_value);
+                        // deref_object(return_value);
                         break;
 
                     case OBJECT_CODE:
@@ -160,12 +160,12 @@ extern Kod_Object* run_code_object(VirtualMachine* vm, Code* code, CallFrame* pa
                         char* name = fn_object->_code.params.items[0];
                         Environment* new_env = new_environment();
                         set_environment(new_env, (ObjectNamePair){.name=name, .object=object});
-                        deref_object(object);
+                        // deref_object(object);
                         return_value = run_code_object(vm, &fn_object->_code, &frame, new_env);
                         if (return_value->type == OBJECT_INTEGER && !return_value->_int)
                             frame.ip = addr;
-                        deref_object(return_value);
-                        free(new_env);
+                        // deref_object(return_value);
+                        // free(new_env);
                         break;
 
                     default:
@@ -212,7 +212,7 @@ extern Kod_Object* run_code_object(VirtualMachine* vm, Code* code, CallFrame* pa
 
 void vm_run_entry(VirtualMachine* vm) {
     Kod_Object* result = run_code_object(vm, &vm->module->entry, NULL, get_native_functions());
-    deref_object(result);
+    // deref_object(result);
 }
 
 static void unary_op(VirtualMachine* vm, CallFrame* frame, Code* code, String unary_name) {
@@ -238,9 +238,9 @@ static void unary_op(VirtualMachine* vm, CallFrame* frame, Code* code, String un
             char* name = fn_object->_code.params.items[0];
             Environment* new_env = new_environment();
             set_environment(new_env, (ObjectNamePair){.name=name, .object=object});
-            deref_object(object);
+            // deref_object(object);
             object_stack_push(&frame->stack, run_code_object(vm, &fn_object->_code, frame, new_env));
-            free(new_env);
+            // free(new_env);
             break;
 
         default:
@@ -274,10 +274,10 @@ static void binary_op(VirtualMachine* vm, CallFrame* frame, Code* code, String b
             for (size_t i = 0; i < fn_object->_code.params.size; ++i) {
                 Kod_Object* arg = object_stack_pop(&frame->stack);
                 set_environment(new_env, (ObjectNamePair){.name=fn_object->_code.params.items[i], .object=arg});
-                deref_object(arg);
+                // deref_object(arg);
             }
             object_stack_push(&frame->stack, run_code_object(vm, &fn_object->_code, frame, new_env));
-            free(new_env);
+            // free(new_env);
             break;
 
         default:

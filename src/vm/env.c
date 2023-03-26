@@ -56,7 +56,7 @@ Kod_Object* get_environment(Environment* env, char* name) {
 
 void set_environment(Environment* env, ObjectNamePair pair) {
     ObjectNamePairNode* curr_pair = env->head;
-    ref_object(pair.object);
+    // ref_object(pair.object);
 
     if (!curr_pair) {
         env->head = new_object_name_pair_node();
@@ -71,7 +71,7 @@ void set_environment(Environment* env, ObjectNamePair pair) {
     
     while (curr_pair) {
         if (strcmp(curr_pair->object_name_pair.name, pair.name) == 0) {
-            deref_object(curr_pair->object_name_pair.object);
+            // deref_object(curr_pair->object_name_pair.object);
             curr_pair->object_name_pair.object = pair.object;
             return;
         }
