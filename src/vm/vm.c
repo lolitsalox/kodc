@@ -81,8 +81,9 @@ VirtualMachine init_vm(CompiledModule* module) {
     update_constant_object_pool(&vm.cop, &module->constant_pool);
     return vm;
 }
-
+extern int DEBUG;
 void destroy_vm(VirtualMachine* vm) {
+    // DEBUG = 1;
     if (DEBUG) puts("\nDESTROYING VM");
     // free_native();
     free_native_attributes();
@@ -130,7 +131,7 @@ extern Kod_Object* run_code_object(VirtualMachine* vm, Code* code, CallFrame* pa
                 CallFrame* curr_frame = &frame;
                 Kod_Object* obj = NULL;
                 while (!(obj = get_environment(&curr_frame->env, name))) {
-                    curr_frame = frame.parent;
+                    curr_frame = curr_frame->parent;
                     if (!curr_frame) {
                         printf("NameError: %s is not defined\n", name);
                         frame.ip = code->size; break;

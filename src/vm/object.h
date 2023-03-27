@@ -3,7 +3,7 @@
 #include "../compiler/compiler.h"
 #include "env.h"
 
-#define DEBUG 0
+extern int DEBUG;
 
 #if 0
 #define debug_print(fmt, ...) \

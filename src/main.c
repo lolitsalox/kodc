@@ -14,20 +14,15 @@ int main() {
 
 #if 0
     char arr[] = "\
-\
-f(x) {\
-    if x < 2 {\
-        return 1\
-    }\
-    return x + 1\
-}\
-\
-i = 0\
-while i < 15 {\
-    print(f(i))\
-    i = i + 1\
-}\
-\
+f(x) {\n\
+    if x < 1 {\n\
+        return 0\n\
+    }\n\
+    return x + f(x - 1)\n\
+}\n\
+\n\
+i = 0\n\
+print(f(2))\n\
 ";
     lexer_t lexer = lexer_init(arr, sizeof(arr));
 #else

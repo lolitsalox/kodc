@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+int DEBUG = 0;
+
 static Environment null_attributes;
 static Environment bool_attributes;
 static Environment int_attributes;
