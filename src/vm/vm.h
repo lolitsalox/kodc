@@ -12,13 +12,20 @@ typedef struct CallFrame {
     size_t ip;
 } CallFrame;
 
+typedef struct ConstObjectPool {
+    size_t size;
+    Kod_Object* data;
+} ConstObjectPool;
+
 CallFrame init_call_frame(CallFrame* parent, Environment* globals);
-void free_call_frame(CallFrame* frame);
+void free_call_frame(CallFrame* frame, ConstObjectPool* cop);
 
 typedef struct VirtualMachine {
     CompiledModule* module;
+    ConstObjectPool cop; 
 } VirtualMachine;
 
 VirtualMachine init_vm(CompiledModule* module);
+void destroy_vm(VirtualMachine* vm);
 
-void vm_run_entry(VirtualMachine* vm);
+Kod_Object* vm_run_entry(VirtualMachine* vm);

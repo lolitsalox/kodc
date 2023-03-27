@@ -6,9 +6,10 @@
 #include "object.h"
 
 void free_object_name_pair(ObjectNamePair object_name_pair) {
-    if (object_name_pair.name)
+    if (object_name_pair.name) {
+        debug_print("FREEING PAIR NAME %s\n", object_name_pair.name);
         free(object_name_pair.name);
-
+    }
     if (object_name_pair.object)
         deref_object(object_name_pair.object);
 }
@@ -27,6 +28,7 @@ void init_object_name_pair_node(ObjectNamePairNode* object_name_pair_node) {
 
 void free_object_name_pair_node(ObjectNamePairNode* object_name_pair_node) {
     if (!object_name_pair_node) return;
+    // debug_print("FREEING PAIR%s\n", "");
     free_object_name_pair(object_name_pair_node->object_name_pair);
     free(object_name_pair_node);
 }
@@ -71,7 +73,7 @@ void set_environment(Environment* env, ObjectNamePair pair) {
     
     while (curr_pair) {
         if (strcmp(curr_pair->object_name_pair.name, pair.name) == 0) {
-            // deref_object(curr_pair->object_name_pair.object);
+            deref_object(curr_pair->object_name_pair.object);
             curr_pair->object_name_pair.object = pair.object;
             return;
         }
@@ -88,10 +90,21 @@ void set_environment(Environment* env, ObjectNamePair pair) {
 }
 
 void update_environment(Environment* env, Environment* other) {
+    debug_print("UPDATING ENV\n%s", "");
     if (!other || !env) return;
     ObjectNamePairNode* curr_pair = other->head;
     while (curr_pair) {
+        ++curr_pair->object_name_pair.object->ref_count;
         set_environment(env, curr_pair->object_name_pair);
+        curr_pair = curr_pair->next;
+    }
+}
+
+void ref_environment(Environment* env) {
+    if (!env) return;
+    ObjectNamePairNode* curr_pair = env->head;
+    while (curr_pair) {
+        ref_object(curr_pair->object_name_pair.object);
         curr_pair = curr_pair->next;
     }
 }
@@ -106,6 +119,7 @@ void print_environment(Environment* env) {
 
 void free_environment(Environment* env) {
     if (!env) return;
+    debug_print("FREEING ENV%s\n", "");
     ObjectNamePairNode* curr_pair = env->head;
     ObjectNamePairNode* next = NULL;
     while (curr_pair) {
@@ -113,4 +127,7 @@ void free_environment(Environment* env) {
         free_object_name_pair_node(curr_pair);
         curr_pair = next;
     }
+
+    env->head = NULL;
+    env->tail = NULL;
 }

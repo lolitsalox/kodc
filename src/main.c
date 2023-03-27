@@ -12,20 +12,22 @@ int main() {
     char* filename = malloc(sizeof("script.kod"));
     strncpy(filename, "script.kod", sizeof("script.kod"));
 
-#if 1
+#if 0
     char arr[] = "\
-fib(n) {\n\
-    if n < 2 {\n\
-        return 1\n\
-    }\n\
-    return fib(n - 1) + fib(n - 2)\n\
-}\n\
-\n\
-i = 0\n\
-while i < 25 {\n\
-    print(fib(i))\n\
-    i = i + 1\n\
-}\n\
+\
+f(x) {\
+    if x < 2 {\
+        return 1\
+    }\
+    return x + 1\
+}\
+\
+i = 0\
+while i < 15 {\
+    print(f(i))\
+    i = i + 1\
+}\
+\
 ";
     lexer_t lexer = lexer_init(arr, sizeof(arr));
 #else
@@ -51,7 +53,7 @@ while i < 25 {\n\
 
         // print_constant_pool(&module->constant_pool);
         // print_name_pool(&module->name_pool); // it wouldn't have shown different byte code if it were the same memory
-        // print_code(&module->entry, "\n");
+        print_code(&module->entry, "\n");
 
         puts("\x1b[32m!!!Compilation success!!!\x1b[0m");
     }
@@ -67,12 +69,13 @@ while i < 25 {\n\
     // }
 
     VirtualMachine vm = init_vm(module);
-    vm_run_entry(&vm);
+    Kod_Object* res = vm_run_entry(&vm);
+    deref_object(res);
     // print_constant_pool(&module->constant_pool);
     // print_name_pool(&module->name_pool); // it wouldn't have shown different byte code if it were the same memory
     // print_code(&module->entry, "\n");
-    free_module(module);
-    puts("After final free!");
+    destroy_vm(&vm);
+    puts("\n\x1b[36m>>> \x1b[32mNO ERRORS\x1b[36m!\x1b[0m");
 
     // eval(root);
     // kod_object_t* res = interpret_ast(root);

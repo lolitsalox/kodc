@@ -1,35 +1,21 @@
-sleep(seconds) {
-    start = time()
-    end = start + seconds
-    while time() < end {}
-    return 5
-}
-
+/*
 fib(n) {
     if n < 2 {
         return 1
     }
     return fib(n - 1) + fib(n - 2)
 }
-
-fac(n) {
-    if n < 2 {
-        return 1
-    }
-    return n * fac(n - 1)
-}
-
-/*
-print("hello")
-print(sleep(1))
-print("there")
-sleep(1)
-print("Alex")
 */
 
+f(x) {
+    if x < 2 {
+        return 1
+    }
+    return x + 1
+}
 
 i = 0
 while i < 15 {
-    print(fib(i))
+    print(f(i))
     i = i + 1
 }

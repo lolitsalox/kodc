@@ -3,6 +3,17 @@
 #include "../compiler/compiler.h"
 #include "env.h"
 
+#define DEBUG 0
+
+#if 0
+#define debug_print(fmt, ...) \
+        do { if (DEBUG) fprintf(stdout, "DEBUG: %s:%d: " fmt, __FILE__, \
+                                __LINE__, __VA_ARGS__); } while (0)
+#else
+#define debug_print(fmt, ...) \
+        do { if (DEBUG) fprintf(stdout, "DEBUG: " fmt, __VA_ARGS__); } while (0)
+#endif
+
 enum Kod_ObjectType {
     OBJECT_NULL,
     OBJECT_BOOL,
@@ -25,7 +36,7 @@ typedef struct Kod_NativeFunction {
 
 struct Kod_Object {
     enum Kod_ObjectType type;
-    Environment* attributes;
+    Environment attributes;
     int32_t ref_count;
     union {
         bool _bool;
@@ -39,10 +50,12 @@ struct Kod_Object {
 
 void init_native_attributes();
 void init_native_functions();
+// void free_native();
+void free_native_attributes();
 
 Environment* get_native_functions();
 
-Kod_Object* new_object(enum Kod_ObjectType type, Environment* attributes);
+Kod_Object* new_object(enum Kod_ObjectType type, Environment attributes);
 Kod_Object* new_null_object();
 void free_object(Kod_Object* object);
 
@@ -56,3 +69,9 @@ Kod_Object* new_int_object(int64_t value);
 Kod_Object* new_string_object(char* value);
 Kod_Object* new_code_object(Code value);
 Kod_Object* new_native_function_object(char* name, NativeFunction callable);
+
+Environment get_null_attributes();
+Environment get_bool_attributes();
+Environment get_int_attributes();
+Environment get_string_attributes();
+Environment get_code_attributes();

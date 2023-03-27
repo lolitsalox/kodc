@@ -13,8 +13,9 @@ typedef struct ObjectStack {
 
 void init_stack_object(ObjectStack* stack);
 
+struct ConstObjectPool; 
 ObjectStack* new_stack_object();
-void free_object_stack(ObjectStack* stack);
+void free_object_stack(ObjectStack* stack, struct ConstObjectPool* cop);
 
 Kod_Object* object_stack_top(ObjectStack* stack);
 Kod_Object* object_stack_pop(ObjectStack* stack);

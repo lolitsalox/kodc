@@ -71,6 +71,14 @@ Kod_Object* native_int_method_binary_sub(Kod_Object** args, size_t argc) {
     return new_int_object(args[0]->_int - args[1]->_int);
 }
 
+Kod_Object* native_int_method_binary_mul(Kod_Object** args, size_t argc) {
+    if (argc < 2 || !args || !args[0] || !args[1]) {
+        printf("line: %d\n", __LINE__);
+        return new_null_object();
+    }
+    return new_int_object(args[0]->_int * args[1]->_int);
+}
+
 Kod_Object* native_int_method_str(Kod_Object** args, size_t argc) {
     Kod_Object* self = args[0];
     char str[64] = { 0 };
@@ -104,7 +112,7 @@ Kod_Object* native_print(Kod_Object** args, size_t argc) {
     if (!args) goto end;
     for (size_t i = 0; i < argc; ++i) {
         if (args[i]) {
-            Kod_Object* str = get_environment(args[i]->attributes, "__str__");
+            Kod_Object* str = get_environment(&args[i]->attributes, "__str__");
             if (!str) {
                 printf("<%s object at 0x%p>", object_type_to_str(args[i]->type), args[i]);
                 continue;
@@ -131,6 +139,28 @@ Kod_Object* native_print(Kod_Object** args, size_t argc) {
     return new_null_object();
 }
 
+void free_native_attributes() {
+    if (DEBUG) puts("\nFREEING NULL ATTRIBUTES");
+    free_environment(&null_attributes);
+    if (DEBUG) puts("\nFREEING BOOL ATTRIBUTES");
+    free_environment(&bool_attributes);
+    if (DEBUG) puts("\nFREEING INT ATTRIBUTES");
+    free_environment(&int_attributes);
+    if (DEBUG) puts("\nFREEING STRING ATTRIBUTES");
+    free_environment(&string_attributes);
+    if (DEBUG) puts("\nFREEING CODE ATTRIBUTES");
+    free_environment(&code_attributes);
+}
+
+void free_native_functions() {
+    debug_print("FREEING NATIVE FUNCTIONS\n%s", "");
+    free_environment(&native_functions);
+}
+
+void free_native() {
+    free_native_functions();
+    free_native_attributes();
+}
 
 void init_native_attributes() {
     init_environment(&null_attributes);
@@ -190,6 +220,12 @@ void init_native_attributes() {
             new_native_function_object("__sub__", native_int_method_binary_sub)
         }
     );
+    set_environment(&int_attributes, 
+        (ObjectNamePair){
+            .name="__mul__", 
+            new_native_function_object("__mul__", native_int_method_binary_mul)
+        }
+    );
 
     init_environment(&string_attributes);
     set_environment(&string_attributes, 
@@ -214,7 +250,7 @@ Environment* get_native_functions() {
     return &native_functions;
 }
 
-Kod_Object* new_object(enum Kod_ObjectType type, Environment* attributes) {
+Kod_Object* new_object(enum Kod_ObjectType type, Environment attributes) {
     Kod_Object* object = malloc(sizeof(Kod_Object));
     object->type = type;
     object->ref_count = 1;
@@ -223,78 +259,109 @@ Kod_Object* new_object(enum Kod_ObjectType type, Environment* attributes) {
 }
 
 Kod_Object* new_null_object() {
-    Environment* attributes = new_environment();
-    update_environment(attributes, &null_attributes);
-    return new_object(OBJECT_NULL, attributes);
+    debug_print("creating null object\n%s", "");
+    Environment attributes;
+    init_environment(&attributes);
+    update_environment(&attributes, &null_attributes);
+    Kod_Object* obj = new_object(OBJECT_NULL, attributes);
+    debug_print("new null object at %p\n", obj);
+    return obj;
 }
 
 Kod_Object* new_bool_object(bool value) {
-    Environment* attributes = new_environment();
-    update_environment(attributes, &bool_attributes);
-    Kod_Object* object = new_object(OBJECT_BOOL, attributes);
-    object->_bool = value;
-    return object;
+    debug_print("creating bool object\n%s", "");
+    Environment attributes;
+    init_environment(&attributes);
+    update_environment(&attributes, &bool_attributes);
+    Kod_Object* obj = new_object(OBJECT_BOOL, attributes);
+    obj->_bool = value;
+    debug_print("new bool object at %p - %d\n", obj, obj->_bool);
+    return obj;
 }
 
 Kod_Object* new_int_object(int64_t value) {
-    Environment* attributes = new_environment();
-    update_environment(attributes, &int_attributes);
-    Kod_Object* object = new_object(OBJECT_INTEGER, attributes);
-    object->_int = value;
-    return object;
+    debug_print("creating int object\n%s", "");
+    Environment attributes;
+    init_environment(&attributes);
+    update_environment(&attributes, &int_attributes);
+    Kod_Object* obj = new_object(OBJECT_INTEGER, attributes);
+    obj->_int = value;
+    debug_print("new int object at %p - %lld\n", obj, obj->_int);
+    return obj;
 }
 
 Kod_Object* new_string_object(char* value) {
-    Environment* attributes = new_environment();
-    update_environment(attributes, &string_attributes);
-    Kod_Object* object = new_object(OBJECT_STRING, attributes);
+    debug_print("creating string object\n%s", "");
+    Environment attributes;
+    init_environment(&attributes);
+    update_environment(&attributes, &string_attributes);
+    Kod_Object* obj = new_object(OBJECT_STRING, attributes);
     size_t size = strlen(value) + 1;
-    object->_string = calloc(size, sizeof(char));
-    strncpy(object->_string, value, size);
-    return object;
+    obj->_string = calloc(size, sizeof(char));
+    strncpy(obj->_string, value, size);
+    debug_print("new string object at %p - %s\n", obj, obj->_string);
+    return obj;
 }
 
 Kod_Object* new_code_object(Code value) {
-    Environment* attributes = new_environment();
-    update_environment(attributes, &code_attributes);
-    Kod_Object* object = new_object(OBJECT_CODE, attributes);
-    object->_code = value;
-    return object;
+    debug_print("creating code object\n%s", "");
+    Environment attributes;
+    init_environment(&attributes);
+    update_environment(&attributes, &code_attributes);
+    Kod_Object* obj = new_object(OBJECT_CODE, attributes);
+    // obj->_code = deep_copy_code(value);
+    debug_print("new code object at %p - ", obj);
+    if (DEBUG) print_code(&obj->_code, "\n");
+    return obj;
 }
 
 Kod_Object* new_native_function_object(char* name, NativeFunction callable) {
-    Kod_Object* object = new_object(OBJECT_NATIVE_FUNCTION, NULL);
+    Kod_Object* object = new_object(OBJECT_NATIVE_FUNCTION, (Environment){0});
     object->_function.name = name;
     object->_function.callable = callable;
+    object->ref_count = 1;
+    debug_print("new native function object at %p - %s\n", object, name);
     return object;
 }
 
 void free_object(Kod_Object* object) {
     if (!object) return;
+    debug_print("freeing object from type %s - ", object_type_to_str(object->type));
     switch (object->type) {
+        case OBJECT_NULL: if (DEBUG) puts(""); break;
+        case OBJECT_BOOL: if (DEBUG) printf("%d\n", object->_bool); break;
+        case OBJECT_INTEGER: if (DEBUG) printf("%lld\n", object->_int); break;
+        // case OBJECT_FLOAT:
+
         case OBJECT_STRING:
-            if (object->_string)
+            if (object->_string) {
+                if (DEBUG) printf("\"%s\"\n", object->_string);
                 free(object->_string);
+            }
             break;
         case OBJECT_CODE:
+            if (DEBUG) print_code(&object->_code, "\n");
             free_code(object->_code);
             break;
+        case OBJECT_NATIVE_FUNCTION: if (DEBUG) puts(object->_function.name); break; 
         default: break;
     }
 
-    // free_environment(object->attributes);
-    // free(object->attributes);
-    // free(object);
+    if (object->type != OBJECT_NATIVE_FUNCTION) free_environment(&object->attributes);
+    free(object);
 }
 
 void ref_object(Kod_Object* object) {
     if (!object) return;
     ++object->ref_count;
+    debug_print("ref object %s at %p -> %d\n", object_type_to_str(object->type), object, object->ref_count);
 }
 
 bool deref_object(Kod_Object* object) {
     if (!object) return false;
-    if (object->ref_count-- <= 0) {
+    --object->ref_count;
+    debug_print("deref object %s at %p -> %d\n", object_type_to_str(object->type), object, object->ref_count);
+    if (object->ref_count <= 0) {
         free_object(object);
         return true;
     }
@@ -312,4 +379,24 @@ String object_type_to_str(enum Kod_ObjectType type) {
         case OBJECT_NATIVE_FUNCTION: return "NATIVE_FUNCTION";
     }
     return "OBJECT_UNKNOWN";
+}
+
+Environment get_null_attributes() {
+    return null_attributes;
+}
+
+Environment get_bool_attributes() {
+    return bool_attributes;
+}
+
+Environment get_int_attributes() {
+    return int_attributes;
+}
+
+Environment get_string_attributes() {
+    return string_attributes;
+}
+
+Environment get_code_attributes() {
+    return code_attributes;
 }

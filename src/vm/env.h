@@ -34,6 +34,7 @@ Environment* new_environment();
 Kod_Object* get_environment(Environment* env, char* name);
 void set_environment(Environment* env, ObjectNamePair pair);
 void update_environment(Environment* env, Environment* other);
+void ref_environment(Environment* env);
 
 void print_environment(Environment* env);
 void free_environment(Environment* env);
