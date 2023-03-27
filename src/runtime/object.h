@@ -1,42 +1,73 @@
-#pragma once
+// #pragma once
 
-#include <stdint.h>
-#include "../parser/ast.h"
+// #include "env.h"
+// #include <stdint.h>
+// #include <stdbool.h>
+// #include "../parser/ast.h"
+// #include "../misc/StringArray.h"
+// #include "../compiler/compiler.h"
 
-typedef struct kod_object_t kod_object_t;
+// typedef struct Object Object;
 
-typedef enum kod_object_type_t {
-    OBJECT_NONE,
-    OBJECT_NUMBER,
-    OBJECT_STRING,
-    OBJECT_FUNCTION,
-    OBJECT_NATIVE_FUNCTION,
-} kod_object_type_t;
+// enum ObjectType {
+//     OBJECT_NULL,
+//     OBJECT_INT,
+//     OBJECT_FLOAT,
+//     OBJECT_STRING,
+//     OBJECT_CODE,
+//     OBJECT_NATIVE_FUNCTION,
+//     OBJECT_TYPE,
+// };
 
-struct env_t;
+// typedef struct NativeFunctionObject {
+//     char* name;
+//     Object* (*caller)(Environment* env, linked_list_t params);
+// } NativeFunctionObject;
 
-typedef struct kod_function_t {
-    ast_function_t function_node;
-    struct env_t* env;
-} kod_function_t;
+// struct Object {
+//     enum ObjectType type;
+//     Environment* attributes;
+//     int ref_count;
 
+//     union {
+//         int64_t _int;
+//         double _float;
+//         char* _string;
+//         Code _code;
+//         NativeFunctionObject _native_function;
+//     };
+// };
 
-typedef struct kod_native_function_t {
-    ast_string_t name;
-    kod_object_t* (*caller)(struct env_t* env, linked_list_t params);
-} kod_native_function_t;
+// const char* object_type_to_str(enum ObjectType type);
+// void print_object(Object* object, uint32_t indent_level);
+// Object* new_object(Object object);
+// bool delete_object(Object* object);
+// void free_object(Object* object);
 
-struct kod_object_t {
-    kod_object_type_t object_type;
+// void ref_object(Object* object);
+// void deref_object(Object* object);
 
-    union {
-        double number;
-        ast_string_t string;
-        kod_function_t function;
-        kod_native_function_t native_function;
-    };
-};
+// typedef struct ObjectNode {
+//     Object* object;
+//     struct ObjectNode* down;
+// } ObjectNode;
 
-const char* object_type_to_str(kod_object_type_t type);
-void object_print(const kod_object_t* object, uint32_t indent_level);
-kod_object_t* object_new(kod_object_t object);
+// ObjectNode init_object_node();
+// ObjectNode* new_object_node();
+// bool delete_object_node(ObjectNode* object_node);
+// void free_object_node(ObjectNode* object_node);
+
+// typedef struct ObjectStack {
+//     ObjectNode* top;
+//     bool empty;
+// } ObjectStack;
+
+// ObjectStack init_object_stack();
+// ObjectStack* new_object_stack();
+
+// void object_stack_push(ObjectStack* object_stack, Object object);
+// Object object_stack_top(ObjectStack* object_stack);
+// Object object_stack_pop(ObjectStack* object_stack);
+
+// bool delete_object_stack(ObjectStack* object_stack);
+// void free_object_stack(ObjectStack* object_stack);

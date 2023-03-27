@@ -1,6 +1,6 @@
-#pragma once
+// #pragma once
 
-#include "object.h"
-#include "../parser/ast.h"
+// #include "object.h"
+// #include "../parser/ast.h"
 
-kod_object_t* eval(ast_node_t* root);
+// kod_object_t* eval(ast_node_t* root);

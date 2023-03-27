@@ -12,13 +12,15 @@ const char* ast_type_to_str(ast_type_t type) {
         case AST_LIST:          return "LIST";
         case AST_BLOCK:         return "BLOCK";
         case AST_CALL:          return "CALL";
+        case AST_METHOD_CALL:   return "METHOD_CALL";
         case AST_SUBSCRIPT:     return "SUBSCRIPT";
         case AST_ACCESS:        return "ACCESS";
         case AST_FUNCTION:      return "FUNCTION";
         case AST_LAMBDA:        return "LAMBDA";
         case AST_ASSIGNMENT:    return "ASSIGNMENT";
         case AST_IDENTIFIER:    return "IDENTIFIER";
-        case AST_NUMBER:        return "NUMBER";
+        case AST_INT:           return "INT";
+        case AST_FLOAT:         return "FLOAT";
         case AST_STRING:        return "STRING";
         case AST_BOOL:          return "BOOL";
         case AST_BIN_OP:        return "BIN_OP";
@@ -44,9 +46,12 @@ void ast_print(const ast_node_t* ast_node, uint32_t indent_level) {
 
     // Switch on the type of the AST node.
     switch (ast_node->ast_type) {
-        case AST_NUMBER:
-            // If the node is a number, print its value.
-            printf("%g\n", ast_node->ast_number.value);
+        case AST_INT:
+            printf("%lld\n", ast_node->ast_int);
+            break;
+
+        case AST_FLOAT:
+            printf("%f\n", ast_node->ast_float);
             break;
 
         case AST_IDENTIFIER:
@@ -165,6 +170,23 @@ void ast_print(const ast_node_t* ast_node, uint32_t indent_level) {
             for (uint32_t i = 0; i < indent_level + 1; ++i) printf("    ");
             printf("arguments:\n");
             ast_print(ast_node->ast_call.arguments, indent_level + 2);
+            break;
+        
+        case AST_METHOD_CALL:
+            // If the node is a call operation, print the callable and the arguments.
+            printf("\n");
+            
+            for (uint32_t i = 0; i < indent_level + 1; ++i) printf("    ");
+            printf("this:\n");
+            ast_print(ast_node->ast_method_call.this, indent_level + 2);
+
+            for (uint32_t i = 0; i < indent_level + 1; ++i) printf("    ");
+            printf("callable:\n");
+            ast_print(ast_node->ast_method_call.callable, indent_level + 2);
+
+            for (uint32_t i = 0; i < indent_level + 1; ++i) printf("    ");
+            printf("arguments:\n");
+            ast_print(ast_node->ast_method_call.arguments, indent_level + 2);
             break;
         default:
             printf("TODO: implement ast_print\n");

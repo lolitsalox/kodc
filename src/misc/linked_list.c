@@ -11,6 +11,7 @@ void linked_list_append(linked_list_t* list, void* item) {
     linked_list_node_t* new_node = malloc(sizeof(linked_list_node_t));
     new_node->item = item;
     new_node->next = NULL;
+    new_node->prev = NULL;
     list->size++;
 
     if (!list->head) {
@@ -18,7 +19,8 @@ void linked_list_append(linked_list_t* list, void* item) {
         list->tail = new_node;
         return;
     }
-
+    
+    new_node->prev = list->tail;
     list->tail->next = new_node;
     list->tail = new_node;
 }

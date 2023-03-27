@@ -1,13 +1,16 @@
-
-fib = |n| {
-    if n < 2 {
-        return n
+/* TODO: 
+* Load constant objects directly instead of creating new objects
+* add import
+* null, true, false and float, bool
+* implement more native methods
+* implement more keywords/statements
+*/
+sleep(seconds) {
+    i = 0
+    while i < seconds * 135000 {
+        i = i + 1
     }
-    return fib(n - 1) + fib(n - 2)
 }
 
-n = 1
-while n < 30 {
-    print(fib(n))
-    n = n + 1
-}
+print("start")
+sleep(3)
