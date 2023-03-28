@@ -23,6 +23,7 @@ const char* ast_type_to_str(ast_type_t type) {
         case AST_FLOAT:         return "FLOAT";
         case AST_STRING:        return "STRING";
         case AST_BOOL:          return "BOOL";
+        case AST_NULL:          return "NULL";
         case AST_BIN_OP:        return "BIN_OP";
         case AST_UNARY_OP:      return "UNARY_OP";
         case AST_IF_STATEMENT:          return "IF_STATEMENT";
@@ -69,7 +70,7 @@ void ast_print(const ast_node_t* ast_node, uint32_t indent_level) {
             // print a new line and iterate over each item in the linked list,
             // recursively printing each item with an increased indentation level.
             printf("\n");
-            linked_list_node_t* curr = ast_node->ast_compound.head;
+            linked_list_node_t* curr = ast_node->compound.head;
             while (curr) {
                 ast_print(curr->item, indent_level + 1);
                 curr = curr->next;

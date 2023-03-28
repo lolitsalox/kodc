@@ -23,6 +23,7 @@ typedef enum ast_type_t {
     AST_FLOAT,
     AST_STRING,
     AST_BOOL,
+    AST_NULL,
     AST_IF_STATEMENT,
     AST_WHILE_STATEMENT,
     AST_FOR_STATEMENT,
@@ -92,7 +93,8 @@ struct ast_node_t {
     ast_type_t ast_type;
     
     union {
-        linked_list_t ast_compound;
+        linked_list_t compound;
+        bool ast_bool;
         int64_t ast_int;
         double ast_float;
         ast_string_t ast_string;

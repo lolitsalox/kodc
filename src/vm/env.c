@@ -46,6 +46,7 @@ Environment* new_environment() {
 }
 
 Kod_Object* get_environment(Environment* env, char* name) {
+    if (!env) return NULL;
     ObjectNamePairNode* curr_pair = env->head;
     while (curr_pair) {
         if (strcmp(curr_pair->object_name_pair.name, name) == 0) {
@@ -57,6 +58,7 @@ Kod_Object* get_environment(Environment* env, char* name) {
 }
 
 void set_environment(Environment* env, ObjectNamePair pair) {
+    if (!env) return;
     ObjectNamePairNode* curr_pair = env->head;
     // ref_object(pair.object);
 
@@ -110,6 +112,7 @@ void ref_environment(Environment* env) {
 }
 
 void print_environment(Environment* env) {
+    if (!env) return;
     ObjectNamePairNode* curr_pair = env->head;
     while (curr_pair) {
         printf("%s: %s\n", curr_pair->object_name_pair.name, object_type_to_str(curr_pair->object_name_pair.object->type));

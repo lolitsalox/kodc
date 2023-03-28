@@ -27,7 +27,10 @@ enum Kod_ObjectType {
 String object_type_to_str(enum Kod_ObjectType type);
 
 typedef struct Kod_Object Kod_Object;
-typedef Kod_Object* (*NativeFunction) (Kod_Object** args, size_t size);
+typedef struct VirtualMachine VirtualMachine;
+typedef struct CallFrame CallFrame;
+
+typedef Kod_Object* (*NativeFunction) (VirtualMachine* vm, CallFrame* parent_call_frame, Kod_Object** args, size_t size);
 
 typedef struct Kod_NativeFunction {
     String name;
