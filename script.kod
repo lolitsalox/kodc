@@ -11,18 +11,17 @@
 * with statement
 */
 
-/*
-sleep(seconds) {
-    end = time() + seconds
-    while time() < end {}
-}
 
+// sleep(seconds) {
+//     end = time() + seconds
+//     while time() < end {}
+// }
+
+start = time()
 i = 0
-while i < 10 {
+while i < 10000 {
     print(i)
-    sleep(1)
     i = i + 1
 }
-*/
 
-a = 0
+print("Time took:", time()-start, "seconds")

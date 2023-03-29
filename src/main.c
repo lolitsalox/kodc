@@ -68,50 +68,53 @@ void repl(void) {
 
 }
 
-int main() {
-    repl();
-    return 0;
+int main(int argc, char** argv) {
+    if (argc < 2) {
+        repl();
+        return 0;
+    }
 
-    // size_t filename_size = sizeof("script.kod");
-    // char* filename = malloc(filename_size);
-    // strncpy(filename, "script.kod", filename_size);
-    // char* buffer = NULL;
+    size_t filename_size = strlen(argv[1]) + 1;
+    char* filename = malloc(filename_size);
+    strncpy(filename, argv[1], filename_size);
+    
+    char* buffer = NULL;
 
-    // uint32_t length = io_read(filename, &buffer);
-    // lexer_t lexer = lexer_init(buffer, length);
+    uint32_t length = io_read(filename, &buffer);
+    lexer_t lexer = lexer_init(buffer, length);
 
-    // parser_t parser = parser_init(&lexer);
-    // ast_node_t* root = parse(&parser);
-    // // ast_print(root, 0);
+    parser_t parser = parser_init(&lexer);
+    ast_node_t* root = parse(&parser);
+    // ast_print(root, 0);
 
     
-    // CompiledModule* module = new_compiled_module(filename, 0, 1);
-    // CompilationStatus status = compile_module(root, module, &module->entry);
-    // puts(status.what);
-    // if (status.code == STATUS_FAIL) {
-    //     free_module(module);
-    //     return 1;
-    // }
+    CompiledModule* module = new_compiled_module(filename, 0, 1);
+    CompilationStatus status = compile_module(root, module, &module->entry);
+    if (status.code == STATUS_FAIL) {
+        puts(status.what);
+        free_module(module);
+        return 1;
+    }
 
-    // // print_code(&module->entry, "\n");
-    // // print_constant_pool(&module->constant_pool);
-    // save_module_to_file(module, "out.bkod");
-    // free_module(module);
+    // print_code(&module->entry, "\n");
+    // print_constant_pool(&module->constant_pool);
+    save_module_to_file(module, "out.bkod");
+    free_module(module);
 
 
 
-    // module = load_module_from_file("out.bkod");
-    // if (!module) {
-    //     puts("no module");
-    //     return 1;
-    // }
+    module = load_module_from_file("out.bkod");
+    if (!module) {
+        puts("no module");
+        return 1;
+    }
 
-    // VirtualMachine vm = init_vm(module);
-    // Kod_Object* res = vm_run_entry(&vm);
-    // deref_object(res);
+    VirtualMachine vm = init_vm(module, false);
+    Kod_Object* res = vm_run_entry(&vm);
+    deref_object(res);
 
-    // destroy_vm(&vm);
-    // puts("\n\x1b[36m>>> \x1b[32mNO ERRORS\x1b[36m!\x1b[0m");
+    destroy_vm(&vm);
+    puts("\n\x1b[36m>>> \x1b[32mNO ERRORS\x1b[36m!\x1b[0m");
 
     return 0;
 }
