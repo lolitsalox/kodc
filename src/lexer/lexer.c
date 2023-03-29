@@ -238,6 +238,9 @@ int8_t str_compare(char* a, char* b, uint32_t length_a, uint32_t length_b) {
 }
 
 static keyword_type_t find_keyword(char* s, uint32_t length) {
+    if (str_compare(s, "null",    length, sizeof("null") - 1) == 0)         return KEYWORD_NULL;
+    if (str_compare(s, "true",    length, sizeof("true") - 1) == 0)         return KEYWORD_TRUE;
+    if (str_compare(s, "false",    length, sizeof("false") - 1) == 0)       return KEYWORD_FALSE;
     if (str_compare(s, "if",    length, sizeof("if") - 1) == 0)             return KEYWORD_IF;
     if (str_compare(s, "while", length, sizeof("while") - 1) == 0)          return KEYWORD_WHILE;
     if (str_compare(s, "for",   length, sizeof("for") - 1) == 0)            return KEYWORD_FOR;

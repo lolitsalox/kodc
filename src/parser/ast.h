@@ -12,6 +12,7 @@ typedef enum ast_type_t {
     AST_BLOCK,
     AST_CALL,
     AST_METHOD_CALL,
+    AST_METHOD_CALL,
     AST_SUBSCRIPT,
     AST_ACCESS,
     AST_UNARY_OP,
@@ -21,8 +22,11 @@ typedef enum ast_type_t {
     AST_IDENTIFIER,
     AST_INT,
     AST_FLOAT,
+    AST_INT,
+    AST_FLOAT,
     AST_STRING,
     AST_BOOL,
+    AST_NULL,
     AST_IF_STATEMENT,
     AST_WHILE_STATEMENT,
     AST_FOR_STATEMENT,
@@ -92,13 +96,15 @@ struct ast_node_t {
     ast_type_t ast_type;
     
     union {
-        linked_list_t ast_compound;
+        linked_list_t compound;
+        bool ast_bool;
         int64_t ast_int;
         double ast_float;
         ast_string_t ast_string;
         ast_assignment_t ast_assignment;
         ast_function_t ast_function;
         ast_call_t ast_call;
+        ast_method_call_t ast_method_call;
         ast_method_call_t ast_method_call;
         ast_unary_op_t ast_unary_op;
         ast_bin_op_t ast_bin_op;

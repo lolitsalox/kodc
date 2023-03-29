@@ -23,10 +23,13 @@ static char* constant_tag_to_str(enum ConstantTag constant_tag);
 
 static ConstantInformation read_constant(FILE* fp) {
     ConstantInformation constant;
+    constant.tag = CONSTANT_NULL;
 
     fread(&constant.tag, sizeof(constant.tag), 1, fp);
     switch (constant.tag) {
-        case CONSTANT_NULL:
+        case CONSTANT_NULL: break;
+        case CONSTANT_BOOL:
+            fread(&constant._bool, sizeof(constant._bool), 1, fp);
             break;
         case CONSTANT_INTEGER:
             fread(&constant._int, sizeof(constant._int), 1, fp);
@@ -50,9 +53,11 @@ static ConstantInformation read_constant(FILE* fp) {
             fread(&constant._code.size, sizeof(size_t), 1, fp);
             constant._code.code = malloc(constant._code.size);
             fread(constant._code.code, constant._code.size, 1, fp);
+            init_environment(&constant._code.parent_closure);
             break;
         default:
-            fputs("[read_constant] weird constant tag", stderr);
+            puts("[read_constant] weird constant tag");
+            constant.tag = CONSTANT_NULL;
             break;
     }
     return constant;
@@ -65,21 +70,21 @@ static size_t write_8(Code* code, uint8_t data) {
     return code->size - 1;
 }
 
-static size_t write_16(Code* code, uint16_t data) {
-    code->size += 2;
-    code->code = realloc(code->code, code->size * sizeof(uint8_t));
-    uint16_t* ptr = (uint16_t*)(code->code + code->size - 2);
-    *ptr = data;
-    return code->size - 2;
-}
+// static size_t write_16(Code* code, uint16_t data) {
+//     code->size += 2;
+//     code->code = realloc(code->code, code->size * sizeof(uint8_t));
+//     uint16_t* ptr = (uint16_t*)(code->code + code->size - 2);
+//     *ptr = data;
+//     return code->size - 2;
+// }
 
-static size_t write_32(Code* code, uint32_t data) {
-    code->size += 4;
-    code->code = realloc(code->code, code->size * sizeof(uint8_t));
-    uint32_t* ptr = (uint32_t*)(code->code + code->size - 4);
-    *ptr = data;
-    return code->size - 4;
-}
+// static size_t write_32(Code* code, uint32_t data) {
+//     code->size += 4;
+//     code->code = realloc(code->code, code->size * sizeof(uint8_t));
+//     uint32_t* ptr = (uint32_t*)(code->code + code->size - 4);
+//     *ptr = data;
+//     return code->size - 4;
+// }
 
 static size_t write_64(Code* code, uint64_t data) {
     code->size += 8;
@@ -306,16 +311,20 @@ CompiledModule* new_compiled_module(char* filename, uint16_t major, uint16_t min
     return compiled_module;
 }
 
-enum CompilationStatus compile_module(ast_node_t* root, CompiledModule* compiled_module, Code* code) {
-    if (!compiled_module || !root) return STATUS_FAIL;
+CompilationStatus compile_module(ast_node_t* root, CompiledModule* compiled_module, Code* code) {
+    if (!compiled_module) return (CompilationStatus){.code=STATUS_FAIL, .what="compiled_module is null"};
+    if (!root) return (CompilationStatus){.code=STATUS_FAIL, .what="ast node 'root' is null"};
+
+    CompilationStatus status = {.code=STATUS_OK, .what="Compiled successfully!"};
 
     switch (root->ast_type) {
         case AST_ROOT:
         case AST_BLOCK: {
-            linked_list_node_t* node = root->ast_compound.head;
+            linked_list_node_t* node = root->compound.head;
             while (node) {
                 
-                if (compile_module(node->item, compiled_module, code) != STATUS_OK) return STATUS_FAIL;
+                status = compile_module(node->item, compiled_module, code);
+                if (status.code == STATUS_FAIL) return status; 
                 switch (((ast_node_t*)node->item)->ast_type) {
                     case AST_ASSIGNMENT:
                     case AST_IF_STATEMENT:
@@ -323,6 +332,7 @@ enum CompilationStatus compile_module(ast_node_t* root, CompiledModule* compiled
                     case AST_FUNCTION:
                     case AST_RETURN_STATEMENT:
                     case AST_BLOCK:
+                    case AST_ROOT:
                         break;
                     default:
                         write_8(code, OP_POP_TOP);
@@ -333,13 +343,11 @@ enum CompilationStatus compile_module(ast_node_t* root, CompiledModule* compiled
         }
 
         case AST_ASSIGNMENT: {
-            if (compile_module(root->ast_assignment.right, compiled_module, code) != STATUS_OK) {
-                return STATUS_FAIL;
-            } // LOAD_CONST 0 (3)
+            status = compile_module(root->ast_assignment.right, compiled_module, code);
+            if (status.code == STATUS_FAIL) return status;
 
             if (root->ast_assignment.left->ast_type != AST_IDENTIFIER) {
-                fputs("[CompileModule]: Error - left side is not an identifier", stderr);
-                return STATUS_FAIL;
+                return (CompilationStatus){.code=STATUS_FAIL,.what="[CompileModule]: Error - left side is not an identifier"};
             }
 
             ast_string_t identifier = root->ast_assignment.left->ast_string;
@@ -355,8 +363,22 @@ enum CompilationStatus compile_module(ast_node_t* root, CompiledModule* compiled
             break;
         }
 
+        case AST_NULL: {
+            size_t index = update_constant_pool(&compiled_module->constant_pool, (ConstantInformation){.tag=CONSTANT_NULL});            
+            write_8(code, OP_LOAD_CONST);
+            write_64(code, index);
+            break;
+        }
+        
         case AST_INT: {
             size_t index = update_constant_pool(&compiled_module->constant_pool, (ConstantInformation){.tag=CONSTANT_INTEGER,._int=root->ast_int});            
+            write_8(code, OP_LOAD_CONST);
+            write_64(code, index);
+            break;
+        }
+        
+        case AST_BOOL: {
+            size_t index = update_constant_pool(&compiled_module->constant_pool, (ConstantInformation){.tag=CONSTANT_BOOL,._bool=root->ast_bool});            
             write_8(code, OP_LOAD_CONST);
             write_64(code, index);
             break;
@@ -408,14 +430,15 @@ enum CompilationStatus compile_module(ast_node_t* root, CompiledModule* compiled
         }
 
         case AST_UNARY_OP: {
-            if (compile_module(root->ast_unary_op.value, compiled_module, code) != STATUS_OK) return STATUS_FAIL;
+            status = compile_module(root->ast_unary_op.value, compiled_module, code);
+            if (status.code == STATUS_FAIL) return status;
             enum Operation op;
             switch (root->ast_unary_op.op) {
                 case TOKEN_ADD: op = OP_UNARY_ADD; break;
                 case TOKEN_SUB: op = OP_UNARY_SUB; break; 
                 case TOKEN_NOT: op = OP_UNARY_NOT; break; 
                 case TOKEN_BOOL_NOT: op = OP_UNARY_BOOL_NOT; break; 
-                default: return STATUS_FAIL;
+                default: return (CompilationStatus){.code=STATUS_FAIL, "congratulations, you've reached the unreachable"};
             }
             
             write_8(code, op);
@@ -423,8 +446,11 @@ enum CompilationStatus compile_module(ast_node_t* root, CompiledModule* compiled
         }
 
         case AST_BIN_OP: {
-            if (compile_module(root->ast_bin_op.left, compiled_module, code) != STATUS_OK) return STATUS_FAIL;
-            if (compile_module(root->ast_bin_op.right, compiled_module, code) != STATUS_OK) return STATUS_FAIL;
+            status = compile_module(root->ast_bin_op.left, compiled_module, code);
+            if (status.code == STATUS_FAIL) return status;
+            
+            status = compile_module(root->ast_bin_op.right, compiled_module, code);
+            if (status.code == STATUS_FAIL) return status;
             enum Operation op;
 
             switch (root->ast_bin_op.op) {
@@ -447,7 +473,7 @@ enum CompilationStatus compile_module(ast_node_t* root, CompiledModule* compiled
                 case TOKEN_BOOL_GTE:    op = OP_BINARY_BOOLEAN_GREATER_THAN_OR_EQUAL_TO; break;
                 case TOKEN_BOOL_LT:     op = OP_BINARY_BOOLEAN_LESS_THAN; break;
                 case TOKEN_BOOL_LTE:    op = OP_BINARY_BOOLEAN_LESS_THAN_OR_EQUAL_TO; break;
-                default: return STATUS_FAIL;
+                default: return (CompilationStatus){.code=STATUS_FAIL, "[CompileModule]: Error - dont know how to compile this op"};
             }
 
             write_8(code, op);
@@ -455,22 +481,29 @@ enum CompilationStatus compile_module(ast_node_t* root, CompiledModule* compiled
         }
 
         case AST_IF_STATEMENT: {
-            if (compile_module(root->ast_conditional_statement.expression, compiled_module, code) != STATUS_OK) return STATUS_FAIL;
+            status = compile_module(root->ast_conditional_statement.expression, compiled_module, code);
+            if (status.code == STATUS_FAIL) return status;
+
             write_8(code, OP_POP_JUMP_IF_FALSE);
             size_t offset = write_64(code, 0); // temporary
-            if (compile_module(root->ast_conditional_statement.body, compiled_module, code) != STATUS_OK) return STATUS_FAIL;
+
+            status = compile_module(root->ast_conditional_statement.body, compiled_module, code);
+            if (status.code == STATUS_FAIL) return status;
+
             *(uint64_t*)(code->code + offset) = code->size;
             break;
         }
 
         case AST_WHILE_STATEMENT: {
             size_t expr_offset = code->size;
-            if (compile_module(root->ast_conditional_statement.expression, compiled_module, code) != STATUS_OK) return STATUS_FAIL;
+            status = compile_module(root->ast_conditional_statement.expression, compiled_module, code);
+            if (status.code == STATUS_FAIL) return status;
 
             write_8(code, OP_POP_JUMP_IF_FALSE);
             size_t offset = write_64(code, 0); // temporary
 
-            if (compile_module(root->ast_conditional_statement.body, compiled_module, code) != STATUS_OK) return STATUS_FAIL;
+            status = compile_module(root->ast_conditional_statement.body, compiled_module, code);
+            if (status.code == STATUS_FAIL) return status;
             
             write_8(code, OP_JUMP);
             write_64(code, expr_offset);
@@ -486,22 +519,27 @@ enum CompilationStatus compile_module(ast_node_t* root, CompiledModule* compiled
                 size_t index = update_constant_pool(&compiled_module->constant_pool, (ConstantInformation){.tag=CONSTANT_NULL});
                 write_8(code, OP_LOAD_CONST);
                 write_64(code, index);
-            } else if (compile_module(value, compiled_module, code) != STATUS_OK) return STATUS_FAIL;
+            } else {
+                status = compile_module(value, compiled_module, code);
+                if (status.code == STATUS_FAIL) return status;
+            }
             
             write_8(code, OP_RETURN);
             break;
         }
 
         case AST_CALL: {
-            linked_list_node_t* curr_arg = root->ast_call.arguments->ast_compound.tail;
+            linked_list_node_t* curr_arg = root->ast_call.arguments->compound.tail;
             while (curr_arg) {
-                if (compile_module((ast_node_t*)curr_arg->item, compiled_module, code) != STATUS_OK) return STATUS_FAIL;
+                status = compile_module((ast_node_t*)curr_arg->item, compiled_module, code);
+                if (status.code == STATUS_FAIL) return status;
                 curr_arg = curr_arg->prev;
             }
             
-            if (compile_module(root->ast_call.callable, compiled_module, code) != STATUS_OK) return STATUS_FAIL;
+            status = compile_module(root->ast_call.callable, compiled_module, code);
+            if (status.code == STATUS_FAIL) return status;
             write_8(code, OP_CALL);
-            write_64(code, root->ast_call.arguments->ast_compound.size);
+            write_64(code, root->ast_call.arguments->compound.size);
             break;
         }
 
@@ -511,12 +549,11 @@ enum CompilationStatus compile_module(ast_node_t* root, CompiledModule* compiled
                     ._code={{0}},
             };
 
-            linked_list_node_t* curr_param = root->ast_function.parameters->ast_compound.head;
+            linked_list_node_t* curr_param = root->ast_function.parameters->compound.head;
             while (curr_param) {
                 ast_node_t* ident = ((ast_node_t*)curr_param->item);
                 if (ident->ast_type != AST_IDENTIFIER) {
-                    puts("[param is not an identifier]");
-                    exit(0);
+                    return (CompilationStatus){.code=STATUS_FAIL, "[CompileModule]: Error - param is not an identifier"};
                 }
                 
                 char* param_name = malloc(ident->ast_string.length + 1);
@@ -533,8 +570,8 @@ enum CompilationStatus compile_module(ast_node_t* root, CompiledModule* compiled
             }
             
             // Compiling function body
-            if (compile_module(root->ast_function.body, compiled_module, &constant_code._code) != STATUS_OK) return STATUS_FAIL;
-
+            status = compile_module(root->ast_function.body, compiled_module, &constant_code._code);
+            if (status.code == STATUS_FAIL) return status;
             
             char* fn_name = malloc(root->ast_function.name.length + 1);
             strncpy(fn_name, root->ast_function.name.value, root->ast_function.name.length);
@@ -566,10 +603,11 @@ enum CompilationStatus compile_module(ast_node_t* root, CompiledModule* compiled
 
         default:
             fprintf(stderr, "Visit for AST from type '%s' is not implemented yet\n", ast_type_to_str(root->ast_type));
+            status = (CompilationStatus){.code=STATUS_FAIL, .what="provided in stderr"};
             break;
     }
 
-    return STATUS_OK;
+    return status;
 }
 
 static void free_name_pool(NamePool name_pool) {
@@ -580,11 +618,14 @@ static void free_name_pool(NamePool name_pool) {
 }
 
 void free_code(Code code) {
-    if (code.name)
+    if (code.name) {
         free(code.name);
+    }
     free_string_array(&code.params);
     if (code.code)
         free(code.code);
+
+    free_environment(&code.parent_closure);
 }
 
 static void free_constant(ConstantInformation constant_info) {
@@ -674,7 +715,7 @@ CompiledModule* load_module_from_file(char* filename) {
     }
     
     char* file_name = NULL;
-    size_t file_name_size = read_until_null(fp, &file_name);
+    read_until_null(fp, &file_name);
     
     unsigned short major_version, minor_version;
     fread(&major_version, sizeof(uint16_t), 1, fp);

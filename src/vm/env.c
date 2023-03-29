@@ -46,6 +46,7 @@ Environment* new_environment() {
 }
 
 Kod_Object* get_environment(Environment* env, char* name) {
+    if (!env) return NULL;
     ObjectNamePairNode* curr_pair = env->head;
     while (curr_pair) {
         if (strcmp(curr_pair->object_name_pair.name, name) == 0) {
@@ -57,12 +58,14 @@ Kod_Object* get_environment(Environment* env, char* name) {
 }
 
 void set_environment(Environment* env, ObjectNamePair pair) {
+    if (!env) return;
     ObjectNamePairNode* curr_pair = env->head;
     // ref_object(pair.object);
 
     if (!curr_pair) {
         env->head = new_object_name_pair_node();
         env->head->object_name_pair.object = pair.object;
+
         size_t size = strlen(pair.name) + 1;
         env->head->object_name_pair.name = malloc(size);
         strncpy(env->head->object_name_pair.name, pair.name, size);
@@ -94,7 +97,7 @@ void update_environment(Environment* env, Environment* other) {
     if (!other || !env) return;
     ObjectNamePairNode* curr_pair = other->head;
     while (curr_pair) {
-        ++curr_pair->object_name_pair.object->ref_count;
+        ref_object(curr_pair->object_name_pair.object);
         set_environment(env, curr_pair->object_name_pair);
         curr_pair = curr_pair->next;
     }
@@ -110,6 +113,7 @@ void ref_environment(Environment* env) {
 }
 
 void print_environment(Environment* env) {
+    if (!env) return;
     ObjectNamePairNode* curr_pair = env->head;
     while (curr_pair) {
         printf("%s: %s\n", curr_pair->object_name_pair.name, object_type_to_str(curr_pair->object_name_pair.object->type));
@@ -122,6 +126,7 @@ void free_environment(Environment* env) {
     debug_print("FREEING ENV%s\n", "");
     ObjectNamePairNode* curr_pair = env->head;
     ObjectNamePairNode* next = NULL;
+
     while (curr_pair) {
         next = curr_pair->next;
         free_object_name_pair_node(curr_pair);

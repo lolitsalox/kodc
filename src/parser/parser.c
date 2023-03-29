@@ -85,7 +85,7 @@ static ast_node_t* parse_compound(parser_t* parser) {
         skip_newlines(parser);
         ast_node_t* value = parse_expression(parser);
         if (!value) continue;
-        linked_list_append(&compound->ast_compound, value);
+        linked_list_append(&compound->compound, value);
     }
 
     return compound;
@@ -110,7 +110,7 @@ static ast_node_t* parse_body(
 ) {
     // Create a new AST node for the block
     ast_node_t* body = ast_node_new(((ast_node_t){.ast_type=type}));
-    linked_list_init(&body->ast_compound);
+    linked_list_init(&body->compound);
 
     // Eat the left delimiter of the block
     eat(parser, left_delimiter);
@@ -125,7 +125,7 @@ static ast_node_t* parse_body(
         // Parse the item and add it to the block
         ast_node_t* value = parse_expression(parser);
         if (!value) continue;
-        linked_list_append(&body->ast_compound, value);
+        linked_list_append(&body->compound, value);
 
         if (type == AST_BLOCK && parser->current_token && parser->current_token->token_type == TOKEN_SEMI)
             eat(parser, TOKEN_SEMI);
@@ -178,6 +178,15 @@ static ast_node_t* parse_statement(parser_t* parser) {
 
 
     switch (keyword_type) {
+        case KEYWORD_NULL:
+            ast_node = ast_node_new((ast_node_t){.ast_type=AST_NULL});
+            break;
+            
+        case KEYWORD_TRUE:
+        case KEYWORD_FALSE:
+            ast_node = ast_node_new((ast_node_t){.ast_type=AST_BOOL,.ast_bool=keyword_type == KEYWORD_TRUE ? 1 : 0});
+            break;
+        
         case KEYWORD_IF: 
         case KEYWORD_WHILE: 
             ast_node = ast_node_new((ast_node_t){
@@ -507,11 +516,24 @@ static ast_node_t* parse_before(parser_t* parser) {
         ast_node_t* value = parse_before(parser);
 
         if (value->ast_type == AST_INT) {
+
+        if (value->ast_type == AST_INT) {
             switch (type) {
                 case TOKEN_ADD: return value;
                 case TOKEN_SUB: value->ast_int *= -1; return value;
                 case TOKEN_NOT: value->ast_int = ~((int64_t)value->ast_int); return value;
                 case TOKEN_BOOL_NOT: value->ast_int = !value->ast_int; return value;
+                case TOKEN_SUB: value->ast_int *= -1; return value;
+                case TOKEN_NOT: value->ast_int = ~((int64_t)value->ast_int); return value;
+                case TOKEN_BOOL_NOT: value->ast_int = !value->ast_int; return value;
+                default: break;
+            }
+        } else if (value->ast_type == AST_FLOAT) {
+            switch (type) {
+                case TOKEN_ADD: return value;
+                case TOKEN_SUB: value->ast_float *= -1; return value;
+                case TOKEN_BOOL_NOT: value->ast_float = !value->ast_float; return value;
+                case TOKEN_NOT: printf("[parser] - Error: can't use ~ on a float.\n"); exit(1);
                 default: break;
             }
         } else if (value->ast_type == AST_FLOAT) {
@@ -593,6 +615,28 @@ static ast_node_t* parse_after(parser_t* parser, ast_node_t* value) {
                 new_head->next = old_head;
                 list->ast_compound.size++;
                 list->ast_compound.head = new_head;
+
+                ast_node_t* method_call = ast_node_new((ast_node_t){
+                    .ast_type=AST_METHOD_CALL,
+                    .ast_method_call={
+                        .callable=value->ast_access.field,
+                        .arguments=list,
+                        .this=value->ast_access.value // dont really need this...
+                    }
+                });
+
+                return parse_after(parser, method_call);
+            }
+
+            if (value->ast_type == AST_ACCESS) {
+                // This is a method call.
+                linked_list_node_t* old_head = list->compound.head;
+
+                linked_list_node_t* new_head = malloc(sizeof(linked_list_node_t));  // the first param will be the `this`
+                new_head->item = value->ast_access.value;
+                new_head->next = old_head;
+                list->compound.size++;
+                list->compound.head = new_head;
 
                 ast_node_t* method_call = ast_node_new((ast_node_t){
                     .ast_type=AST_METHOD_CALL,
@@ -693,9 +737,17 @@ static ast_node_t* parse_factor(parser_t* parser) {
                 .ast_float = strtod(parser->current_token->value, NULL)
             }));
             break;
+            // Create a new AST node for the float literal.
+            ast_node = ast_node_new(((ast_node_t){
+                .ast_type = AST_FLOAT,
+                .ast_float = strtod(parser->current_token->value, NULL)
+            }));
+            break;
         case TOKEN_INT:
             // Create a new AST node for the numeric literal.
             ast_node = ast_node_new(((ast_node_t){
+                .ast_type = AST_INT,
+                .ast_int = _strtoi64(parser->current_token->value, NULL, 10)
                 .ast_type = AST_INT,
                 .ast_int = _strtoi64(parser->current_token->value, NULL, 10)
             }));
@@ -723,8 +775,8 @@ static ast_node_t* parse_factor(parser_t* parser) {
         case TOKEN_LPAREN: {
             // Parse a list of expressions inside the parentheses.
             ast_node_t* list = parse_list(parser, false);
-            if (list && list->ast_compound.size == 1) {
-                return list->ast_compound.head->item;
+            if (list && list->compound.size == 1) {
+                return list->compound.head->item;
             }
             return list;
         }
@@ -782,6 +834,7 @@ static ast_node_t* parse_factor(parser_t* parser) {
 
         // end of expression or whatever
         case TOKEN_NL: 
+        case TOKEN_SEMI: 
         case TOKEN_SEMI: 
         case TOKEN_EOF: break;
         

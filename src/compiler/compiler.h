@@ -3,10 +3,15 @@
 #include "../parser/ast.h"
 #include "../misc/StringArray.h"
 
-enum CompilationStatus {
+enum CompilationStatusCode {
     STATUS_OK,
     STATUS_FAIL,
 };
+
+typedef struct CompilationStatus {
+    enum CompilationStatusCode code;
+    char* what;
+} CompilationStatus;
 
 enum ConstantTag {
     CONSTANT_NULL,
@@ -17,11 +22,14 @@ enum ConstantTag {
     CONSTANT_CODE,    
 };
 
+#include "../vm/env.h"
+
 typedef struct Code {
     StringArray params;
     char* name;
     size_t size;
     uint8_t* code;
+    Environment parent_closure;
 } Code;
 
 typedef struct ConstantInformation {
@@ -63,7 +71,7 @@ typedef struct CompiledModule {
 CompiledModule* new_compiled_module(char* filename, uint16_t major, uint16_t minor);
 
 CompiledModule* new_compiled_module(char* filename, uint16_t major, uint16_t minor);
-enum CompilationStatus compile_module(ast_node_t* root, CompiledModule* compiled_module, Code* code);
+CompilationStatus compile_module(ast_node_t* root, CompiledModule* compiled_module, Code* code);
 
 void save_module_to_file(CompiledModule* compiled_module, char* filename);
 CompiledModule* load_module_from_file(char* filename);

@@ -1,16 +1,22 @@
 /* TODO: 
 * Load constant objects directly instead of creating new objects
 * add import
-* null, true, false and float, bool
+* add float, list, dict
 * implement more native methods
 * implement more keywords/statements
+* implement global types
+* format strings
+* multiple and keyword arguments and default values
 */
+
 sleep(seconds) {
-    i = 0
-    while i < seconds * 135000 {
-        i = i + 1
-    }
+    end = time() + seconds
+    while time() < end {}
 }
 
-print("start")
-sleep(3)
+i = 0
+while i < 10 {
+    print(i)
+    sleep(1)
+    i = i + 1
+}

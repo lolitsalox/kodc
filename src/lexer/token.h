@@ -65,6 +65,9 @@ typedef enum token_type_t {
 } token_type_t;
 
 typedef enum keyword_type_t {
+    KEYWORD_NULL,
+    KEYWORD_TRUE,
+    KEYWORD_FALSE,
     KEYWORD_IF,
     KEYWORD_WHILE,
     KEYWORD_FOR,
