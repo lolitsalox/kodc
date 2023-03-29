@@ -1,64 +1,22 @@
 /* TODO: 
 * Load constant objects directly instead of creating new objects
 * add import
-* add float
+* add float, list, dict
 * implement more native methods
 * implement more keywords/statements
 * implement global types
-* closures MAKE_CLOSURE (basically when there is MAKE_CLOSURE, map all the stuff into the code object's frame somehow)
-* or try not to free the frame of the function that surrounds the closure (this is the problem)
-*/
-/*
-f(x) {
-    return |g| {
-        print(g + x)
-    }
-}
-
-deco(f) {
-    return |x| {
-        f(x + 5)(x)
-    }
-}
-
-func = deco(f)
-func(10)
+* format strings
+* multiple and keyword arguments and default values
 */
 
-/*
-plus_one(number) {
-    return number + 1
+sleep(seconds) {
+    end = time() + seconds
+    while time() < end {}
 }
 
-function_call(function) {
-    number_to_add = 5
-    return function(number_to_add)
+i = 0
+while i < 10 {
+    print(i)
+    sleep(1)
+    i = i + 1
 }
-
-print(function_call(plus_one))
-
-
-
-print_message(message) {
-    message_sender() {
-        print(message)
-    }
-    message_sender()
-}
-
-print_message("Some random message")
-*/
-
-logger_generator(func) {
-    return |msg| {
-        print("Logger:", msg)
-        func()
-    }
-}
-
-logger = logger_generator(| | {
-    print("logging something")
-})
-
-logger("hello!")
-

@@ -381,6 +381,12 @@ Kod_Object* native_print(VirtualMachine* vm, CallFrame* parent_call_frame, Kod_O
     return new_null_object(); 
 }
 
+#include <time.h>
+
+Kod_Object* native_time(VirtualMachine* vm, CallFrame* parent_call_frame, Kod_Object** args, size_t size)  {
+    return new_int_object(time(NULL));
+}
+
 void free_native_attributes() {
     if (DEBUG) puts("\nFREEING NULL ATTRIBUTES");
     free_environment(&null_attributes);
@@ -504,6 +510,12 @@ void init_native_functions() {
         (ObjectNamePair){
             .name="print", 
             new_native_function_object("print", native_print)
+        }
+    );
+    set_environment(&native_functions, 
+        (ObjectNamePair){
+            .name="time", 
+            new_native_function_object("time", native_time)
         }
     );
 }
