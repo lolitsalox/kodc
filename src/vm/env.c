@@ -112,6 +112,15 @@ void ref_environment(Environment* env) {
     }
 }
 
+void deref_environment(Environment* env) {
+    if (!env) return;
+    ObjectNamePairNode* curr_pair = env->head;
+    while (curr_pair) {
+        deref_object(curr_pair->object_name_pair.object);
+        curr_pair = curr_pair->next;
+    }
+}
+
 void print_environment(Environment* env) {
     if (!env) return;
     ObjectNamePairNode* curr_pair = env->head;

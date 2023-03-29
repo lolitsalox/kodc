@@ -331,7 +331,7 @@ Kod_Object* native_int_method_str(VirtualMachine* vm, CallFrame* parent_call_fra
     return obj;
 }
 
-extern Kod_Object* run_code_object(VirtualMachine* vm, Code* code, CallFrame* parent_call_frame, Environment* initial_env);
+extern Kod_Object* run_code_object(VirtualMachine* vm, Code* code, CallFrame* parent_call_frame, Environment* initial_env, CallFrame* saved_frame);
 
 Kod_Object* native_print(VirtualMachine* vm, CallFrame* parent_call_frame, Kod_Object** args, size_t size) {
     if (!args) goto end;
@@ -355,7 +355,7 @@ Kod_Object* native_print(VirtualMachine* vm, CallFrame* parent_call_frame, Kod_O
                     Environment env;
                     init_environment(&env);
                     set_environment(&env, (ObjectNamePair){.name=str->_code.params.items[0], .object=args[i]});
-                    Kod_Object* str_object = run_code_object(vm, &str->_code, parent_call_frame, &env);
+                    Kod_Object* str_object = run_code_object(vm, &str->_code, parent_call_frame, &env, NULL);
                     if (str_object->type == OBJECT_STRING)
                         printf("%s ", str_object->_string);
                     else
@@ -583,7 +583,7 @@ Kod_Object* new_code_object(Code value) {
     init_environment(&attributes);
     update_environment(&attributes, &code_attributes);
     Kod_Object* obj = new_object(OBJECT_CODE, attributes);
-    init_environment(&obj->_code.parent_closure);
+    obj->_code.parent_closure = NULL;
     // obj->_code = deep_copy_code(value);
     debug_print("new code object at %p - ", obj);
     if (DEBUG) print_code(&obj->_code, "\n");

@@ -53,7 +53,7 @@ static ConstantInformation read_constant(FILE* fp) {
             fread(&constant._code.size, sizeof(size_t), 1, fp);
             constant._code.code = malloc(constant._code.size);
             fread(constant._code.code, constant._code.size, 1, fp);
-            init_environment(&constant._code.parent_closure);
+            constant._code.parent_closure = NULL;
             break;
         default:
             puts("[read_constant] weird constant tag");
@@ -625,7 +625,7 @@ void free_code(Code code) {
     if (code.code)
         free(code.code);
 
-    free_environment(&code.parent_closure);
+    deref_environment(code.parent_closure);
 }
 
 static void free_constant(ConstantInformation constant_info) {

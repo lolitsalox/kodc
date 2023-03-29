@@ -12,7 +12,6 @@ CallFrame init_call_frame(CallFrame* parent, Environment* globals) {
     init_environment(&frame.env);
     if (globals)
         frame.env = *globals;
-    // update_environment(&frame.env, globals);
     init_stack_object(&frame.stack);
     return frame;
 }
@@ -71,14 +70,15 @@ static void update_constant_object_pool(ConstObjectPool* cop, ConstPool* constan
 
 static bool initialized = false;
 
-VirtualMachine init_vm(CompiledModule* module) {
+VirtualMachine init_vm(CompiledModule* module, bool repl) {
     if (!initialized) {
         init_native_attributes();
         init_native_functions();
         initialized = true;
     }
-    VirtualMachine vm = (VirtualMachine){.module=module};
-    update_constant_object_pool(&vm.cop, &module->constant_pool);
+    VirtualMachine vm = (VirtualMachine){.module=module, .repl=repl};
+    if (module)
+        update_constant_object_pool(&vm.cop, &module->constant_pool);
     return vm;
 }
 extern int DEBUG;
@@ -86,20 +86,31 @@ void destroy_vm(VirtualMachine* vm) {
     // DEBUG = 1;
     if (DEBUG) puts("\nDESTROYING VM");
     // free_native();
+    initialized = false;
     free(vm->cop.data);
     free_native_attributes();
     free_module(vm->module);
 }
 
-Kod_Object* run_code_object(VirtualMachine* vm, Code* code, CallFrame* parent_call_frame, Environment* initial_env) {
+extern Kod_Object* native_print(VirtualMachine* vm, CallFrame* parent_call_frame, Kod_Object** args, size_t size);
+Kod_Object* run_code_object(VirtualMachine* vm, Code* code, CallFrame* parent_call_frame, Environment* initial_env, CallFrame* saved_frame) {
     debug_print("RUNNING CODE OBJECT\n%s", "");
     Kod_Object* return_value = NULL;
-    CallFrame frame = init_call_frame(parent_call_frame, initial_env);
+    
+    CallFrame frame;
+    if (!saved_frame)
+        frame = init_call_frame(parent_call_frame, initial_env);
+    else frame = *saved_frame;
+
     while (frame.ip < code->size) {
         enum Operation op = code->code[frame.ip++];
         switch (op) {
             case OP_POP_TOP: {
                 Kod_Object* object = object_stack_pop(&frame.stack);
+                if (object && object->type != OBJECT_NULL && vm->repl) {
+                    Kod_Object* args[] = {object};
+                    native_print(vm, &frame, args, 1);
+                }
                 deref_object(object);
                 break;
             }
@@ -111,7 +122,8 @@ Kod_Object* run_code_object(VirtualMachine* vm, Code* code, CallFrame* parent_ca
                 Kod_Object* obj = vm->cop.data + index;
                 ref_object(obj);
                 if (obj->type == OBJECT_CODE) {
-                    update_environment(&obj->_code.parent_closure, &frame.env);
+                    obj->_code.parent_closure = &frame.env;
+                    ref_environment(obj->_code.parent_closure);
                 }
                 object_stack_push(&frame.stack, obj);
                 break;
@@ -169,12 +181,12 @@ Kod_Object* run_code_object(VirtualMachine* vm, Code* code, CallFrame* parent_ca
                     case OBJECT_CODE:
                         Environment new_env;
                         init_environment(&new_env);
-                        update_environment(&new_env, &fn_object->_code.parent_closure);
+                        update_environment(&new_env, fn_object->_code.parent_closure);
                         for (size_t i = 0; i < fn_object->_code.params.size; ++i) {
                             Kod_Object* arg = object_stack_pop(&frame.stack);
                             set_environment(&new_env, (ObjectNamePair){.name=fn_object->_code.params.items[i], .object=arg});
                         }
-                        object_stack_push(&frame.stack, run_code_object(vm, &fn_object->_code, &frame, &new_env));
+                        object_stack_push(&frame.stack, run_code_object(vm, &fn_object->_code, &frame, &new_env, NULL));
 
                         break;
 
@@ -251,7 +263,7 @@ Kod_Object* run_code_object(VirtualMachine* vm, Code* code, CallFrame* parent_ca
                         Environment new_env;
                         init_environment(&new_env);
                         set_environment(&new_env, (ObjectNamePair){.name=name, .object=object});
-                        res = run_code_object(vm, &fn_object->_code, &frame, &new_env);
+                        res = run_code_object(vm, &fn_object->_code, &frame, &new_env, NULL);
 
                         if (res->type != OBJECT_BOOL) {
                             puts("RuntimeError: __bool__ did not return a bool value");
@@ -311,12 +323,17 @@ Kod_Object* run_code_object(VirtualMachine* vm, Code* code, CallFrame* parent_ca
         if (!found)
             return_value = new_null_object();
     } 
-    free_call_frame(&frame, &vm->cop);
+
+    if (!saved_frame)
+        free_call_frame(&frame, &vm->cop);
+    else *saved_frame = frame;
     return return_value;
 }
 
 Kod_Object* vm_run_entry(VirtualMachine* vm) {
-    Kod_Object* result = run_code_object(vm, &vm->module->entry, NULL, get_native_functions());
+    Environment* native_functions = get_native_functions();
+    ref_environment(native_functions);
+    Kod_Object* result = run_code_object(vm, &vm->module->entry, NULL, native_functions, NULL);
     return result;
 }
 
@@ -344,7 +361,7 @@ static void unary_op(VirtualMachine* vm, CallFrame* frame, Code* code, String un
             Environment new_env;
             init_environment(&new_env);
             set_environment(&new_env, (ObjectNamePair){.name=name, .object=object});
-            object_stack_push(&frame->stack, run_code_object(vm, &fn_object->_code, frame, &new_env));
+            object_stack_push(&frame->stack, run_code_object(vm, &fn_object->_code, frame, &new_env, NULL));
             break;
 
         default:
@@ -380,7 +397,7 @@ static void binary_op(VirtualMachine* vm, CallFrame* frame, Code* code, String b
                 Kod_Object* arg = object_stack_pop(&frame->stack);
                 set_environment(&new_env, (ObjectNamePair){.name=fn_object->_code.params.items[i], .object=arg});
             }
-            object_stack_push(&frame->stack, run_code_object(vm, &fn_object->_code, frame, &new_env));
+            object_stack_push(&frame->stack, run_code_object(vm, &fn_object->_code, frame, &new_env, NULL));
             break;
 
         default:

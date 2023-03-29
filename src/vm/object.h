@@ -55,6 +55,7 @@ void init_native_attributes();
 void init_native_functions();
 // void free_native();
 void free_native_attributes();
+void free_native_functions();
 
 Environment* get_native_functions();
 

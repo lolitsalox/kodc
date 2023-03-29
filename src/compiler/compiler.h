@@ -29,7 +29,7 @@ typedef struct Code {
     char* name;
     size_t size;
     uint8_t* code;
-    Environment parent_closure;
+    Environment* parent_closure;
 } Code;
 
 typedef struct ConstantInformation {

@@ -10,7 +10,7 @@ where gcc > nul 2>&1 || (
     exit /b 1
 )
 echo on
-gcc -Wall -o kod.exe %a%
+gcc -Wall -O3 -o kod.exe %a%
 @echo off
 echo.
 if %errorlevel% neq 0 (

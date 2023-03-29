@@ -114,7 +114,7 @@ static ast_node_t* parse_body(
 
     // Eat the left delimiter of the block
     eat(parser, left_delimiter);
-    
+
     // Skip any newlines before the first item
     skip_newlines(parser);
 
@@ -124,7 +124,10 @@ static ast_node_t* parse_body(
 
         // Parse the item and add it to the block
         ast_node_t* value = parse_expression(parser);
-        if (!value) continue;
+        if (!value) {
+            if (parser->current_token->token_type == right_delimiter)
+                continue;
+        }
         linked_list_append(&body->compound, value);
 
         if (type == AST_BLOCK && parser->current_token && parser->current_token->token_type == TOKEN_SEMI)
