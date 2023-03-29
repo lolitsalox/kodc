@@ -24,9 +24,7 @@ void repl(void) {
 
         uint32_t length = strlen(buffer) + 1;
         buffer[length] = 0;
-        if (buffer[length - 1] == '{') {
-
-        }
+        
         lexer_t lexer = lexer_init(buffer, length);
         parser_t parser = parser_init(&lexer);
         ast_node_t* root = parse(&parser);
@@ -39,7 +37,7 @@ void repl(void) {
 
         if (status.code == STATUS_FAIL) {
             puts(status.what);
-            break;
+            continue;
         }
 
         // print_code(&module->entry, "\n");

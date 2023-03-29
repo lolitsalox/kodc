@@ -77,5 +77,6 @@ Kod_Object* new_native_function_object(char* name, NativeFunction callable);
 Environment get_null_attributes();
 Environment get_bool_attributes();
 Environment get_int_attributes();
+Environment get_float_attributes();
 Environment get_string_attributes();
 Environment get_code_attributes();

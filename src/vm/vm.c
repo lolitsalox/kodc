@@ -46,10 +46,11 @@ static void update_constant_object_pool(ConstObjectPool* cop, ConstPool* constan
                 obj->attributes = get_int_attributes();
                 obj->_int = ci._int;
                 break;
-            // case CONSTANT_FLOAT: 
-            //     obj->type = OBJECT_FLOAT;
-            //     obj->attributes = get_int_attributes();
-            //     obj->_int = ci._int;
+            case CONSTANT_FLOAT: 
+                obj->type = OBJECT_FLOAT;
+                obj->attributes = get_float_attributes();
+                obj->_float = ci._float;
+                break;
             case CONSTANT_ASCII: 
                 obj->type = OBJECT_STRING;
                 obj->attributes = get_string_attributes();
