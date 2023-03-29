@@ -4,6 +4,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "native/null.h"
+#include "native/bool.h"
+#include "native/int.h"
+#include "native/float.h"
+#include "native/string.h"
+#include "native/code.h"
+
 static void unary_op(VirtualMachine* vm, CallFrame* frame, Code* code, String unary_name);
 static void binary_op(VirtualMachine* vm, CallFrame* frame, Code* code, String binary_name);
 
@@ -34,31 +41,31 @@ static void update_constant_object_pool(ConstObjectPool* cop, ConstPool* constan
         switch (ci.tag) {
             case CONSTANT_NULL: 
                 obj->type = OBJECT_NULL;
-                obj->attributes = get_null_attributes();
+                obj->attributes = *get_null_attributes();
                 break;
             case CONSTANT_BOOL: 
                 obj->type = OBJECT_BOOL;
-                obj->attributes = get_bool_attributes();
+                obj->attributes = *get_bool_attributes();
                 obj->_bool = ci._bool;
                 break;
             case CONSTANT_INTEGER: 
                 obj->type = OBJECT_INTEGER;
-                obj->attributes = get_int_attributes();
+                obj->attributes = *get_int_attributes();
                 obj->_int = ci._int;
                 break;
             case CONSTANT_FLOAT: 
                 obj->type = OBJECT_FLOAT;
-                obj->attributes = get_float_attributes();
+                obj->attributes = *get_float_attributes();
                 obj->_float = ci._float;
                 break;
             case CONSTANT_ASCII: 
                 obj->type = OBJECT_STRING;
-                obj->attributes = get_string_attributes();
+                obj->attributes = *get_string_attributes();
                 obj->_string = ci._string;
                 break;
             case CONSTANT_CODE: 
                 obj->type = OBJECT_CODE;
-                obj->attributes = get_code_attributes();
+                obj->attributes = *get_code_attributes();
                 obj->_code = ci._code;
                 break;
             default:

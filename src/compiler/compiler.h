@@ -80,7 +80,7 @@ void free_module(CompiledModule* compiled_module);
 
 void free_code(Code code);
 
-void print_code(Code* code, char* end);
+void print_code(Code* code, char* end, ConstPool* constant_pool, NamePool* name_pool);
 void print_constant_information(ConstantInformation* constant_information);
 void print_name_pool(NamePool* name_pool);
 void print_constant_pool(ConstPool* constant_pool);

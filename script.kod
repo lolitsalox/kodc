@@ -1,13 +1,14 @@
 /* TODO: 
 * Load constant objects directly instead of creating new objects
 * add import
-* add float, list, dict
+* add list, dict
 * implement more native methods
 * implement more keywords/statements
 * implement global types
 * format strings
 * multiple and keyword arguments and default values
 * repl
+* with statement
 */
 
 /*

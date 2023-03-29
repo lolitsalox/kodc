@@ -24,7 +24,7 @@ void repl(void) {
 
         uint32_t length = strlen(buffer) + 1;
         buffer[length] = 0;
-        
+
         lexer_t lexer = lexer_init(buffer, length);
         parser_t parser = parser_init(&lexer);
         ast_node_t* root = parse(&parser);
@@ -32,7 +32,7 @@ void repl(void) {
 
         
         CompilationStatus status = compile_module(root, module, &module->entry);
-        // print_code(&module->entry, "\n");
+        // print_code(&module->entry, "\n", &module->constant_pool, &module->name_pool);
         vm = init_vm(module, true);
 
         if (status.code == STATUS_FAIL) {
