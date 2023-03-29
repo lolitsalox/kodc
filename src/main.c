@@ -47,19 +47,22 @@ print(f(2))\n\
     CompilationStatus status = compile_module(root, module, &module->entry);
     puts(status.what);
     if (status.code == STATUS_FAIL) {
-        fputs("\x1b[31m!!!Error while compiling!!!\x1b[0m", stderr);
+        free_module(module);
         return 1;
     }
 
-    // save_module_to_file(module, "out.bkod");
+    // print_code(&module->entry, "\n");
+    // print_constant_pool(&module->constant_pool);
+    save_module_to_file(module, "out.bkod");
+    free_module(module);
 
-    puts("\x1b[32m!!!Compilation success!!!\x1b[0m");
 
-    // module = load_module_from_file("out.bkod");
-    // if (!module) {
-    //     puts("no module");
-    //     return 1;
-    // }
+
+    module = load_module_from_file("out.bkod");
+    if (!module) {
+        puts("no module");
+        return 1;
+    }
 
     VirtualMachine vm = init_vm(module);
     Kod_Object* res = vm_run_entry(&vm);

@@ -22,11 +22,14 @@ enum ConstantTag {
     CONSTANT_CODE,    
 };
 
+#include "../vm/env.h"
+
 typedef struct Code {
     StringArray params;
     char* name;
     size_t size;
     uint8_t* code;
+    Environment parent_closure;
 } Code;
 
 typedef struct ConstantInformation {

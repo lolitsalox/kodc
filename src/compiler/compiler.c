@@ -23,10 +23,13 @@ static char* constant_tag_to_str(enum ConstantTag constant_tag);
 
 static ConstantInformation read_constant(FILE* fp) {
     ConstantInformation constant;
+    constant.tag = CONSTANT_NULL;
 
     fread(&constant.tag, sizeof(constant.tag), 1, fp);
     switch (constant.tag) {
-        case CONSTANT_NULL:
+        case CONSTANT_NULL: break;
+        case CONSTANT_BOOL:
+            fread(&constant._bool, sizeof(constant._bool), 1, fp);
             break;
         case CONSTANT_INTEGER:
             fread(&constant._int, sizeof(constant._int), 1, fp);
@@ -50,9 +53,11 @@ static ConstantInformation read_constant(FILE* fp) {
             fread(&constant._code.size, sizeof(size_t), 1, fp);
             constant._code.code = malloc(constant._code.size);
             fread(constant._code.code, constant._code.size, 1, fp);
+            init_environment(&constant._code.parent_closure);
             break;
         default:
-            fputs("[read_constant] weird constant tag", stderr);
+            puts("[read_constant] weird constant tag");
+            constant.tag = CONSTANT_NULL;
             break;
     }
     return constant;
@@ -613,11 +618,14 @@ static void free_name_pool(NamePool name_pool) {
 }
 
 void free_code(Code code) {
-    if (code.name)
+    if (code.name) {
         free(code.name);
+    }
     free_string_array(&code.params);
     if (code.code)
         free(code.code);
+
+    free_environment(&code.parent_closure);
 }
 
 static void free_constant(ConstantInformation constant_info) {

@@ -1,16 +1,64 @@
 /* TODO: 
 * Load constant objects directly instead of creating new objects
 * add import
-* null, true, false and float, bool
+* add float
 * implement more native methods
 * implement more keywords/statements
+* implement global types
+* closures MAKE_CLOSURE (basically when there is MAKE_CLOSURE, map all the stuff into the code object's frame somehow)
+* or try not to free the frame of the function that surrounds the closure (this is the problem)
 */
-sleep(seconds) {
-    i = 0
-    while i < seconds * 135000 {
-        i = i + 1
+/*
+f(x) {
+    return |g| {
+        print(g + x)
     }
 }
 
-print("start")
-sleep(3)
+deco(f) {
+    return |x| {
+        f(x + 5)(x)
+    }
+}
+
+func = deco(f)
+func(10)
+*/
+
+/*
+plus_one(number) {
+    return number + 1
+}
+
+function_call(function) {
+    number_to_add = 5
+    return function(number_to_add)
+}
+
+print(function_call(plus_one))
+
+
+
+print_message(message) {
+    message_sender() {
+        print(message)
+    }
+    message_sender()
+}
+
+print_message("Some random message")
+*/
+
+logger_generator(func) {
+    return |msg| {
+        print("Logger:", msg)
+        func()
+    }
+}
+
+logger = logger_generator(| | {
+    print("logging something")
+})
+
+logger("hello!")
+

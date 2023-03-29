@@ -83,11 +83,11 @@ VirtualMachine init_vm(CompiledModule* module) {
 }
 extern int DEBUG;
 void destroy_vm(VirtualMachine* vm) {
-    DEBUG = 1;
+    // DEBUG = 1;
     if (DEBUG) puts("\nDESTROYING VM");
     // free_native();
-    free_native_attributes();
     free(vm->cop.data);
+    free_native_attributes();
     free_module(vm->module);
 }
 
@@ -109,7 +109,10 @@ Kod_Object* run_code_object(VirtualMachine* vm, Code* code, CallFrame* parent_ca
                 frame.ip += sizeof(size_t);
                 if (index >= vm->cop.size) break;
                 Kod_Object* obj = vm->cop.data + index;
-                ++obj->ref_count;
+                ref_object(obj);
+                if (obj->type == OBJECT_CODE) {
+                    update_environment(&obj->_code.parent_closure, &frame.env);
+                }
                 object_stack_push(&frame.stack, obj);
                 break;
             }
@@ -166,6 +169,7 @@ Kod_Object* run_code_object(VirtualMachine* vm, Code* code, CallFrame* parent_ca
                     case OBJECT_CODE:
                         Environment new_env;
                         init_environment(&new_env);
+                        update_environment(&new_env, &fn_object->_code.parent_closure);
                         for (size_t i = 0; i < fn_object->_code.params.size; ++i) {
                             Kod_Object* arg = object_stack_pop(&frame.stack);
                             set_environment(&new_env, (ObjectNamePair){.name=fn_object->_code.params.items[i], .object=arg});
@@ -179,6 +183,7 @@ Kod_Object* run_code_object(VirtualMachine* vm, Code* code, CallFrame* parent_ca
                         frame.ip = code->size;
                         break;
                 }
+                deref_object(fn_object);
                 break;
             }
 
@@ -198,6 +203,16 @@ Kod_Object* run_code_object(VirtualMachine* vm, Code* code, CallFrame* parent_ca
                 size_t addr = *(size_t*)(code->code + frame.ip);
                 frame.ip += sizeof(size_t);
                 Kod_Object* object = object_stack_pop(&frame.stack);
+
+                switch (object->type) {
+                    case OBJECT_NULL: {
+                        // todo check primitives
+
+                        break;
+                    }
+                    default: break;
+                }
+
                 Kod_Object* fn_object = get_environment(&object->attributes, "__bool__");
                 if (!fn_object) {
                     fprintf(stderr, "__bool__ was not found for object of type %s\n", object_type_to_str(object->type));
@@ -237,7 +252,7 @@ Kod_Object* run_code_object(VirtualMachine* vm, Code* code, CallFrame* parent_ca
                         init_environment(&new_env);
                         set_environment(&new_env, (ObjectNamePair){.name=name, .object=object});
                         res = run_code_object(vm, &fn_object->_code, &frame, &new_env);
-                        
+
                         if (res->type != OBJECT_BOOL) {
                             puts("RuntimeError: __bool__ did not return a bool value");
                             frame.ip = code->size;
@@ -284,8 +299,18 @@ Kod_Object* run_code_object(VirtualMachine* vm, Code* code, CallFrame* parent_ca
         }
     }
     // print_environment(&frame.env);
-    if (!return_value)
-        return_value = new_null_object();
+    if (!return_value) {
+        bool found = false;
+        for (size_t i = 0; !found && (i < vm->cop.size); ++i) {
+            if (vm->cop.data[i].type == OBJECT_NULL) {
+                ref_object(&vm->cop.data[i]);
+                return_value = &vm->cop.data[i];
+                found = true;
+            }
+        }
+        if (!found)
+            return_value = new_null_object();
+    } 
     free_call_frame(&frame, &vm->cop);
     return return_value;
 }

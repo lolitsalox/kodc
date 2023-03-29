@@ -184,7 +184,7 @@ static ast_node_t* parse_statement(parser_t* parser) {
             
         case KEYWORD_TRUE:
         case KEYWORD_FALSE:
-            ast_node = ast_node_new((ast_node_t){.ast_type=AST_BOOL,.ast_bool=parse_expression(parser)});
+            ast_node = ast_node_new((ast_node_t){.ast_type=AST_BOOL,.ast_bool=keyword_type == KEYWORD_TRUE ? 1 : 0});
             break;
         
         case KEYWORD_IF: 

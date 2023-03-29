@@ -59,7 +59,7 @@ void free_native_attributes();
 Environment* get_native_functions();
 
 Kod_Object* new_object(enum Kod_ObjectType type, Environment attributes);
-Kod_Object* new_null_object();
+
 void free_object(Kod_Object* object);
 
 void ref_object(Kod_Object* object);

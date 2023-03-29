@@ -60,6 +60,50 @@ Kod_Object* native_string_method_bool(VirtualMachine* vm, CallFrame* parent_call
     return new_bool_object(false);
 }
 
+Kod_Object* native_bool_method_str(VirtualMachine* vm, CallFrame* parent_call_frame, Kod_Object** args, size_t size) {
+    if (size < 1) {
+        for (size_t i = 0; i < vm->cop.size; ++i) {
+            if (vm->cop.data[i].type == OBJECT_NULL) {
+                ref_object(&vm->cop.data[i]);
+                return &vm->cop.data[i];
+            }
+        }
+        return new_null_object(); 
+    }
+    Kod_Object* self = args[0];
+    if (self->_bool) {
+        for (size_t i = 0; i < vm->cop.size; ++i) {
+            if (vm->cop.data[i].type == OBJECT_STRING && strcmp(vm->cop.data[i]._string, "true") == 0) {
+                ref_object(&vm->cop.data[i]);
+                return &vm->cop.data[i];
+            }
+        }
+        return new_string_object("true");
+    }
+    for (size_t i = 0; i < vm->cop.size; ++i) {
+        if (vm->cop.data[i].type == OBJECT_STRING && strcmp(vm->cop.data[i]._string, "false") == 0) {
+            ref_object(&vm->cop.data[i]);
+            return &vm->cop.data[i];
+        }
+    }
+    return new_string_object("false");
+}
+
+Kod_Object* native_bool_method_bool(VirtualMachine* vm, CallFrame* parent_call_frame, Kod_Object** args, size_t size) {
+    if (size < 1) {
+        for (size_t i = 0; i < vm->cop.size; ++i) {
+            if (vm->cop.data[i].type == OBJECT_NULL) {
+                ref_object(&vm->cop.data[i]);
+                return &vm->cop.data[i];
+            }
+        }
+        return new_null_object(); 
+    }
+    Kod_Object* self = args[0];
+    ref_object(self);
+    return self;
+}
+
 Kod_Object* native_null_method_bool(VirtualMachine* vm, CallFrame* parent_call_frame, Kod_Object** args, size_t size) {
     for (size_t i = 0; i < vm->cop.size; ++i) {
         if (vm->cop.data[i].type == OBJECT_BOOL && vm->cop.data[i]._bool == false) {
@@ -91,7 +135,22 @@ Kod_Object* native_int_method_bool(VirtualMachine* vm, CallFrame* parent_call_fr
         return new_null_object(); 
     }
     Kod_Object* self = args[0];
-    return new_bool_object(!!self->_int);
+    if (self->_int) {
+        for (size_t i = 0; i < vm->cop.size; ++i) {
+            if (vm->cop.data[i].type == OBJECT_BOOL && vm->cop.data[i]._bool == true) {
+                ref_object(&vm->cop.data[i]);
+                return &vm->cop.data[i];
+            }
+        }
+        return new_bool_object(true);
+    }
+    for (size_t i = 0; i < vm->cop.size; ++i) {
+        if (vm->cop.data[i].type == OBJECT_BOOL && vm->cop.data[i]._bool == false) {
+            ref_object(&vm->cop.data[i]);
+            return &vm->cop.data[i];
+        }
+    }
+    return new_bool_object(false);
 }
 
 Kod_Object* native_int_method_unary_add(VirtualMachine* vm, CallFrame* parent_call_frame, Kod_Object** args, size_t size) {
@@ -288,6 +347,7 @@ Kod_Object* native_print(VirtualMachine* vm, CallFrame* parent_call_frame, Kod_O
                     Kod_Object* str_args[] = {args[i]};
                     Kod_Object* str_object = str->_function.callable(vm, parent_call_frame, str_args, 1);
                     printf("%s ", str_object->_string);
+                    if (DEBUG) puts("");
                     deref_object(str_object);
                     break;
                 }
@@ -300,6 +360,7 @@ Kod_Object* native_print(VirtualMachine* vm, CallFrame* parent_call_frame, Kod_O
                         printf("%s ", str_object->_string);
                     else
                         puts("RuntimeError: did not recieve a string object from __str__");
+                    if (DEBUG) puts("");
                     deref_object(str_object);
                     break;
                 }
@@ -311,7 +372,13 @@ Kod_Object* native_print(VirtualMachine* vm, CallFrame* parent_call_frame, Kod_O
     }
     end:
     puts("");
-    return new_null_object();
+    for (size_t i = 0; i < vm->cop.size; ++i) {
+        if (vm->cop.data[i].type == OBJECT_NULL) {
+            ref_object(&vm->cop.data[i]);
+            return &vm->cop.data[i];
+        }
+    }
+    return new_null_object(); 
 }
 
 void free_native_attributes() {
@@ -415,6 +482,20 @@ void init_native_attributes() {
             new_native_function_object("__bool__", native_string_method_bool)
         }
     );
+
+    init_environment(&bool_attributes);
+    set_environment(&bool_attributes, 
+        (ObjectNamePair){
+            .name="__str__", 
+            new_native_function_object("__str__", native_bool_method_str)
+        }
+    );
+    set_environment(&bool_attributes, 
+        (ObjectNamePair){
+            .name="__bool__", 
+            new_native_function_object("__bool__", native_bool_method_bool)
+        }
+    );
 }
 
 void init_native_functions() {
@@ -490,6 +571,7 @@ Kod_Object* new_code_object(Code value) {
     init_environment(&attributes);
     update_environment(&attributes, &code_attributes);
     Kod_Object* obj = new_object(OBJECT_CODE, attributes);
+    init_environment(&obj->_code.parent_closure);
     // obj->_code = deep_copy_code(value);
     debug_print("new code object at %p - ", obj);
     if (DEBUG) print_code(&obj->_code, "\n");
