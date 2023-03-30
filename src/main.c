@@ -60,11 +60,11 @@ void repl(void) {
 
         free_code(module->entry);
         module->entry = (Code) {.code=NULL, .params=init_string_array(), .size=0};
-    } while (strcmp(buffer, "exit\n") != 0);
+    } while (vm.running);
 
     free_call_frame(&main_frame, &vm.cop);
     destroy_vm(&vm);
-    puts("\n\x1b[36m>>> \x1b[32mNO ERRORS\x1b[36m!\x1b[0m");
+    puts("\x1b[36m>>> \x1b[32mNO ERRORS\x1b[36m!\x1b[0m");
 
 }
 

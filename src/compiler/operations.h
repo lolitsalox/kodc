@@ -5,6 +5,7 @@ enum Operation {
     OP_LOAD_CONST,      // direct: constant index, stack: none
     OP_LOAD_NAME,       // direct: name index, stack: none
     OP_LOAD_ATTRIBUTE,  // direct: attribute index, stack: this
+    OP_LOAD_METHOD,     // direct: attribute index, stack: this
 
     // STOREs
     OP_STORE_NAME,      // direct: name index, stack: object
@@ -43,7 +44,6 @@ enum Operation {
     
     // FUNCTIONs
     OP_CALL,                // direct: argument count, stack: object, ...
-    OP_CALL_METHOD,         // direct: argument count, stack: object, ..., self object
     OP_RETURN,              // direct: none, stack: object
 
     // LOOPs

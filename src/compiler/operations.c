@@ -8,7 +8,7 @@ char* op_to_str(enum Operation op) {
         case OP_STORE_NAME:         return "STORE_NAME";       
         case OP_STORE_ATTRIBUTE:    return "STORE_ATTRIBUTE";  
         case OP_CALL:               return "CALL";               
-        case OP_CALL_METHOD:        return "CALL_METHOD";        
+        case OP_LOAD_METHOD:        return "LOAD_METHOD";        
         case OP_RETURN:             return "RETURN";             
         case OP_JUMP:               return "JUMP";               
         case OP_POP_JUMP_IF_FALSE:  return "POP_JUMP_IF_FALSE";  

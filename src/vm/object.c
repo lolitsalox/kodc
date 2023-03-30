@@ -70,6 +70,11 @@ Kod_Object* native_time(VirtualMachine* vm, CallFrame* parent_call_frame, Kod_Ob
     return new_int_object(time(NULL));
 }
 
+Kod_Object* native_exit(VirtualMachine* vm, CallFrame* parent_call_frame, Kod_Object** args, size_t size)  {
+    vm->running = false;
+    return get_null_object(&vm->cop);
+}
+
 void free_native_attributes() {
     if (DEBUG) puts("\nFREEING NULL ATTRIBUTES");
     free_environment(get_null_attributes());
@@ -106,6 +111,7 @@ void init_native_attributes() {
 
     init_string_attributes();
     init_code_attributes();
+
 }
 
 void init_native_functions() {
@@ -120,6 +126,12 @@ void init_native_functions() {
         (ObjectNamePair){
             .name="time", 
             new_native_function_object("time", native_time)
+        }
+    );
+    set_environment(&native_functions, 
+        (ObjectNamePair){
+            .name="exit", 
+            new_native_function_object("exit", native_exit)
         }
     );
 }

@@ -18,6 +18,7 @@ typedef enum ast_type_t {
     AST_BIN_OP,
     AST_FUNCTION,
     AST_ASSIGNMENT,
+    AST_STORE_ATTR,
     AST_IDENTIFIER,
     AST_INT,
     AST_FLOAT,
@@ -38,9 +39,14 @@ typedef struct ast_string_t {
 } ast_string_t;
 
 typedef struct ast_assignment_t {
-    ast_node_t* left;
+    ast_node_t* left; // must be id
     ast_node_t* right;
 } ast_assignment_t;
+
+typedef struct ast_store_attr_t {
+    ast_node_t* left; // must be access
+    ast_node_t* right;
+} ast_store_attr_t;
 
 typedef struct ast_unary_op_t {
     ast_node_t* value;
@@ -65,7 +71,7 @@ typedef struct ast_call_t {
 } ast_call_t;
 
 typedef struct ast_method_call_t {
-    ast_node_t* callable;
+    ast_node_t* callable;  // must be id
     ast_node_t* arguments; // must be list
     ast_node_t* this;
 } ast_method_call_t;
@@ -99,6 +105,7 @@ struct ast_node_t {
         double ast_float;
         ast_string_t ast_string;
         ast_assignment_t ast_assignment;
+        ast_store_attr_t ast_store_attr;
         ast_function_t ast_function;
         ast_call_t ast_call;
         ast_method_call_t ast_method_call;

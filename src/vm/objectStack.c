@@ -43,7 +43,7 @@ Kod_Object* object_stack_top(ObjectStack* stack) {
 Kod_Object* object_stack_pop(ObjectStack* stack) {
     Kod_Object* top = object_stack_top(stack);
     if (!top) {
-        fputs("CANT POP FROM AN EMPTY STACK", stderr);
+        puts("CANT POP FROM AN EMPTY STACK");
         return NULL;
     }
     ObjectNode* down = stack->top->down;

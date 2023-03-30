@@ -84,7 +84,7 @@ VirtualMachine init_vm(CompiledModule* module, bool repl) {
         init_native_functions();
         initialized = true;
     }
-    VirtualMachine vm = (VirtualMachine){.module=module, .repl=repl};
+    VirtualMachine vm = (VirtualMachine){.module=module, .repl=repl, .running=true};
     if (module)
         update_constant_object_pool(&vm.cop, &module->constant_pool);
     return vm;
@@ -110,7 +110,7 @@ Kod_Object* run_code_object(VirtualMachine* vm, Code* code, CallFrame* parent_ca
         frame = init_call_frame(parent_call_frame, initial_env);
     else frame = *saved_frame;
 
-    while (frame.ip < code->size) {
+    while (vm->running && frame.ip < code->size) {
         enum Operation op = code->code[frame.ip++];
         switch (op) {
             case OP_POP_TOP: {
@@ -147,6 +147,22 @@ Kod_Object* run_code_object(VirtualMachine* vm, Code* code, CallFrame* parent_ca
                 break;
             }
 
+            case OP_STORE_ATTRIBUTE: {
+                size_t index = *(size_t*)(code->code + frame.ip);
+                frame.ip += sizeof(size_t);
+                char* name = vm->module->name_pool.data[index];
+                Kod_Object* object = object_stack_pop(&frame.stack);
+                debug_print("STORE_NAME%s\n", "");
+                if (!get_environment(&object->attributes, name)) {
+                    printf("AttributeError: '%s' object has no attribute '%s'\n", object_type_to_str(object->type), name);
+                    frame.ip = code->size; break;
+                }
+                
+                Kod_Object* object_to_store = object_stack_pop(&frame.stack);
+                set_environment(&object->attributes, (ObjectNamePair){name, object_to_store});
+                break;
+            }
+
             case OP_LOAD_NAME: {
                 size_t index = *(size_t*)(code->code + frame.ip);
                 frame.ip += sizeof(size_t);
@@ -156,12 +172,12 @@ Kod_Object* run_code_object(VirtualMachine* vm, Code* code, CallFrame* parent_ca
                 while (!(obj = get_environment(&curr_frame->env, name))) {
                     curr_frame = curr_frame->parent;
                     if (!curr_frame) {
-                        printf("NameError: %s is not defined\n", name);
+                        printf("NameError: '%s' is not defined\n", name);
                         frame.ip = code->size; break;
                     } 
                 }
                 if (frame.ip == code->size) break;
-                ++obj->ref_count;
+                ref_object(obj);
                 object_stack_push(&frame.stack, obj);
                 break;
             }
@@ -199,11 +215,39 @@ Kod_Object* run_code_object(VirtualMachine* vm, Code* code, CallFrame* parent_ca
                         break;
 
                     default:
-                        fputs("fn_object is not callable??", stderr);
+                        puts("fn_object is not callable??");
                         frame.ip = code->size;
                         break;
                 }
                 deref_object(fn_object);
+                break;
+            }
+
+            case OP_LOAD_ATTRIBUTE:
+            case OP_LOAD_METHOD: {
+                Kod_Object* object = NULL;
+                if (op == OP_LOAD_ATTRIBUTE) {
+                    object = object_stack_pop(&frame.stack);
+                } else {
+                    object = object_stack_top(&frame.stack);
+                }
+                
+                size_t index = *(size_t*)(code->code + frame.ip);
+                frame.ip += sizeof(size_t);
+                char* name = vm->module->name_pool.data[index];
+
+                Kod_Object* field = get_environment(&object->attributes, name);
+                if (!field) {
+                    fprintf(stderr, "field %s was not found for object of type %s\n", name, object_type_to_str(object->type));
+                    frame.ip = code->size;
+                    break;
+                }
+
+                if (op == OP_LOAD_ATTRIBUTE)
+                    deref_object(object);
+                    
+                ref_object(field);
+                object_stack_push(&frame.stack, field); // make native method objects or just fix the objects
                 break;
             }
 
@@ -257,7 +301,6 @@ Kod_Object* run_code_object(VirtualMachine* vm, Code* code, CallFrame* parent_ca
                         else if (!res->_bool)
                             frame.ip = addr;
 
-                        deref_object(object);
                         deref_object(res);
                         break;
 
@@ -287,6 +330,7 @@ Kod_Object* run_code_object(VirtualMachine* vm, Code* code, CallFrame* parent_ca
                         fputs("__bool__ is not callable??", stderr);
                         break;
                 }
+                deref_object(object);
                 break;
             }
 

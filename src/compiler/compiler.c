@@ -125,6 +125,9 @@ void print_bytecode(Code* code, char* end, ConstPool* constant_pool, NamePool* n
             case OP_LOAD_CONST:
             case OP_STORE_NAME:
             case OP_CALL:
+            case OP_LOAD_METHOD:
+            case OP_LOAD_ATTRIBUTE:
+            case OP_STORE_ATTRIBUTE:
                 printf("%-25s", op_to_str(op));
                 i++;
                 if (code->size < i + 8) {
@@ -136,6 +139,9 @@ void print_bytecode(Code* code, char* end, ConstPool* constant_pool, NamePool* n
                 switch (op) {
                     case OP_LOAD_NAME:
                     case OP_STORE_NAME:
+                    case OP_LOAD_METHOD:
+                    case OP_LOAD_ATTRIBUTE:
+                    case OP_STORE_ATTRIBUTE:
                         if (name_pool)
                             printf(" (%s)", name_pool->data[index]);
                         break;
@@ -187,9 +193,10 @@ void print_bytecode(Code* code, char* end, ConstPool* constant_pool, NamePool* n
 }
 
 void print_code(Code* code, char* end, ConstPool* constant_pool, NamePool* name_pool) {
-    puts(code->name);
+    if (code->name)
+        puts(code->name);
 
-    print_bytecode(code, end, constant_pool, name_pool);
+    print_bytecode(code, "", constant_pool, name_pool);
 
     for(size_t i = 0; i < code->size; ++i) {
         enum Operation op = code->code[i];
@@ -198,6 +205,9 @@ void print_code(Code* code, char* end, ConstPool* constant_pool, NamePool* name_
             case OP_JUMP:
             case OP_LOAD_NAME:
             case OP_STORE_NAME:
+            case OP_LOAD_METHOD:
+            case OP_LOAD_ATTRIBUTE:
+            case OP_STORE_ATTRIBUTE:
             case OP_CALL:
             case OP_LOAD_CONST: {
                 i++;
@@ -207,7 +217,7 @@ void print_code(Code* code, char* end, ConstPool* constant_pool, NamePool* name_
                         printf("\nDisassembly of ");
                         print_constant_information(constant_pool->data + index);
                         puts("");
-                        print_bytecode(&constant_pool->data[index]._code, end, constant_pool, name_pool);
+                        print_bytecode(&constant_pool->data[index]._code, "", constant_pool, name_pool);
                     }
                 }
                 i += 7;
@@ -372,6 +382,7 @@ CompilationStatus compile_module(ast_node_t* root, CompiledModule* compiled_modu
                 if (status.code == STATUS_FAIL) return status; 
                 switch (((ast_node_t*)node->item)->ast_type) {
                     case AST_ASSIGNMENT:
+                    case AST_STORE_ATTR:
                     case AST_IF_STATEMENT:
                     case AST_WHILE_STATEMENT:
                     case AST_FUNCTION:
@@ -404,6 +415,30 @@ CompilationStatus compile_module(ast_node_t* root, CompiledModule* compiled_modu
             size_t index = update_name_pool(&compiled_module->name_pool, name);
 
             write_8(code, OP_STORE_NAME);
+            write_64(code, index);
+            break;
+        }
+
+        case AST_STORE_ATTR: {
+            status = compile_module(root->ast_store_attr.right, compiled_module, code);
+            if (status.code == STATUS_FAIL) return status;
+
+            status = compile_module(root->ast_store_attr.left->ast_access.value, compiled_module, code);
+            if (status.code == STATUS_FAIL) return status;
+
+            if (root->ast_store_attr.left->ast_access.field->ast_type != AST_IDENTIFIER) {
+                return (CompilationStatus){.code=STATUS_FAIL,.what="[CompileModule]: Error - attribute is not an identifier"};
+            }
+
+            ast_string_t identifier = root->ast_store_attr.left->ast_access.field->ast_string; // some fucking how worked but was slower when i set it to root->ast_assignment.left->ast_string
+
+            char* name = malloc(identifier.length + 1);
+            strncpy(name, identifier.value, identifier.length);
+            name[identifier.length] = 0;
+
+            size_t index = update_name_pool(&compiled_module->name_pool, name);
+
+            write_8(code, OP_STORE_ATTRIBUTE);
             write_64(code, index);
             break;
         }
@@ -585,6 +620,52 @@ CompilationStatus compile_module(ast_node_t* root, CompiledModule* compiled_modu
             if (status.code == STATUS_FAIL) return status;
             write_8(code, OP_CALL);
             write_64(code, root->ast_call.arguments->compound.size);
+            break;
+        }
+
+        case AST_ACCESS: {
+            status = compile_module(root->ast_access.value, compiled_module, code);
+            if (status.code == STATUS_FAIL) return status;
+
+            // root->ast_access.field must be an identifier
+            char* name = malloc(root->ast_access.field->ast_string.length + 1);
+            strncpy(name, root->ast_access.field->ast_string.value, root->ast_access.field->ast_string.length);
+            name[root->ast_access.field->ast_string.length] = 0;
+
+            size_t index = update_name_pool(
+                &compiled_module->name_pool, 
+                name
+            );            
+            write_8(code, OP_LOAD_ATTRIBUTE);
+            write_64(code, index);
+            break;
+        }
+
+        case AST_METHOD_CALL: {
+            linked_list_node_t* curr_arg = root->ast_method_call.arguments->compound.tail;
+            while (curr_arg) {
+                status = compile_module((ast_node_t*)curr_arg->item, compiled_module, code);
+                if (status.code == STATUS_FAIL) return status;
+                curr_arg = curr_arg->prev;
+            }
+            
+            status = compile_module(root->ast_method_call.this, compiled_module, code);
+            if (status.code == STATUS_FAIL) return status;
+
+            // root->ast_method_call.callable must be an identifier
+            char* name = malloc(root->ast_method_call.callable->ast_string.length + 1);
+            strncpy(name, root->ast_method_call.callable->ast_string.value, root->ast_method_call.callable->ast_string.length);
+            name[root->ast_method_call.callable->ast_string.length] = 0;
+
+            size_t index = update_name_pool(
+                &compiled_module->name_pool, 
+                name
+            );            
+            write_8(code, OP_LOAD_METHOD);
+            write_64(code, index);
+
+            write_8(code, OP_CALL);
+            write_64(code, root->ast_method_call.arguments->compound.size + 1);
             break;
         }
 

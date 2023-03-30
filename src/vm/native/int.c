@@ -41,6 +41,14 @@ static Kod_Object* native_int_method_bool(VirtualMachine* vm, CallFrame* parent_
     return new_bool_object(false);
 }
 
+static Kod_Object* native_int_method_unary_bool_not(VirtualMachine* vm, CallFrame* parent_call_frame, Kod_Object** args, size_t size) {
+    if (size < 1) {
+        return get_null_object(&vm->cop);
+    }
+    Kod_Object* self = args[0];
+    return new_bool_object(!self->_int);
+}
+
 static Kod_Object* native_int_method_unary_add(VirtualMachine* vm, CallFrame* parent_call_frame, Kod_Object** args, size_t size) {
     if (size < 1) {
         for (size_t i = 0; i < vm->cop.size; ++i) {
@@ -92,6 +100,25 @@ static Kod_Object* native_int_method_lt(VirtualMachine* vm, CallFrame* parent_ca
         case OBJECT_INTEGER:    object = new_bool_object(self->_int < other->_int); break;
         case OBJECT_FLOAT:      object = new_bool_object(self->_int < other->_float); break;
         case OBJECT_BOOL:       object = new_bool_object(self->_int < other->_bool); break;
+        default: return get_null_object(&vm->cop);
+    }
+
+    return object;
+}
+
+static Kod_Object* native_int_method_eq(VirtualMachine* vm, CallFrame* parent_call_frame, Kod_Object** args, size_t size) {
+    if (size < 2 || !args[0] || !args[1]) {
+        return get_null_object(&vm->cop);
+    }
+
+    Kod_Object* self = args[0];
+    Kod_Object* other = args[1];
+    Kod_Object* object = NULL;
+
+    switch (other->type) {
+        case OBJECT_INTEGER:    object = new_bool_object(self->_int == other->_int); break;
+        case OBJECT_FLOAT:      object = new_bool_object(self->_int == other->_float); break;
+        case OBJECT_BOOL:       object = new_bool_object(self->_int == other->_bool); break;
         default: return get_null_object(&vm->cop);
     }
 
@@ -196,9 +223,11 @@ void init_int_attributes() {
     init_environment(&int_attributes);
     ADD_METHOD(int, bool);
     ADD_METHOD(int, str);
+    ADD_METHOD(int, unary_bool_not);
     ADD_METHOD(int, unary_add);
     ADD_METHOD(int, unary_sub);
     ADD_METHOD(int, lt);
+    ADD_METHOD(int, eq);
     ADD_METHOD(int, add);
     ADD_METHOD(int, sub);
     ADD_METHOD(int, mul);

@@ -24,6 +24,7 @@ typedef struct VirtualMachine {
     CompiledModule* module;
     ConstObjectPool cop;
     bool repl;
+    bool running;
 } VirtualMachine;
 
 VirtualMachine init_vm(CompiledModule* module, bool repl);

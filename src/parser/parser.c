@@ -248,14 +248,31 @@ static ast_node_t* parse_assignment(parser_t* parser) {
     // Eat the equals sign.
     eat(parser, TOKEN_EQUALS);
 
-    // Create a new AST node representing the assignment.
-    return ast_node_new(((ast_node_t){
-        .ast_type=AST_ASSIGNMENT, 
-        .ast_assignment={
-            .left=left, 
-            .right=parse_assignment(parser)
+    switch (left->ast_type) {
+        case AST_IDENTIFIER: {
+            return ast_node_new(((ast_node_t){
+                .ast_type=AST_ASSIGNMENT, 
+                .ast_assignment={
+                    .left=left, 
+                    .right=parse_assignment(parser)
+                }
+            }));
         }
-    }));
+
+        case AST_ACCESS: {
+            return ast_node_new(((ast_node_t){
+                .ast_type=AST_STORE_ATTR, 
+                .ast_store_attr={
+                    .left=left, 
+                    .right=parse_assignment(parser)
+                }
+            }));
+        }
+
+        default: printf("[parser]: Error - assignment for %s is not implemented yet\n", ast_type_to_str(left->ast_type)); return NULL;
+    }
+
+    // Create a new AST node representing the assignment.
 }
 
 static ast_node_t* parse_bool_or(parser_t* parser) {
@@ -598,20 +615,13 @@ static ast_node_t* parse_after(parser_t* parser, ast_node_t* value) {
 
             if (value->ast_type == AST_ACCESS) {
                 // This is a method call.
-                linked_list_node_t* old_head = list->compound.head;
-
-                linked_list_node_t* new_head = malloc(sizeof(linked_list_node_t));  // the first param will be the `this`
-                new_head->item = value->ast_access.value;
-                new_head->next = old_head;
-                list->compound.size++;
-                list->compound.head = new_head;
 
                 ast_node_t* method_call = ast_node_new((ast_node_t){
                     .ast_type=AST_METHOD_CALL,
                     .ast_method_call={
                         .callable=value->ast_access.field,
                         .arguments=list,
-                        .this=value->ast_access.value // dont really need this...
+                        .this=value->ast_access.value
                     }
                 });
 

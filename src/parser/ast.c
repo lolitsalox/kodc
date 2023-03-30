@@ -15,6 +15,7 @@ const char* ast_type_to_str(ast_type_t type) {
         case AST_METHOD_CALL:   return "METHOD_CALL";
         case AST_SUBSCRIPT:     return "SUBSCRIPT";
         case AST_ACCESS:        return "ACCESS";
+        case AST_STORE_ATTR:    return "STORE_ATTR";
         case AST_FUNCTION:      return "FUNCTION";
         case AST_LAMBDA:        return "LAMBDA";
         case AST_ASSIGNMENT:    return "ASSIGNMENT";
@@ -190,7 +191,7 @@ void ast_print(const ast_node_t* ast_node, uint32_t indent_level) {
             ast_print(ast_node->ast_method_call.arguments, indent_level + 2);
             break;
         default:
-            printf("TODO: implement ast_print\n");
+            printf("TODO: implement ast_print for %s\n", ast_type_to_str(ast_node->ast_type));
             break;
     }
 }
