@@ -153,5 +153,6 @@ KodTypeObject KodType_Int = {
     .new=(typefunc)int_new,
     .free=deref_object,
     .doc=int_doc,
+    .eq=0,
     .size=sizeof(int64_t),
 };

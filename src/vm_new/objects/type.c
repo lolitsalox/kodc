@@ -93,4 +93,5 @@ KodTypeObject KodType_Null = {
     .free=deref_object,
     .doc=null_doc,
     .size=sizeof(Kod_Null),
+    .eq=0,
 };

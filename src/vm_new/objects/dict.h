@@ -23,3 +23,8 @@ typedef struct KodDictObject {
 } KodDictObject;
 
 extern KodTypeObject KodType_Dict;
+
+enum DICT_METHODS {
+    DICT_METHOD_GET,
+    DICT_METHOD_SET,
+};

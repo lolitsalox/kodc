@@ -33,6 +33,7 @@ typedef struct KodTypeObject {
     methfunc call;
     methfunc repr;
     typefunc new;
+    methfunc eq;
     bool (*free) (KodObject*);
     char* doc;
     size_t size;

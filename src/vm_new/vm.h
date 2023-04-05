@@ -18,7 +18,7 @@ void free_call_frame(CallFrame* frame, KodDictObject* constant_objects);
 
 typedef struct VirtualMachine {
     CompiledModule* module;
-    KodDictObject constant_objects;
+    KodDictObject* constant_objects;
     bool repl;
     bool running;
 } VirtualMachine;

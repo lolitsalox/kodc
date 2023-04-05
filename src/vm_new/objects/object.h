@@ -50,6 +50,7 @@ typedef size_t (*hashfunc) (KodObject* a);
 typedef KodObject* (*methfunc) (KodObject* a, KodObject* args, KodObject* kwargs);
 typedef KodObject* (*typefunc) (KodTypeObject* a, KodObject* args, KodObject* kwargs);
 typedef int (*boolfunc) (KodObject* a);
+typedef KodObject* (*builtinfunc) (KodObject* args, KodObject* kwargs);
 
 typedef struct Kod_MethodDef {
     char* name;

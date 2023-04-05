@@ -69,5 +69,6 @@ KodTypeObject KodType_Code = {
     .new=(typefunc)code_new,
     .free=deref_object,
     .doc=code_doc,
+    .eq=0,
     .size=sizeof(Code),
 };

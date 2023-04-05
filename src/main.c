@@ -63,7 +63,7 @@ void repl(void) {
         module->entry = (Code) {.code=NULL, .params=init_string_array(), .size=0};
     } while (vm.running);
 
-    free_call_frame(&main_frame, &vm.constant_objects);
+    free_call_frame(&main_frame, vm.constant_objects);
     destroy_vm(&vm);
     puts("\x1b[36m>>> \x1b[32mNO ERRORS\x1b[36m!\x1b[0m");
 

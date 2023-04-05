@@ -99,5 +99,6 @@ KodTypeObject KodType_String = {
     .new=(typefunc)string_new,
     .free=deref_object,
     .doc=string_doc,
+    .eq=0,
     .size=sizeof(char*),
 };

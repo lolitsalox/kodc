@@ -23,7 +23,7 @@ KodTupleObject* tuple_new(KodTypeObject* tp, KodObject* args, KodObject* kwargs)
         ref_object(As_Object(new_tuple));
         new_tuple->object.type = OBJECT_TUPLE;
         new_tuple->object.type_object = &KodType_Tuple;
-        
+    
         return new_tuple;
     }
 
@@ -42,7 +42,7 @@ size_t tuple_hash(KodTupleObject* a) {
 }
 
 int tuple_bool(KodTupleObject* a) {
-    return a->_tuple.size != 0;
+    return a->_tuple.size;
 }
 
 #define tuple_doc \
@@ -81,5 +81,6 @@ KodTypeObject KodType_Tuple = {
     .new=(typefunc)tuple_new,
     .free=deref_object,
     .doc=tuple_doc,
+    .eq=0,
     .size=sizeof(Tuple),
 };
