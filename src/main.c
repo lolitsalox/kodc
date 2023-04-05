@@ -4,7 +4,7 @@
 #include "parser/parser.h"
 #include "io/io.h"
 #include "compiler/compiler.h"
-#include "vm/vm.h"
+#include "vm_new/vm.h"
 
 void repl(void) {
     size_t filename_size = sizeof("<stdin>");
@@ -14,7 +14,8 @@ void repl(void) {
     CompiledModule* module = new_compiled_module(filename, 0, 1);
 
     VirtualMachine vm = init_vm(module, true);
-    CallFrame main_frame = init_call_frame(NULL, get_native_functions());
+    // CallFrame main_frame = init_call_frame(NULL, get_native_functions());
+    CallFrame main_frame = init_call_frame(NULL, NULL);
 
     char buffer[1<<8] = {0};
     do {
@@ -53,7 +54,7 @@ void repl(void) {
         //     return 1;
         // }
 
-        Kod_Object* result = run_code_object(&vm, &vm.module->entry, NULL, NULL, &main_frame);
+        KodObject* result = run_code_object(&vm, &vm.module->entry, NULL, NULL, &main_frame);
         deref_object(result);
 
         main_frame.ip = 0;
@@ -62,7 +63,7 @@ void repl(void) {
         module->entry = (Code) {.code=NULL, .params=init_string_array(), .size=0};
     } while (vm.running);
 
-    free_call_frame(&main_frame, &vm.cop);
+    free_call_frame(&main_frame, &vm.constant_objects);
     destroy_vm(&vm);
     puts("\x1b[36m>>> \x1b[32mNO ERRORS\x1b[36m!\x1b[0m");
 
@@ -110,7 +111,7 @@ int main(int argc, char** argv) {
     }
 
     VirtualMachine vm = init_vm(module, false);
-    Kod_Object* res = vm_run_entry(&vm);
+    KodObject* res = vm_run_entry(&vm);
     deref_object(res);
 
     destroy_vm(&vm);

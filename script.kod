@@ -16,6 +16,7 @@
 //     end = time() + seconds
 //     while time() < end {}
 // }
+
 /*
 start = time()
 i = 0
@@ -28,3 +29,7 @@ print("Time took:", time()-start, "seconds")
 */
 
 print("Hello world")
+if 1 {
+    x = 10
+}
+print(x)

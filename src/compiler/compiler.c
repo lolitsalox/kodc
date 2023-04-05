@@ -751,7 +751,9 @@ void free_code(Code code) {
     if (code.code)
         free(code.code);
 
-    deref_environment(code.parent_closure);
+    puts("TODO: clear closure");
+    exit(1);
+    // deref_environment(code.parent_closure);
 }
 
 static void free_constant(ConstantInformation constant_info) {
