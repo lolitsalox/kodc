@@ -70,10 +70,10 @@ void repl(void) {
 }
 
 int main(int argc, char** argv) {
-    if (argc < 2) {
-        repl();
-        return 0;
-    }
+    // if (argc < 2) {
+    //     repl();
+    //     return 0;
+    // }
 
     size_t filename_size = strlen(argv[1]) + 1;
     char* filename = malloc(filename_size);

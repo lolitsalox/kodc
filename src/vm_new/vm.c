@@ -13,9 +13,11 @@ void free_call_frame(CallFrame* frame, KodDictObject* constant_objects) {
     return;
 }
 
-
+static bool initialized = false;
 VirtualMachine init_vm(CompiledModule* module, bool repl) {
     VirtualMachine vm;
+
+    if ()
     vm.constant_objects = (KodDictObject*)KodType_Dict.new(&KodType_Dict, &Kod_Null, &Kod_Null);
 
     for (size_t i = 0; i < sizeof(native_functions) / sizeof(NativeFunctionPair); ++i) {
@@ -35,6 +37,13 @@ VirtualMachine init_vm(CompiledModule* module, bool repl) {
 
         KodType_Dict.methods[DICT_METHOD_SET].method(As_Object(vm.constant_objects), As_Object(&tuple), As_Object(&Kod_Null));
     }
+
+    Dict dict = vm.constant_objects->_dict;
+    for (size_t i = 0; i < dict.size; ++i) {
+        if (dict.table[i] == NULL) continue;
+        printf("key: %s, value: %s\n", dict.table[i]->key->type_object->type_name, dict.table[i]->value->type_object->type_name);
+    }
+
     return vm;
 }
 
