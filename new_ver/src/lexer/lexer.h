@@ -14,4 +14,4 @@ typedef struct Lexer {
 Lexer lexer_init(const char* src, u32 length);
 enum STATUS lexer_get_next_token(Lexer* lexer, Token** out, char** err);
 
-int8_t str_compare(char* a, char* b, u32 length_a, u32 length_b);
+char* keyword_type_to_str(KeywordType ktype);

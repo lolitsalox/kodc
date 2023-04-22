@@ -1,2 +1,11 @@
-x = "Hello there!
+x = "Hello there!"
 y = 1.23 || 32
+
+f(a, b, c) {
+    if a || b {
+        return a ** c;
+    }
+    return b
+}
+
+print(f(1, 2, 3))

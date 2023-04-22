@@ -75,9 +75,11 @@ typedef enum KeywordType {
     KEYWORD_TRUE,
     KEYWORD_FALSE,
     KEYWORD_IF,
+    KEYWORD_ELSE,
     KEYWORD_WHILE,
     KEYWORD_FOR,
     KEYWORD_RETURN,
+    KEYWORD_IMPORT,
     KEYWORD_UNKNOWN,
 } KeywordType;
 

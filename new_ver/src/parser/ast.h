@@ -1,7 +1,7 @@
 #pragma once
 
 #include <defines.h>
-#include "../lexer/token.h"
+#include <lexer/token.h>
 
 typedef enum AstType {
     AST_ROOT,
@@ -67,6 +67,11 @@ typedef struct AstFunction {
     AstNode* body; // must be block
 } AstFunction;
 
+typedef struct AstLambda {
+    AstNode* params; // must be tuple 
+    AstNode* body; // must be block
+} AstLambda;
+
 typedef struct AstCall {
     AstNode* callable;
     AstNode* args; // must be tuple
@@ -100,13 +105,14 @@ struct AstNode {
     union {
         AstList _list;
         bool    _bool;
-        s64     _int;
+        i64     _int;
         f64     _float;
         char*   _string;
         AstNode* _return;
         AstBinary   _assignment;
         AstBinary   _store_attr; // left must be access
         AstFunction _function;
+        AstLambda _lambda;
         AstCall     _call;
         AstAccess   _access;
         AstUnaryOp  _unary_op;

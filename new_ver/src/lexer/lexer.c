@@ -1,13 +1,11 @@
 #include "lexer.h"
 
-#define MIN(a, b) (a < b ? a : a > b ? b : a)
-
 static void skip_whitespace(Lexer* lexer);
 static void advance(Lexer* lexer);
 static bool can_advance(Lexer* lexer);
 static bool is_symbol(char c);
 static TokenType find_symbol(char* s, u32 length);
-static KeywordType find_keyword(char* s, u32 length);
+static KeywordType find_keyword(char* s);
 
 static enum STATUS collect_string(Lexer* lexer, Token** out, char** err);
 static enum STATUS collect_number(Lexer* lexer, Token** out, char** err);
@@ -49,7 +47,6 @@ enum STATUS lexer_get_next_token(Lexer* lexer, Token** out, char** err) {
         *err = "Lexer is NULL";
         return STATUS_FAIL;
     }
-
     // Validating first character
     if (lexer->current_char == '\0')
         return create_token(lexer, TOKEN_EOF, out, err);
@@ -67,15 +64,17 @@ enum STATUS lexer_get_next_token(Lexer* lexer, Token** out, char** err) {
     // Start of a symbol
     if (is_symbol(lexer->current_char))
         return collect_symbol(lexer, out, err);
-
+    
     // If it's not any space 
     if (!isspace(lexer->current_char))
         return collect_id(lexer, out, err);
 
     // If it's a newline
     if (lexer->current_char == '\n') {
+        // Creating before so that the number line doesnt go up
+        enum STATUS s = create_token(lexer, TOKEN_NL, out, err);
         advance(lexer);
-        return create_token(lexer, TOKEN_NL, out, err);
+        return s;
     }
 
     ERROR_ARGS("Lexer", "Unexpected token at %d:%d\n", lexer->current_line, lexer->current_column);
@@ -239,31 +238,33 @@ static TokenType find_symbol(char* s, u32 length) {
     }
 }
 
-s8 str_compare(char* a, char* b, u32 length_a, u32 length_b) {
-    if (length_a < length_b) return 1;
-    if (length_a > length_b) return -1;
-
-    for(u32 i = 0; i < length_a; ++i, ++a, ++b) {
-        if((*a) > (*b))
-            return -1;
-
-        if((*a) < (*b))
-            return 1;
-    }
-
-    return 0;
-}
-
-static KeywordType find_keyword(char* s, u32 length) {
-    if (str_compare(s, "null",    length, sizeof("null") - 1) == 0)         return KEYWORD_NULL;
-    if (str_compare(s, "true",    length, sizeof("true") - 1) == 0)         return KEYWORD_TRUE;
-    if (str_compare(s, "false",    length, sizeof("false") - 1) == 0)       return KEYWORD_FALSE;
-    if (str_compare(s, "if",    length, sizeof("if") - 1) == 0)             return KEYWORD_IF;
-    if (str_compare(s, "while", length, sizeof("while") - 1) == 0)          return KEYWORD_WHILE;
-    if (str_compare(s, "for",   length, sizeof("for") - 1) == 0)            return KEYWORD_FOR;
-    if (str_compare(s, "return",   length, sizeof("return") - 1) == 0)      return KEYWORD_RETURN;
+static KeywordType find_keyword(char* s) {
+    if (strcmp(s, "null") == 0)         return KEYWORD_NULL;
+    if (strcmp(s, "true") == 0)         return KEYWORD_TRUE;
+    if (strcmp(s, "false") == 0)        return KEYWORD_FALSE;
+    if (strcmp(s, "if") == 0)           return KEYWORD_IF;
+    if (strcmp(s, "else") == 0)         return KEYWORD_ELSE;
+    if (strcmp(s, "while") == 0)        return KEYWORD_WHILE;
+    if (strcmp(s, "for") == 0)          return KEYWORD_FOR;
+    if (strcmp(s, "return") == 0)       return KEYWORD_RETURN;
+    if (strcmp(s, "import") == 0)       return KEYWORD_IMPORT;
 
     return KEYWORD_UNKNOWN;
+}
+
+char* keyword_type_to_str(KeywordType ktype) {
+    switch (ktype) {
+        case KEYWORD_NULL: return "null";
+        case KEYWORD_TRUE: return "true";
+        case KEYWORD_FALSE: return "false";
+        case KEYWORD_IF: return "if";
+        case KEYWORD_ELSE: return "else";
+        case KEYWORD_WHILE: return "while";
+        case KEYWORD_FOR: return "for";
+        case KEYWORD_RETURN: return "return";
+        case KEYWORD_IMPORT: return "import";
+        default: return "KEYWORD_UNKNOWN";
+    }
 }
 
 enum STATUS collect_string(Lexer* lexer, Token** out, char** err) {
@@ -310,7 +311,7 @@ enum STATUS collect_string(Lexer* lexer, Token** out, char** err) {
     advance(lexer);
 
     char* token_value = calloc(1, sizeof(char) * (length + 1));
-    strncpy(token_value, value, length);
+    memcpy(token_value, value, length);
 
     return token_new(
         (Token){
@@ -354,7 +355,7 @@ static enum STATUS collect_number(Lexer* lexer, Token** out, char** err) {
     }
     
     char* token_value = calloc(1, sizeof(char) * (length + 1));
-    strncpy(token_value, value, length);
+    memcpy(token_value, value, length);
 
     return token_new(
         (Token){
@@ -401,7 +402,7 @@ static enum STATUS collect_symbol(Lexer* lexer, Token** out, char** err) {
     }
 
     char* token_value = calloc(1, sizeof(char) * (length + 1));
-    strncpy(token_value, value, length);
+    memcpy(token_value, value, length);
     
     return token_new(
         (Token){
@@ -437,19 +438,18 @@ static enum STATUS collect_id(Lexer* lexer, Token** out, char** err) {
         advance(lexer);
     }
 
-    TokenType Tokenype = TOKEN_ID;
+    TokenType type = TOKEN_ID;
     KeywordType keyword_type = KEYWORD_UNKNOWN;
 
-    if ((keyword_type = find_keyword(value, length)) != KEYWORD_UNKNOWN) {
-        Tokenype = TOKEN_KEYWORD;
+    char* token_value = calloc(1, sizeof(char) * (length + 1));
+    memcpy(token_value, value, length);
+    if ((keyword_type = find_keyword(token_value)) != KEYWORD_UNKNOWN) {
+        type = TOKEN_KEYWORD;
     }
 
-    char* token_value = calloc(1, sizeof(char) * (length + 1));
-    strncpy(token_value, value, length);
-    
     return token_new(
         (Token){
-            .type=Tokenype,
+            .type=type,
             .value=token_value,
             .length=length,
             .keyword_type=keyword_type,

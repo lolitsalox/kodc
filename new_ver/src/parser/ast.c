@@ -48,7 +48,7 @@ void ast_print(const AstNode* node, u32 indent_level) {
     // Switch on the type of the AST node.
     switch (node->type) {
         case AST_INT:
-            printf("%lld\n", node->_int);
+            printf("%ld\n", node->_int);
             break;
 
         case AST_FLOAT:
@@ -92,7 +92,6 @@ void ast_print(const AstNode* node, u32 indent_level) {
             break;
 
         case AST_FUNCTION:
-        case AST_LAMBDA:
             // If the node is a function, print its name, parameters and the body.
             printf("name: %s\n", node->_function.name);
             for (uint32_t i = 0; i < indent_level + 1; ++i) printf("    ");
@@ -101,6 +100,16 @@ void ast_print(const AstNode* node, u32 indent_level) {
             for (uint32_t i = 0; i < indent_level + 1; ++i) printf("    ");
             printf("body:\n");
             ast_print(node->_function.body, indent_level + 2);
+            break;
+
+        case AST_LAMBDA:
+            puts("");
+            for (uint32_t i = 0; i < indent_level + 1; ++i) printf("    ");
+            printf("params:\n");
+            ast_print(node->_lambda.params, indent_level + 2);
+            for (uint32_t i = 0; i < indent_level + 1; ++i) printf("    ");
+            printf("body:\n");
+            ast_print(node->_lambda.body, indent_level + 2);
             break;
 
         case AST_UNARY_OP:
@@ -210,7 +219,7 @@ enum STATUS ast_node_new(AstNode node, AstNode** out, char** err) {
 
 void ast_free(AstNode* node) {
     if (!node) return;
-
+    // printf("Freeing ast from type: %s (%p)\n", ast_type_to_str(node->type), node);
     switch (node->type) {
         case AST_INT:
         case AST_FLOAT:

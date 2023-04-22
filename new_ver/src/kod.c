@@ -4,21 +4,22 @@
 
 #include <defines.h>
 #include <kod_io.h>
-#include "lexer/lexer.h"
-#include "parser/parser.h"
+#include <lexer/lexer.h>
+#include <parser/parser.h>
+#include <compiler/compiler.h>
 
 void repl();
 
-s32 main(s32 argc, char** argv) {
+i32 main(i32 argc, char** argv) {
+    char *filename = NULL, *err = NULL, *buffer = NULL;
+    
+    filename = argv[1];
+    size_t buffer_size = 0;
+    
     if (argc < 2) {
         repl();
         return 0;
     }
-
-    char *filename = NULL, *err = NULL, *buffer = NULL;
-    size_t buffer_size = 0;
-
-    filename = argv[1];
     
     if (io_read(filename, &buffer, &buffer_size, &err) == STATUS_FAIL) {
         ERROR("IO", err);
@@ -31,32 +32,72 @@ s32 main(s32 argc, char** argv) {
     AstNode* root = NULL;
     if (parse(&parser, &root, &err) == STATUS_FAIL) {
         ast_free(root);
-        token_free(parser.current_token);
         ERROR("Kod", err);
         return STATUS_FAIL;
     }
 
-    ast_print(root, 0);
-    ast_free(root);
-    token_free(parser.current_token);
-    // Token* tok = NULL;
-    // bool exit = false;
+    // ast_print(root, 0);
 
-    // while (!exit) {
-    //     if (lexer_get_next_token(&lex, &tok, &err) == STATUS_FAIL) {
-    //         LOG_ARGS("Exiting with error '%s'", err);
-    //         return STATUS_FAIL;
-    //     }
         
-    //     if (tok->type == TOKEN_EOF) exit = true;
-    //     token_print(tok);
-    //     token_free(tok);
-    // }
+    CompiledModule* module = new_compiled_module(filename, 0, 1);
+    CompilationStatus status = compile_module(root, module, &module->entry);
+    if (status.code == STATUS_FAIL) {
+        puts(status.what);
+        free_module(module);
+        return 1;
+    }
+
+    print_code(&module->entry, "\n", &module->constant_pool, &module->name_pool);
+    print_constant_pool(&module->constant_pool);
+    print_name_pool(&module->name_pool);
+
+    free_module(module);
+    ast_free(root);
 
     LOG("Exiting without any errors!");
     return 0;
 }
 
 void repl() {
-    UNIMPLEMENTED
+    char* err = NULL;
+    char buffer[1<<8] = {0};
+    CompiledModule* module = new_compiled_module("<stdin>", 0, 0);
+    
+    do {
+        printf(">>> ");
+        memset(buffer, 0, 1<<8);
+        fgets(buffer, 1<<8, stdin);
+
+        u32 length = strlen(buffer) + 1;
+        buffer[length] = 0;
+
+        Lexer lexer = lexer_init(buffer, length);
+        Parser parser = parser_init(&lexer);
+
+        AstNode* root = NULL;
+        if (parse(&parser, &root, &err) == STATUS_FAIL) {
+            ast_free(root);
+            ERROR("Kod", err);
+            continue;
+        }
+        
+        CompilationStatus status = compile_module(root, module, &module->entry);
+        if (status.code == STATUS_FAIL) {
+            ERROR("Compile", status.what);
+            goto free_stuff;
+        }
+        
+        print_code(&module->entry, "\n", &module->constant_pool, &module->name_pool);
+        print_constant_pool(&module->constant_pool);
+        print_name_pool(&module->name_pool);
+
+        free_stuff:
+        free_code(module->entry);
+        ast_free(root);
+        module->entry = (Code) {.code=NULL, .params={0}, .size=0};
+    
+    } while (strcmp(buffer, "exit\n") != 0);
+
+    free_module(module);
+    puts("Exited kod!");
 }
