@@ -12,6 +12,9 @@
 // #define DEBUG_LEXER
 // #define DEBUG_PARSER
 
+#define RETURN_STATUS_FAIL(msg) { Status s = {.type=ST_FAIL,.what=malloc(sizeof(msg))}; memcpy(s.what, msg, sizeof(msg)); return s; }
+#define RETURN_STATUS_OK { return (Status){.type=ST_OK, .what=NULL }; }
+
 #define LOG(msg) { printf("INFO: %s", msg); }
 #define LOG_ARGS(fmt, ...) { printf("INFO: " fmt, __VA_ARGS__); }
 #define ERROR(type, msg) { printf("%sError: %s\n", type, msg); }
@@ -44,5 +47,15 @@ enum STATUS {
     STATUS_FAIL = -1,
     STATUS_OK,
 };
+
+enum StatusType {
+    ST_FAIL = -1,
+    ST_OK,
+};
+
+typedef struct {
+    enum StatusType type;
+    char* what;
+} Status;
 
 i64 strtoi64(const char* nptr, char** endptr, i32 base);
