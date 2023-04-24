@@ -154,8 +154,9 @@ static enum STATUS parse_compound(Parser* parser, AstNode** out, char** err) {
         AstNode* value = NULL;
         
         if (skip_newlines(parser, err) == STATUS_FAIL) return STATUS_FAIL;
+        if (parser->current_token->type == TOKEN_EOF) break;
+        
         if (parse_expression(parser, &value, err) == STATUS_FAIL) return STATUS_FAIL;
-
         if (!value) continue;
 
         if (ast_list_append(&(*out)->_list, value, err) == STATUS_FAIL) return STATUS_FAIL;

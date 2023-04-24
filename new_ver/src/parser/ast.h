@@ -132,4 +132,4 @@ void ast_free(AstNode* node);
 AstList ast_list_init();
 void ast_list_print(AstList* list, u32 indent_level);
 enum STATUS ast_list_append(AstList* list, AstNode* node, char** err);
-void ast_list_free(AstList* list); // does not free the list itself
+void ast_list_free(AstList list);

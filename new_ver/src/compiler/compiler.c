@@ -1,6 +1,6 @@
 #include "compiler.h"
 
-#include "operations.h"
+#include <operations.h>
 
 // static size_t read_until_null(FILE* fp, char** buffer) {
 //     char c = 0;
@@ -86,7 +86,7 @@ static size_t write_8(Code* code, u8 data) {
 void print_name_pool(NamePool* name_pool) {
     puts("NAME POOL:");
     for (size_t i = 0; i < name_pool->size; ++i) {
-        printf("\t%li (%s)\n", i, name_pool->data[i]);
+        printf("\t%lli (%s)\n", i, name_pool->data[i]);
     }
     puts("");
 }
@@ -105,7 +105,7 @@ void print_name_pool(NamePool* name_pool) {
 
 void print_bytecode(Code* code, char* end, ConstPool* constant_pool, NamePool* name_pool) {
     for(size_t i = 0; i < code->size; ++i) {
-        printf("\t%3ld ", i);
+        printf("\t%3lld ", i);
         enum Operation op = code->code[i];
         switch(op) {
             case OP_POP_JUMP_IF_FALSE:
@@ -224,8 +224,8 @@ void print_constant_information(ConstantInformation* constant_information) {
                 case CONSTANT_NULL: printf("(null)"); break;
                 case CONSTANT_BOOL: printf("(%s)", constant_information->_bool ? "true" : "false"); break;
                 case CONSTANT_ASCII: printf("(%s)", constant_information->_string); break;
-                case CONSTANT_CODE: printf("(<code object <%s> at %p>)", constant_information->_code.name, &constant_information->_code); break;
-                case CONSTANT_INTEGER: printf("(%ld)", constant_information->_int); break;
+                case CONSTANT_CODE: printf("(<code object %s at %p>)", constant_information->_code.name, &constant_information->_code); break;
+                case CONSTANT_INTEGER: printf("(%lld)", constant_information->_int); break;
                 case CONSTANT_FLOAT: printf("(%g)", constant_information->_float); break;
                 default: printf("??? (tag=%u)", constant_information->tag); break;
             }
@@ -234,7 +234,7 @@ void print_constant_information(ConstantInformation* constant_information) {
 void print_constant_pool(ConstPool* constant_pool) {
     puts("CONSTANT POOL:");
     for (size_t i = 0; i < constant_pool->size; ++i) {
-        printf("\t%li ", i);
+        printf("\t%lli ", i);
         print_constant_information(&constant_pool->data[i]);
         puts("");
     }

@@ -48,7 +48,7 @@ void ast_print(const AstNode* node, u32 indent_level) {
     // Switch on the type of the AST node.
     switch (node->type) {
         case AST_INT:
-            printf("%ld\n", node->_int);
+            printf("%lld\n", node->_int);
             break;
 
         case AST_FLOAT:
@@ -238,7 +238,7 @@ void ast_free(AstNode* node) {
         case AST_TUPLE:
         case AST_LIST:
         case AST_BLOCK: {
-            ast_list_free(&node->_list);
+            ast_list_free(node->_list);
             break;
         }
 
@@ -329,13 +329,15 @@ enum STATUS ast_list_append(AstList* list, AstNode* node, char** err) {
     return STATUS_OK;
 }
 
-void ast_list_free(AstList* list) {
-    if (!list) return;
-    AstListNode* curr = list->head;
+void ast_list_free(AstList list) {
+    AstListNode* curr = list.head;
 
     while (curr) {
         ast_free(curr->node);
-        curr = curr->next;
+        AstListNode* next = curr->next;
+        free(curr);
+        curr = next;
+        --list.size;
     }
 }
 
