@@ -121,6 +121,8 @@ void repl() {
             ERROR("Kod", err);
             continue;
         }
+
+        ast_print(root, 0);
         
         CompilationStatus status = compile_module(root, module, &module->entry);
         if (status.code == STATUS_FAIL) {

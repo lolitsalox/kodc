@@ -6,6 +6,7 @@
 #include "objects/kod_object_func.h"
 #include "objects/kod_object_native_func.h"
 #include "objects/kod_object_tuple.h"
+#include "objects/kod_object_null.h"
 
 #include "builtins.h"
 
@@ -75,6 +76,14 @@ Status load_constant_objects(ConstPool constant_pool, KodObject** data) {
 
         ConstantInformation ci = constant_pool.data[i];
         switch (ci.tag) {
+            case CONSTANT_NULL: {
+                KodObjectNull* obj = NULL;
+                if ((s = kod_object_new_null(&obj)).type == ST_FAIL) return s;
+                if ((s = kod_object_ref(AS_OBJECT(obj))).type == ST_FAIL) return s;
+                data[i] = AS_OBJECT(obj);
+                break;
+            }
+
             case CONSTANT_INTEGER: {
                 KodObjectInt* obj = NULL;
                 if ((s = kod_object_new_int(ci._int, &obj)).type == ST_FAIL) return s;
@@ -142,7 +151,10 @@ Status vm_init(CompiledModule* module, bool repl, VirtualMachine* out) {
         if ((s = object_map_insert(&out->globals, "int", AS_OBJECT(&KodType_Int))).type == ST_FAIL) return s;        
 
         if ((s = kod_object_ref(AS_OBJECT(&KodType_Tuple))).type == ST_FAIL) return s;
-        if ((s = object_map_insert(&out->globals, "tuple", AS_OBJECT(&KodType_Tuple))).type == ST_FAIL) return s;        
+        if ((s = object_map_insert(&out->globals, "tuple", AS_OBJECT(&KodType_Tuple))).type == ST_FAIL) return s;    
+        
+        if ((s = kod_object_ref(AS_OBJECT(&KodObject_Null))).type == ST_FAIL) return s;
+        if ((s = object_map_insert(&out->globals, "null", AS_OBJECT(&KodObject_Null))).type == ST_FAIL) return s;        
 
         // if ((s = kod_object_ref(AS_OBJECT(&KodType_Type))).type == ST_FAIL) return s;
         // if ((s = object_map_insert(&out->globals, "type", AS_OBJECT(&KodType_Type))).type == ST_FAIL) return s;
@@ -215,16 +227,21 @@ Status vm_run_code_object(VirtualMachine* vm, Code* code_obj, ObjectMap* initial
             case OP_POP_TOP: {
                 KodObject* obj = NULL;
                 if ((s = object_stack_pop(&call_frame->stack, &obj)).type == ST_FAIL) return s;
-
-                if (obj->type->str == 0) {
-                    RETURN_STATUS_FAIL("Type has no str attribute")
+                if (obj->kind == OBJECT_NULL) {
+                    if ((s = kod_object_deref(obj)).type == ST_FAIL) return s;
+                    break;
                 }
+                if (vm->repl) {
+                    if (obj->type->str == 0) {
+                        RETURN_STATUS_FAIL("Type has no str attribute")
+                    }
 
-                char* output = NULL;
-                if ((s = obj->type->str(obj, &output)).type == ST_FAIL) return s;
-                puts(output);
-                if (output)
-                    free(output);
+                    char* output = NULL;
+                    if ((s = obj->type->str(obj, &output)).type == ST_FAIL) return s;
+                    puts(output);
+                    if (output)
+                        free(output);
+                }
                 if (obj->ref_count == 0) if ((s = kod_object_deref(obj)).type == ST_FAIL) return s;
                 break;
             }
@@ -314,9 +331,7 @@ Status vm_run_code_object(VirtualMachine* vm, Code* code_obj, ObjectMap* initial
                         obj = NULL;
                         if ((s = object_stack_pop(&call_frame->stack, &obj)).type == ST_FAIL) return s;
                         if ((s = kod_object_ref(obj)).type == ST_FAIL) return s;
-                        printf("reffing\n");
                         if ((s = object_map_insert(&map, code.params.data[i], obj)).type == ST_FAIL) return s;
-                        printf("inserting\n");
                     }
 
                     CallFrame new_frame;
@@ -325,19 +340,14 @@ Status vm_run_code_object(VirtualMachine* vm, Code* code_obj, ObjectMap* initial
 
                     KodObject* result = NULL;
                     if ((s = vm_run_code_object(vm, &code, &map, &result)).type == ST_FAIL) return s;
-                    printf("ran code object\n");
                     if ((s = object_map_clear(&map)).type == ST_FAIL) return s;
-                    printf("cleared object map\n");
                     
                     CallFrame* new_frame_pf = NULL;
                     if ((s = frame_stack_pop(&vm->frame_stack, &new_frame_pf)).type == ST_FAIL) return s;
-                    printf("popped frame\n");
                     if ((s = call_frame_clear(new_frame_pf)).type == ST_FAIL) return s;
-                    printf("cleared this call frame\n");
 
                     if ((s = kod_object_new_int(69, (KodObjectInt**)&result)).type == ST_FAIL) return s;
                     if ((s = object_stack_push(&call_frame->stack, result)).type == ST_FAIL) return s;
-                    printf("Pushing result which is... nothing?\n");
                     break;
                 }
 
@@ -361,6 +371,12 @@ Status vm_run_code_object(VirtualMachine* vm, Code* code_obj, ObjectMap* initial
                 if ((s = kod_object_deref(AS_OBJECT(args))).type == ST_FAIL) return s;
 
                 if ((s = object_stack_push(&call_frame->stack, result)).type == ST_FAIL) return s;
+                break;
+            }
+
+            case OP_RETURN: {
+                
+
                 break;
             }
 

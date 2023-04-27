@@ -5,7 +5,7 @@
 #include "object_stack.h"
 #include <compiler/compiler.h>
 
-#define MAX_FRAMES 256
+#define MAX_FRAMES 256 // somehow need to make this higher
 
 typedef struct CallFrame {
     ObjectMap locals;

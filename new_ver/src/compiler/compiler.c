@@ -420,6 +420,13 @@ CompilationStatus compile_module(AstNode* root, CompiledModule* compiled_module,
                 }
                 list_node = list_node->next;
             }
+
+            if (root->_list.size == 0 || (root->_list.tail && root->_list.tail->node->type != AST_RETURN_STATEMENT)) {
+                size_t index = update_constant_pool(&compiled_module->constant_pool, (ConstantInformation){.tag=CONSTANT_NULL});            
+                write_8(code, OP_LOAD_CONST);
+                write_8(code, index);
+                write_8(code, OP_RETURN);
+            }
             break;
         }
 

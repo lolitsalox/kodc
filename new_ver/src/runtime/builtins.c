@@ -1,7 +1,7 @@
 #include "builtins.h"
 
 #include "objects/kod_object_tuple.h"
-#include "objects/kod_object_int.h"
+#include "objects/kod_object_null.h"
 
 Status native_print(KodObject *args, KodObject *kwargs, KodObject **out) {
     if (args->kind != OBJECT_TUPLE) RETURN_STATUS_FAIL("args is not a tuple");
@@ -32,7 +32,7 @@ Status native_print(KodObject *args, KodObject *kwargs, KodObject **out) {
         if (i != tuple->size - 1) printf(" ");
     }
     puts("");
-    return kod_object_new_int(tuple->size, (KodObjectInt**)out);
+    return kod_object_new_null((KodObjectNull**)out);
 }
 
 static KodObjectNativeFunc native_funcs[] = {

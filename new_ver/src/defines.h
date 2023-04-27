@@ -11,7 +11,7 @@
 // #define DEBUG_TOKEN
 // #define DEBUG_LEXER
 // #define DEBUG_PARSER
-#define DEBUG_VM
+// #define DEBUG_VM
 
 #define RETURN_STATUS_FAIL(msg) { Status s = {.type=ST_FAIL,.what=malloc(sizeof(msg))}; memcpy(s.what, msg, sizeof(msg)); return s; }
 #define RETURN_STATUS_OK { return (Status){.type=ST_OK, .what=NULL }; }
