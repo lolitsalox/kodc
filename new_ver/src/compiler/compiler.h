@@ -15,6 +15,7 @@ enum ConstantTag {
     CONSTANT_FLOAT,
     CONSTANT_ASCII,
     CONSTANT_CODE,    
+    CONSTANT_TUPLE,
 };
 
 typedef struct NamePool {
@@ -32,7 +33,14 @@ typedef struct Code {
     KodDictObject* parent_closure;
 } Code;
 
-typedef struct ConstantInformation {
+typedef struct ConstantInformation ConstantInformation;
+
+typedef struct ConstPool {
+    size_t size;
+    ConstantInformation* data;
+} ConstPool;
+
+struct ConstantInformation {
     enum ConstantTag tag;
     union {
         bool    _bool;
@@ -40,13 +48,11 @@ typedef struct ConstantInformation {
         f64     _float;
         char*   _string;
         Code    _code;
+        ConstPool _tuple;
+        
     };
-} ConstantInformation;
+};
 
-typedef struct ConstPool {
-    size_t size;
-    ConstantInformation* data;
-} ConstPool;
 
 typedef struct CompiledModule {
     char* filename;
@@ -58,6 +64,8 @@ typedef struct CompiledModule {
     Code entry;
     
 } CompiledModule;
+
+char* constant_tag_to_str(enum ConstantTag constant_tag);
 
 CompiledModule* new_compiled_module(char* filename, uint16_t major, uint16_t minor);
 CompilationStatus compile_module(AstNode* root, CompiledModule* compiled_module, Code* code);
@@ -74,3 +82,6 @@ void print_constant_information(ConstantInformation* constant_information);
 
 void print_name_pool(NamePool* name_pool);
 void print_constant_pool(ConstPool* constant_pool);
+
+Status name_pool_get(NamePool* name_pool, size_t index, char** out);
+Status constant_pool_get(ConstPool* constant_pool, size_t index, ConstantInformation* out);

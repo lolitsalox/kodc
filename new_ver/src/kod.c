@@ -7,8 +7,40 @@
 #include <lexer/lexer.h>
 #include <parser/parser.h>
 #include <compiler/compiler.h>
+#include <runtime/vm.h>
 
 void repl();
+
+i32 run_module(CompiledModule* module) {
+    VirtualMachine vm = { .initialized = 0 };
+    Status s = vm_init(module, true, &vm);
+    if (s.type == ST_FAIL) {
+        puts(s.what);
+        free(s.what);
+        return 1;
+    }
+
+    KodObject* result = NULL;
+    s = vm_run_code_object(&vm, &module->entry, NULL, &result);
+
+    if (s.type == ST_FAIL) {
+        ERROR("KodRuntime", s.what);
+        free(s.what);
+        return 1;
+    }
+
+    if (result && (s = kod_object_deref(result)).type == ST_FAIL) {
+        ERROR("KodRuntime", s.what);
+        free(s.what);
+        return 1;
+    }
+
+    if ((s = vm_destroy(&vm)).type == ST_FAIL) {
+        ERROR("KodRuntime", s.what);
+        return 1;
+    };
+    return 0;
+}
 
 i32 main(i32 argc, char** argv) {
     char *filename = NULL, *err = NULL, *buffer = NULL;
@@ -47,9 +79,11 @@ i32 main(i32 argc, char** argv) {
         return 1;
     }
 
-    print_code(&module->entry, "\n", &module->constant_pool, &module->name_pool);
-    print_constant_pool(&module->constant_pool);
-    print_name_pool(&module->name_pool);
+    // print_code(&module->entry, "\n", &module->constant_pool, &module->name_pool);
+    // print_constant_pool(&module->constant_pool);
+    // print_name_pool(&module->name_pool);
+
+    if (run_module(module) == 1) return 1;
 
     free_module(module);
     ast_free(root);
@@ -62,6 +96,13 @@ void repl() {
     char* err = NULL;
     char buffer[1<<8] = {0};
     CompiledModule* module = new_compiled_module("<stdin>", 0, 0);
+    VirtualMachine vm = { .initialized = 0 };
+    Status s = vm_init(module, true, &vm);
+    if (s.type == ST_FAIL) {
+        puts(s.what);
+        free(s.what);
+        return;
+    }
     
     do {
         printf(">>> ");
@@ -90,14 +131,41 @@ void repl() {
         print_code(&module->entry, "\n", &module->constant_pool, &module->name_pool);
         print_constant_pool(&module->constant_pool);
         print_name_pool(&module->name_pool);
+        
+        Status s = vm_init(module, true, &vm);
+        if (s.type == ST_FAIL) {
+            puts(s.what);
+            free(s.what);
+            return;
+        }
+
+        KodObject* result = NULL;
+        s = vm_run_code_object(&vm, &module->entry, NULL, &result);
+
+        if (s.type == ST_FAIL) {
+            ERROR("KodRuntime", s.what);
+            free(s.what);
+            if ((s = object_stack_clear(&vm.frame_stack.frames[vm.frame_stack.size - 1].stack, false)).type == ST_FAIL) {
+                ERROR("KodAftermath", s.what);
+                free(s.what);
+            }
+        }
 
         free_stuff:
+        if (result && (s = kod_object_deref(result)).type == ST_FAIL) {
+            ERROR("KodRuntime", s.what);
+            free(s.what);
+        }
         free_code(module->entry);
         ast_free(root);
         module->entry = (Code) {.code=NULL, .params={0}, .size=0};
+        vm.frame_stack.frames[0].ip = 0; // resetting the ip
     
     } while (strcmp(buffer, "exit\n") != 0);
 
+    if ((s = vm_destroy(&vm)).type == ST_FAIL) {
+        ERROR("KodRuntime", s.what);
+    };
     free_module(module);
     puts("Exited kod!");
 }

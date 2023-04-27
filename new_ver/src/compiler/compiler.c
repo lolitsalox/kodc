@@ -2,6 +2,19 @@
 
 #include <operations.h>
 
+char* constant_tag_to_str(enum ConstantTag constant_tag) {
+    switch (constant_tag) {
+        case CONSTANT_NULL: return "CONSTANT_NULL";
+        case CONSTANT_BOOL: return "CONSTANT_BOOL";
+        case CONSTANT_INTEGER: return "CONSTANT_INTEGER";
+        case CONSTANT_FLOAT: return "CONSTANT_FLOAT";
+        case CONSTANT_ASCII: return "CONSTANT_ASCII";
+        case CONSTANT_CODE: return "CONSTANT_CODE";
+        case CONSTANT_TUPLE: return "CONSTANT_TUPLE";
+    }
+    return "CONSTANT_UNKNOWN";
+}
+
 // static size_t read_until_null(FILE* fp, char** buffer) {
 //     char c = 0;
 //     char* data = calloc(1, sizeof(char));
@@ -116,6 +129,7 @@ void print_bytecode(Code* code, char* end, ConstPool* constant_pool, NamePool* n
             case OP_CALL:
             case OP_LOAD_METHOD:
             case OP_LOAD_ATTRIBUTE:
+            case OP_BUILD_TUPLE:
             case OP_STORE_ATTRIBUTE:
                 printf("%-25s", op_to_str(op));
                 i++;
@@ -137,8 +151,9 @@ void print_bytecode(Code* code, char* end, ConstPool* constant_pool, NamePool* n
                     case OP_LOAD_CONST:
                         // <CODE object at 0x00ff>
                         if (constant_pool) {
-                            printf(" ");
+                            printf(" (");
                             print_constant_information(constant_pool->data + index);
+                            printf(")");
                         }
                         break;
                     default: break;
@@ -221,22 +236,30 @@ void print_code(Code* code, char* end, ConstPool* constant_pool, NamePool* name_
 void print_constant_information(ConstantInformation* constant_information) {
     // printf("%s: ", constant_tag_to_str(constant_information->tag));
     switch (constant_information->tag) {
-                case CONSTANT_NULL: printf("(null)"); break;
-                case CONSTANT_BOOL: printf("(%s)", constant_information->_bool ? "true" : "false"); break;
-                case CONSTANT_ASCII: printf("(%s)", constant_information->_string); break;
-                case CONSTANT_CODE: printf("(<code object %s at %p>)", constant_information->_code.name, &constant_information->_code); break;
-                case CONSTANT_INTEGER: printf("(%lld)", constant_information->_int); break;
-                case CONSTANT_FLOAT: printf("(%g)", constant_information->_float); break;
-                default: printf("??? (tag=%u)", constant_information->tag); break;
+                case CONSTANT_NULL: printf("null"); break;
+                case CONSTANT_BOOL: printf("%s", constant_information->_bool ? "true" : "false"); break;
+                case CONSTANT_ASCII: printf("%s", constant_information->_string); break;
+                case CONSTANT_CODE: printf("<code object %s at %p>", constant_information->_code.name, &constant_information->_code); break;
+                case CONSTANT_INTEGER: printf("%lld", constant_information->_int); break;
+                case CONSTANT_FLOAT: printf("%g", constant_information->_float); break;
+                case CONSTANT_TUPLE: 
+                    printf("(");
+                    for (size_t i = 0; i < constant_information->_tuple.size; ++i) {
+                        print_constant_information(&constant_information->_tuple.data[i]);
+                        if (i != constant_information->_tuple.size - 1) printf(", ");
+                    }
+                    printf(")");
+                    break;
+                default: printf("tag=%u", constant_information->tag); break;
             }
 }
 
 void print_constant_pool(ConstPool* constant_pool) {
     puts("CONSTANT POOL:");
     for (size_t i = 0; i < constant_pool->size; ++i) {
-        printf("\t%lli ", i);
+        printf("\t%lli (", i);
         print_constant_information(&constant_pool->data[i]);
-        puts("");
+        puts(")");
     }
     puts("");
 }
@@ -309,8 +332,11 @@ static size_t find_constant_pool(ConstPool* constant_pool, ConstantInformation c
                     break;
                 
                 case CONSTANT_FLOAT: 
-                if (constant_information._float == constant_pool->data[i]._float) return i;
+                    if (constant_information._float == constant_pool->data[i]._float) return i;
                     break;
+
+                case CONSTANT_TUPLE:
+                    break; // doesnt 
             }
         }
     }
@@ -323,8 +349,12 @@ static size_t update_constant_pool(ConstPool* constant_pool, ConstantInformation
         constant_pool->data = realloc(constant_pool->data, ++constant_pool->size * sizeof(ConstantInformation));    
     } else {
         switch (constant_information.tag) {
-                case CONSTANT_ASCII: free(constant_pool->data[index]._string); break;
-                case CONSTANT_CODE: free(constant_pool->data[index]._code.code); break;
+                case CONSTANT_ASCII: 
+                    if (constant_pool->data[index]._string) free(constant_pool->data[index]._string); 
+                    break;
+                case CONSTANT_CODE: 
+                    if (constant_pool->data[index]._code.code) free(constant_pool->data[index]._code.code); 
+                    break;
                 default: break;
             }
     }
@@ -365,7 +395,13 @@ CompilationStatus compile_module(AstNode* root, CompiledModule* compiled_module,
         case AST_BLOCK: {
             AstListNode* list_node = root->_list.head;
             while (list_node) {
-                
+                if (!list_node) {
+                    size_t index = update_constant_pool(&compiled_module->constant_pool, (ConstantInformation){.tag=CONSTANT_NULL});            
+                    write_8(code, OP_LOAD_CONST);
+                    write_8(code, index);
+                    write_8(code, OP_RETURN);
+                    break;
+                }
                 status = compile_module(list_node->node, compiled_module, code);
                 if (status.code == STATUS_FAIL) return status; 
                 
@@ -736,6 +772,88 @@ CompilationStatus compile_module(AstNode* root, CompiledModule* compiled_module,
             break;
         }
 
+        case AST_TUPLE: {
+            AstList list = root->_list;
+            bool is_constant = true;
+
+            AstListNode* curr = list.head;
+            if (!curr) return (CompilationStatus){.code=STATUS_FAIL,.what="head of tuple is null"};
+            while (curr) {
+                if (curr->node && (curr->node->type == AST_IDENTIFIER || curr->node->type == AST_LAMBDA || curr->node->type == AST_FUNCTION)) {
+                    is_constant = false;
+                    break;
+                }
+                curr = curr->next;
+            }
+            curr = list.head;
+
+            if (is_constant) {
+                size_t index = update_constant_pool(
+                    &compiled_module->constant_pool, 
+                    (ConstantInformation){
+                        .tag=CONSTANT_TUPLE,
+                        ._tuple={0},
+                    }
+                );
+                
+                while (curr) {
+                    switch (curr->node->type) {
+                        case AST_INT: 
+                            update_constant_pool(
+                                &compiled_module->constant_pool.data[index]._tuple,
+                                (ConstantInformation){
+                                    .tag=CONSTANT_INTEGER,
+                                    ._int=curr->node->_int
+                                }
+                            );
+                            break;
+                        case AST_FLOAT: 
+                            update_constant_pool(
+                                &compiled_module->constant_pool.data[index]._tuple,
+                                (ConstantInformation){
+                                    .tag=CONSTANT_FLOAT,
+                                    ._float=curr->node->_float
+                                }
+                            );
+                            break;
+                        case AST_STRING: 
+                            size_t string_size = strlen(curr->node->_string) + 1;
+
+                            char* str = malloc(string_size);
+                            memcpy(str, curr->node->_string, string_size);
+
+                            update_constant_pool(
+                                &compiled_module->constant_pool.data[index]._tuple, 
+                                (ConstantInformation){
+                                    .tag=CONSTANT_ASCII,
+                                    ._string=str
+                                }
+                            );
+                            break;
+
+                        default: 
+                            UNIMPLEMENTED 
+                            return (CompilationStatus){.code=STATUS_FAIL,.what="unimplemented??"};
+                    }
+                    curr = curr->next;
+                }
+
+                write_8(code, OP_LOAD_CONST);
+                write_8(code, index);
+                break;
+            }
+
+            curr = list.tail;
+            while (curr) {
+                status = compile_module(curr->node, compiled_module, code);
+                if (status.code == STATUS_FAIL) return status; 
+                curr = curr->prev;
+            }
+            write_8(code, OP_BUILD_TUPLE);
+            write_8(code, list.size);
+            break;
+        }
+
         default:
             fprintf(stderr, "Visit for AST from type '%s' is not implemented yet\n", ast_type_to_str(root->type));
             status = (CompilationStatus){.code=STATUS_FAIL, .what="provided in stderr"};
@@ -762,7 +880,7 @@ void free_code(Code code) {
         free(code.code);
 
 }
-
+static void free_constant_pool(ConstPool constant_pool);
 static void free_constant(ConstantInformation constant_info) {
     switch (constant_info.tag) {
         case CONSTANT_NULL:
@@ -772,10 +890,11 @@ static void free_constant(ConstantInformation constant_info) {
 
         case CONSTANT_ASCII: free(constant_info._string); break;
         case CONSTANT_CODE: free_code(constant_info._code); break;
+        case CONSTANT_TUPLE: free_constant_pool(constant_info._tuple); break;
     }
 }
 
-static void free_constant_pool(ConstPool constant_pool) {
+void free_constant_pool(ConstPool constant_pool) {
     if (!constant_pool.data) return;
 
     for (size_t i = 0; i < constant_pool.size; ++i) {
@@ -883,3 +1002,20 @@ void free_module(CompiledModule* compile_module) {
 //     fclose(fp);
 //     return compiled_module;
 // }
+
+
+Status name_pool_get(NamePool* name_pool, size_t index, char** out) {
+    if (index >= name_pool->size) {
+        RETURN_STATUS_FAIL("Index larger than name_pool size")
+    }
+    *out = name_pool->data[index];
+    RETURN_STATUS_OK
+}
+
+Status constant_pool_get(ConstPool* constant_pool, size_t index, ConstantInformation* out) {
+    if (index >= constant_pool->size) {
+        RETURN_STATUS_FAIL("Index larger than constant_pool size")
+    }
+    *out = constant_pool->data[index];
+    RETURN_STATUS_OK
+}

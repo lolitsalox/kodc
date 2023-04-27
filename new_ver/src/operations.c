@@ -36,6 +36,8 @@ char* op_to_str(enum Operation op) {
         case OP_BINARY_BOOLEAN_LESS_THAN:       return "BINARY_BOOLEAN_LESS_THAN";
         case OP_BINARY_BOOLEAN_LESS_THAN_OR_EQUAL_TO:       return "BINARY_BOOLEAN_LESS_THAN_OR_EQUAL_TO";
         case OP_POP_TOP:       return "POP_TOP";
+        case OP_BUILD_TUPLE:       return "BUILD_TUPLE";
+        case OP_UNKNOWN:       return "OP_UNKNOWN";
     }
     return "OP_UNKNOWN";
 }

@@ -1,0 +1,12 @@
+{
+    "files.associations": {
+        "kod_object.h": "c",
+        "kod_object_int.h": "c",
+        "typeinfo": "c",
+        "kod_object_func.h": "c",
+        "compiler.h": "c",
+        "kod_object_native_func.h": "c",
+        "kod_object_tuple.h": "c"
+    },
+    "C_Cpp.errorSquiggles": "disabled"
+}

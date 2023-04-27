@@ -51,6 +51,10 @@ enum Operation {
     // LOOPs
     OP_JUMP,                // direct: relative byte offset, stack: none
     OP_POP_JUMP_IF_FALSE,   // direct: relative byte offset, stack: object
+
+    OP_BUILD_TUPLE,
+
+    OP_UNKNOWN,
 };
 
 char* op_to_str(enum Operation op);

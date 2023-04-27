@@ -1,6 +1,8 @@
+#pragma once
+
 #include "kod_object.h"
 
-#define TYPE_HEADER(parent_type) .base={.kind=OBJECT_TYPE,.ref_count=1,.type=&parent_type},
+#define TYPE_HEADER(name) .base={.kind=OBJECT_TYPE,.ref_count=1,.type=&KodType_Type},.tp_name=name,
 
 typedef struct KodObjectNumberMethods {
     binary_func add;
@@ -8,16 +10,14 @@ typedef struct KodObjectNumberMethods {
     binary_func mul;
     binary_func div;
 
-    unary_func _bool;
-    unary_func _int;
-    unary_func _float;
-    
-    unary_func hash;
+    Status (*_bool)(KodObject*, bool* out);
+    Status (*_int)(KodObject*, i64* out);
+    Status (*_float)(KodObject*, f64* out);
 } KodObjectNumberMethods;
 
 typedef struct KodObjectSubscriptMethods {
-    unary_func get;
-    unary_func set;
+    method_func get;
+    method_func set;
 } KodObjectSubscriptMethods;
 
 typedef struct KodObjectType {
@@ -25,11 +25,13 @@ typedef struct KodObjectType {
     char* tp_name;
     KodObjectNumberMethods* as_number;
     KodObjectSubscriptMethods* as_subscript;
-    unary_func str;
-    unary_func free;
+    Status (*str)(KodObject* self, char** out);
+    unary_func hash;
+    full_func call;
+    kod_func free;
 } KodObjectType;
 
-extern KodObjectType KodObjectType_Type;
+extern KodObjectType KodType_Type;
 
 // Status kod_type_init(char* tp_name, KodObjectType* out);
 // Status kod_type_new(char* tp_name, KodObjectType** out);
