@@ -1,22 +1,22 @@
 #pragma once
 
+#include "../../compiler/compiler.h"
 #include "kod_object.h"
 #include "object_map.h"
 #include "object_stack.h"
-#include <compiler/compiler.h>
 
 #define MAX_FRAMES 256 // somehow need to make this higher
 
 typedef struct CallFrame {
     ObjectMap locals;
-    struct ObjectStack stack;
     size_t ip;
     Code* code;
 } CallFrame;
 
 typedef struct FrameStack {
-    CallFrame frames[MAX_FRAMES];
-    size_t size;
+    CallFrame* frames;
+    i32 size;
+    u64 capacity;
 } FrameStack;
 
 

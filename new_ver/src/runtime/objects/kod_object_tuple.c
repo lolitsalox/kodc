@@ -7,7 +7,7 @@ Status kod_object_new_tuple(size_t size, KodObjectTuple** out) {
 
     obj->data = calloc(size, sizeof(KodObject*));
     if (!obj->data) RETURN_STATUS_FAIL("Couldn't allocate for tuple data")
-    obj->size = size;
+    obj->size = (i64)size;
     obj->base.kind = OBJECT_TUPLE;
     obj->base.type = &KodType_Tuple;
     obj->base.ref_count = 0;
@@ -18,13 +18,16 @@ Status kod_object_new_tuple(size_t size, KodObjectTuple** out) {
 
 static Status tuple_str_impl(KodObjectTuple* self, char** out) {
     Status s;
-    char *buffer = strdup("("), *tmp = NULL, *template = NULL;
-    if (!buffer) RETURN_STATUS_FAIL("Couldn't allocate buffer");
+    char *buffer = NULL, *tmp = NULL, *template = NULL;
 
-    for (size_t i = 0; i < self->size; i++) {
+    for (i64 i = 0; i < self->size; i++) {
         template = "%s%s, ";
         tmp = NULL;
-        if (!self->data[i]->type->str) continue;
+        if (!self->data[i] || !self->data[i]->type->str) continue;
+        if (!buffer) {
+            buffer = _strdup("(");
+            if (!buffer) RETURN_STATUS_FAIL("Couldn't allocate buffer")
+        }
         if ((s = self->data[i]->type->str(self->data[i], &tmp)).type == ST_FAIL) return s;
         if (!tmp) RETURN_STATUS_FAIL("Couldn't get string from object")
 
@@ -56,12 +59,16 @@ static Status tuple_free(KodObject* self) {
     KodObjectTuple* tuple = (KodObjectTuple*)self;
     Status s;
 
-    for (size_t i = 0; i < tuple->size; i++) {
+    for (i64 i = 0; i < tuple->size; i++) {
         if ((s = kod_object_deref(tuple->data[i])).type == ST_FAIL) return s;
+        tuple->data[i] = NULL;
     }
 
-    if (tuple->data)
+    if (tuple->data) {
         free(tuple->data);
+        tuple->data = NULL;
+    }
+    tuple->size = 0;
 
     if ((s = kod_object_free(self)).type == ST_FAIL) return s;
     RETURN_STATUS_OK

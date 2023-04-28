@@ -1,5 +1,6 @@
 #include "kod_object_int.h"
 #include "kod_object_float.h"
+#include "kod_object_bool.h"
 
 static inline i64 i64_add(i64 a, i64 b) { return a + b; }
 
@@ -24,7 +25,7 @@ Status kod_object_new_int(i64 value, KodObjectInt** out) {
 static Status int_str_impl(KodObjectInt* self, char** out) {
     char* buffer = malloc(32);
     if (!buffer) RETURN_STATUS_FAIL("Couldn't allocate buffer");
-    ltoa(self->_int, buffer, 10);
+    _ltoa_s((long)self->_int, buffer, 32, 10);
     
     *out = buffer;
     RETURN_STATUS_OK
@@ -77,6 +78,10 @@ Status int_div(KodObject* self, KodObject* other, KodObject** out) {
     return KodType_Float.as_number->div(self, other, out);
 }
 
+Status int_gt(KodObject* self, KodObject* other, KodObject** out) {
+    return KodType_Bool.as_number->gt(self, other, out);
+}
+
 Status int_int(KodObject* self, i64* out) {
     if (!self) RETURN_STATUS_FAIL("Invalid object");
     if (!out) RETURN_STATUS_FAIL("Invalid out");
@@ -93,16 +98,25 @@ Status int_float(KodObject* self, f64* out) {
     RETURN_STATUS_OK
 }
 
+Status int_bool(KodObject* self, bool* out) {
+    if (!self) RETURN_STATUS_FAIL("Invalid object");
+    if (!out) RETURN_STATUS_FAIL("Invalid out");
+
+    *out = (bool)((KodObjectInt*)self)->_int;
+    RETURN_STATUS_OK
+}
+
 KodObjectNumberMethods int_as_number = {
     .add=int_add,
     .sub=int_sub,
     .mul=int_mul,
     .div=int_div,
 
+    .gt=int_gt,
+
     ._int=int_int,
     ._float=int_float,
-    ._bool=0,
-
+    ._bool=int_bool,
 };
 
 KodObjectType KodType_Int = {

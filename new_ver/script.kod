@@ -1,11 +1,5 @@
-x = "Hello there!"
-y = 1.23 || 32
-
-f(a, b, c) {
-    if a || b {
-        return a ** c;
-    }
-    return b
+i = 100
+while i {
+	print(i)
+	i = i - 1
 }
-
-print(f(1, 2, 3))

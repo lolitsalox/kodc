@@ -1,10 +1,9 @@
 #pragma once
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include "defines.h"
 
-#include <defines.h>
+#pragma warning(disable : 4996)
+#pragma warning(disable : 6011)
 
 enum STATUS io_read(const char* filename, char** buffer, size_t* buffer_size, char** err) {
     FILE* fp; 
@@ -25,6 +24,7 @@ enum STATUS io_read(const char* filename, char** buffer, size_t* buffer_size, ch
         fclose(fp);
         return STATUS_FAIL;
     }
+
     (*buffer)[fsize] = 0;
 
     fclose(fp);

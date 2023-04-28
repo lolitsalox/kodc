@@ -7,17 +7,18 @@
 #include "objects/kod_object_native_func.h"
 #include "objects/kod_object_tuple.h"
 #include "objects/kod_object_null.h"
+#include "objects/kod_object_bool.h"
 
 #include "builtins.h"
 
-#include <operations.h>
+#include "../operations.h"
 
 #define BIN_OP_CASE(op) { \
     KodObject* right = NULL; \
-    if ((s = object_stack_pop(&call_frame->stack, &right)).type == ST_FAIL) return s; \
+    if ((s = object_stack_pop(&vm->stack, &right)).type == ST_FAIL) return s; \
     \
     KodObject* left = NULL; \
-    if ((s = object_stack_pop(&call_frame->stack, &left)).type == ST_FAIL) return s; \
+    if ((s = object_stack_pop(&vm->stack, &left)).type == ST_FAIL) return s; \
     \
     if (!left->type->as_number) RETURN_STATUS_FAIL("Type has no number representation"); \
     if (!left->type->as_number->op) RETURN_STATUS_FAIL("Type has no attribute "#op); \
@@ -25,7 +26,7 @@
     KodObject* obj; \
     if ((s = left->type->as_number->op(left, right, &obj)).type == ST_FAIL) return s; \
     \
-    if ((s = object_stack_push(&call_frame->stack, AS_OBJECT(obj))).type == ST_FAIL) return s; \
+    if ((s = object_stack_push(&vm->stack, AS_OBJECT(obj))).type == ST_FAIL) return s; \
     break; \
     }
 
@@ -75,45 +76,37 @@ Status load_constant_objects(ConstPool constant_pool, KodObject** data) {
         if (data[i]) continue;
 
         ConstantInformation ci = constant_pool.data[i];
+        KodObject* obj = NULL;
+
         switch (ci.tag) {
             case CONSTANT_NULL: {
-                KodObjectNull* obj = NULL;
-                if ((s = kod_object_new_null(&obj)).type == ST_FAIL) return s;
-                if ((s = kod_object_ref(AS_OBJECT(obj))).type == ST_FAIL) return s;
-                data[i] = AS_OBJECT(obj);
+                if ((s = kod_object_new_null((KodObjectNull**) &obj)).type == ST_FAIL) return s;
                 break;
             }
 
+            case CONSTANT_BOOL: {
+                if ((s = kod_object_new_bool(ci._bool, (KodObjectBool**) &obj)).type == ST_FAIL) return s;
+                break;
+            }
+            
             case CONSTANT_INTEGER: {
-                KodObjectInt* obj = NULL;
-                if ((s = kod_object_new_int(ci._int, &obj)).type == ST_FAIL) return s;
-                if ((s = kod_object_ref(AS_OBJECT(obj))).type == ST_FAIL) return s;
-                data[i] = AS_OBJECT(obj);
+                if ((s = kod_object_new_int(ci._int, (KodObjectInt**) &obj)).type == ST_FAIL) return s;
                 break;
             }
 
             case CONSTANT_FLOAT: {
-                KodObjectFloat* obj = NULL;
-                if ((s = kod_object_new_float(ci._float, &obj)).type == ST_FAIL) return s;
-                if ((s = kod_object_ref(AS_OBJECT(obj))).type == ST_FAIL) return s;
-                data[i] = AS_OBJECT(obj);
+                if ((s = kod_object_new_float(ci._float, (KodObjectFloat**) &obj)).type == ST_FAIL) return s;
                 break;
             }
 
             case CONSTANT_CODE: {
-                KodObjectFunc* obj = NULL;
-                if ((s = kod_object_new_func(ci._code, &obj)).type == ST_FAIL) return s;
-                if ((s = kod_object_ref(AS_OBJECT(obj))).type == ST_FAIL) return s;
-                data[i] = AS_OBJECT(obj);
+                if ((s = kod_object_new_func(ci._code, (KodObjectFunc**) &obj)).type == ST_FAIL) return s;
                 break;
             }
             
             case CONSTANT_TUPLE: {
-                KodObjectTuple* obj = NULL;
-                if ((s = kod_object_new_tuple(ci._tuple.size, &obj)).type == ST_FAIL) return s;
-                if ((s = kod_object_ref(AS_OBJECT(obj))).type == ST_FAIL) return s;
-                if ((s = load_constant_objects(ci._tuple, obj->data)).type == ST_FAIL) return s;
-                data[i] = AS_OBJECT(obj);
+                if ((s = kod_object_new_tuple(ci._tuple.size, (KodObjectTuple**) &obj)).type == ST_FAIL) return s;
+                if ((s = load_constant_objects(ci._tuple, ((KodObjectTuple*)obj)->data)).type == ST_FAIL) return s;
                 break;
             }
 
@@ -121,6 +114,10 @@ Status load_constant_objects(ConstPool constant_pool, KodObject** data) {
                 ERROR_ARGS("Runtime", "Can't load constant %s\n", constant_tag_to_str(ci.tag)); 
                 RETURN_STATUS_FAIL("Unknown constant");
         }
+
+        if ((s = kod_object_ref(obj)).type == ST_FAIL) return s;
+        data[i] = obj;
+
     }
     RETURN_STATUS_OK
 }
@@ -139,20 +136,32 @@ Status vm_init(CompiledModule* module, bool repl, VirtualMachine* out) {
     if (!out->initialized) {
         out->repl = repl;
 
-
         out->constant_objects = calloc(module->constant_pool.size, sizeof(KodObject*));
         if (!out->constant_objects) RETURN_STATUS_FAIL("Coudln't allocate for constant objects")
         out->constant_objects_size = module->constant_pool.size;
 
         if ((s = frame_stack_init(&out->frame_stack)).type == ST_FAIL) return s;
+        if ((s = object_stack_init(&out->stack)).type == ST_FAIL) return s;
         if ((s = object_map_init(&out->globals)).type == ST_FAIL) return s;
 
         if ((s = kod_object_ref(AS_OBJECT(&KodType_Int))).type == ST_FAIL) return s;
-        if ((s = object_map_insert(&out->globals, "int", AS_OBJECT(&KodType_Int))).type == ST_FAIL) return s;        
+        if ((s = object_map_insert(&out->globals, "int", AS_OBJECT(&KodType_Int))).type == ST_FAIL) return s;
+
+        if ((s = kod_object_ref(AS_OBJECT(&KodType_Float))).type == ST_FAIL) return s;
+        if ((s = object_map_insert(&out->globals, "float", AS_OBJECT(&KodType_Float))).type == ST_FAIL) return s;
+
+        if ((s = kod_object_ref(AS_OBJECT(&KodType_Bool))).type == ST_FAIL) return s;
+        if ((s = object_map_insert(&out->globals, "bool", AS_OBJECT(&KodType_Bool))).type == ST_FAIL) return s;
 
         if ((s = kod_object_ref(AS_OBJECT(&KodType_Tuple))).type == ST_FAIL) return s;
-        if ((s = object_map_insert(&out->globals, "tuple", AS_OBJECT(&KodType_Tuple))).type == ST_FAIL) return s;    
-        
+        if ((s = object_map_insert(&out->globals, "tuple", AS_OBJECT(&KodType_Tuple))).type == ST_FAIL) return s;
+
+        if ((s = kod_object_ref(AS_OBJECT(&KodObject_True))).type == ST_FAIL) return s;
+        if ((s = object_map_insert(&out->globals, "true", AS_OBJECT(&KodObject_True))).type == ST_FAIL) return s;
+
+        if ((s = kod_object_ref(AS_OBJECT(&KodObject_False))).type == ST_FAIL) return s;
+        if ((s = object_map_insert(&out->globals, "false", AS_OBJECT(&KodObject_False))).type == ST_FAIL) return s;
+
         if ((s = kod_object_ref(AS_OBJECT(&KodObject_Null))).type == ST_FAIL) return s;
         if ((s = object_map_insert(&out->globals, "null", AS_OBJECT(&KodObject_Null))).type == ST_FAIL) return s;        
 
@@ -180,19 +189,24 @@ Status vm_init(CompiledModule* module, bool repl, VirtualMachine* out) {
 
 Status vm_destroy(VirtualMachine* vm) {
     Status s;
-
+#ifdef DEBUG_VM
     LOG("destroying constant objects\n");
+#endif
     for (size_t i = 0; i < vm->module->constant_pool.size; ++i) {
         if ((s = kod_object_deref(vm->constant_objects[i])).type == ST_FAIL) return s;
     }
 
+#ifdef DEBUG_VM
     LOG("destroying frame stack\n");
+#endif
     if ((s = frame_stack_clear(&vm->frame_stack)).type == ST_FAIL) return s;
 
+#ifdef DEBUG_VM
     LOG("destroying globals\n");
+#endif
     if ((s = object_map_clear(&vm->globals)).type == ST_FAIL) return s;
     
-    object_map_print(&vm->globals);
+    // object_map_print(&vm->globals);
     vm->initialized = false;
     vm->module = NULL;
     RETURN_STATUS_OK
@@ -210,7 +224,6 @@ Status vm_run_code_object(VirtualMachine* vm, Code* code_obj, ObjectMap* initial
         if ((s = frame_stack_push(&vm->frame_stack, frame)).type == ST_FAIL) return s;
     }
 
-    vm_run_code_object_start:
     CallFrame* call_frame = NULL;
     if ((s = frame_stack_top(&vm->frame_stack, &call_frame)).type == ST_FAIL) return s;
 
@@ -226,9 +239,9 @@ Status vm_run_code_object(VirtualMachine* vm, Code* code_obj, ObjectMap* initial
         switch (op) {
             case OP_POP_TOP: {
                 KodObject* obj = NULL;
-                if ((s = object_stack_pop(&call_frame->stack, &obj)).type == ST_FAIL) return s;
+                if ((s = object_stack_pop(&vm->stack, &obj)).type == ST_FAIL) return s;
                 if (obj->kind == OBJECT_NULL) {
-                    if ((s = kod_object_deref(obj)).type == ST_FAIL) return s;
+                    //if ((s = kod_object_deref(obj)).type == ST_FAIL) return s;
                     break;
                 }
                 if (vm->repl) {
@@ -254,7 +267,7 @@ Status vm_run_code_object(VirtualMachine* vm, Code* code_obj, ObjectMap* initial
                 KodObject* obj = vm->constant_objects[index];
                 if (!obj) RETURN_STATUS_FAIL("Object found in constant objects was null")
 
-                if ((s = object_stack_push(&call_frame->stack, AS_OBJECT(obj))).type == ST_FAIL) return s;
+                if ((s = object_stack_push(&vm->stack, AS_OBJECT(obj))).type == ST_FAIL) return s;
                 break;
             }
 
@@ -269,7 +282,7 @@ Status vm_run_code_object(VirtualMachine* vm, Code* code_obj, ObjectMap* initial
                 KodObject* obj = NULL;
                 if ((s = vm_find_object(vm, name, &obj)).type == ST_FAIL) return s;
 
-                if ((s = object_stack_push(&call_frame->stack, AS_OBJECT(obj))).type == ST_FAIL) return s;
+                if ((s = object_stack_push(&vm->stack, AS_OBJECT(obj))).type == ST_FAIL) return s;
                 break;
             }
 
@@ -282,7 +295,7 @@ Status vm_run_code_object(VirtualMachine* vm, Code* code_obj, ObjectMap* initial
                 if ((s = name_pool_get(&vm->module->name_pool, index, &name)).type == ST_FAIL) return s;
 
                 KodObject* obj = NULL;
-                if ((s = object_stack_pop(&call_frame->stack, &obj)).type == ST_FAIL) return s;
+                if ((s = object_stack_pop(&vm->stack, &obj)).type == ST_FAIL) return s;
 
                 if ((s = kod_object_ref(obj)).type == ST_FAIL) return s;
                 // 1
@@ -296,17 +309,17 @@ Status vm_run_code_object(VirtualMachine* vm, Code* code_obj, ObjectMap* initial
                 if ((s = read_8(call_frame->code, &call_frame->ip, &tuple_size)).type == ST_FAIL) return s;
                 
                 KodObjectTuple* tuple = NULL;
-                if ((s = kod_object_new_tuple(tuple_size, &tuple)).type == ST_FAIL) return s;
+                if ((s = kod_object_new_tuple((u64)tuple_size, &tuple)).type == ST_FAIL) return s;
 
                 KodObject* obj = NULL;
                 for (u8 i = 0; i < tuple_size; ++i) {
                     obj = NULL;
-                    if ((s = object_stack_pop(&call_frame->stack, &obj)).type == ST_FAIL) return s;
+                    if ((s = object_stack_pop(&vm->stack, &obj)).type == ST_FAIL) return s;
                     if ((s = kod_object_ref(obj)).type == ST_FAIL) return s;
                     tuple->data[i] = obj;
                 }
 
-                if ((s = object_stack_push(&call_frame->stack, AS_OBJECT(tuple))).type == ST_FAIL) return s;
+                if ((s = object_stack_push(&vm->stack, AS_OBJECT(tuple))).type == ST_FAIL) return s;
                 break;
             }
 
@@ -316,43 +329,50 @@ Status vm_run_code_object(VirtualMachine* vm, Code* code_obj, ObjectMap* initial
                 if ((s = read_8(call_frame->code, &call_frame->ip, &arg_size)).type == ST_FAIL) return s;
 
                 KodObject* fn_obj = NULL;
-                if ((s = object_stack_pop(&call_frame->stack, &fn_obj)).type == ST_FAIL) return s;
+                if ((s = object_stack_pop(&vm->stack, &fn_obj)).type == ST_FAIL) return s;
                 
                 if (fn_obj->kind == OBJECT_FUNC) {
                     Code code = ((KodObjectFunc*)fn_obj)->_code;
 
                     if (code.params.size != arg_size) RETURN_STATUS_FAIL("Argument size does not match function parameter size")
 
-                    ObjectMap map = { 0 };
-                    if ((s = object_map_init(&map)).type == ST_FAIL) return s;
+                    CallFrame new_frame;
+                    if ((s = call_frame_init(&new_frame, &code)).type == ST_FAIL) return s;
                     
                     KodObject* obj = NULL;
                     for (u8 i = 0; i < code.params.size; ++i) {
                         obj = NULL;
-                        if ((s = object_stack_pop(&call_frame->stack, &obj)).type == ST_FAIL) return s;
+                        if ((s = object_stack_pop(&vm->stack, &obj)).type == ST_FAIL) return s;
                         if ((s = kod_object_ref(obj)).type == ST_FAIL) return s;
-                        if ((s = object_map_insert(&map, code.params.data[i], obj)).type == ST_FAIL) return s;
+                        if ((s = object_map_insert(&new_frame.locals, code.params.data[i], obj)).type == ST_FAIL) return s;
                     }
-
-                    CallFrame new_frame;
-                    if ((s = call_frame_init(&new_frame, &code)).type == ST_FAIL) return s;
                     if ((s = frame_stack_push(&vm->frame_stack, new_frame)).type == ST_FAIL) return s;
 
                     KodObject* result = NULL;
-                    if ((s = vm_run_code_object(vm, &code, &map, &result)).type == ST_FAIL) return s;
-                    if ((s = object_map_clear(&map)).type == ST_FAIL) return s;
-                    
-                    CallFrame* new_frame_pf = NULL;
-                    if ((s = frame_stack_pop(&vm->frame_stack, &new_frame_pf)).type == ST_FAIL) return s;
-                    if ((s = call_frame_clear(new_frame_pf)).type == ST_FAIL) return s;
+                    if ((s = vm_run_code_object(vm, &code, NULL, &result)).type == ST_FAIL) {
+                        Status s_;
+                        if ((s_ = frame_stack_pop(&vm->frame_stack, &call_frame)).type == ST_FAIL) {
+                            ERROR("KodRuntime", s_.what);
+                            free(s_.what);
+                        }
+                        if ((s_ = call_frame_clear(call_frame)).type == ST_FAIL) {
+                            ERROR("KodRuntime", s_.what);
+                            free(s_.what);
+                        }
+                        if ((s_ = frame_stack_top(&vm->frame_stack, &call_frame)).type == ST_FAIL) {
+                            ERROR("KodRuntime", s_.what);
+                            free(s_.what);
+                        }
 
-                    if ((s = kod_object_new_int(69, (KodObjectInt**)&result)).type == ST_FAIL) return s;
-                    if ((s = object_stack_push(&call_frame->stack, result)).type == ST_FAIL) return s;
+                        return s;
+                    }
+
+                    if ((s = frame_stack_top(&vm->frame_stack, &call_frame)).type == ST_FAIL) return s;
                     break;
                 }
 
                 if (!fn_obj->type->call) RETURN_STATUS_FAIL("Type has no call attribute")
-
+                
                 // build a tuple for the args
                 KodObjectTuple* args = NULL;
                 if ((s = kod_object_new_tuple(arg_size, &args)).type == ST_FAIL) return s;
@@ -360,23 +380,55 @@ Status vm_run_code_object(VirtualMachine* vm, Code* code_obj, ObjectMap* initial
                 KodObject* obj = NULL;
                 for (u8 i = 0; i < arg_size; ++i) {
                     obj = NULL;
-                    if ((s = object_stack_pop(&call_frame->stack, &obj)).type == ST_FAIL) return s;
+                    if ((s = object_stack_pop(&vm->stack, &obj)).type == ST_FAIL) return s;
                     if ((s = kod_object_ref(obj)).type == ST_FAIL) return s;
                     args->data[i] = obj;
                 }
 
                 KodObject* result = NULL;
-                if ((s = fn_obj->type->call(fn_obj, AS_OBJECT(args), NULL, &result)).type == ST_FAIL) return s;
+                if ((s = fn_obj->type->call(vm, fn_obj, AS_OBJECT(args), NULL, &result)).type == ST_FAIL) return s;
 
                 if ((s = kod_object_deref(AS_OBJECT(args))).type == ST_FAIL) return s;
 
-                if ((s = object_stack_push(&call_frame->stack, result)).type == ST_FAIL) return s;
+                if ((s = object_stack_push(&vm->stack, result)).type == ST_FAIL) return s;
                 break;
             }
 
             case OP_RETURN: {
-                
+                KodObject* obj = NULL;
+                if ((s = object_stack_top(&vm->stack, &obj)).type == ST_FAIL) return s;
+                *out = obj;
 
+                if (vm->frame_stack.size > 1) {
+                    if ((s = frame_stack_pop(&vm->frame_stack, NULL)).type == ST_FAIL) return s;
+                    if ((s = call_frame_clear(call_frame)).type == ST_FAIL) return s;
+                }
+                RETURN_STATUS_OK
+                break;
+            }
+
+            case OP_POP_JUMP_IF_FALSE: {
+                u8 ip_to_jump = 0;
+                if ((s = read_8(call_frame->code, &call_frame->ip, &ip_to_jump)).type == ST_FAIL) return s;
+
+                KodObject* obj = NULL;
+                if ((s = object_stack_pop(&vm->stack, &obj)).type == ST_FAIL) return s;
+
+                if (!obj->type->as_number) RETURN_STATUS_FAIL("Type has no number representation");
+                if (!obj->type->as_number->_bool) RETURN_STATUS_FAIL("Type has no boolean representation");
+
+                bool is_false = false;
+                if ((s = obj->type->as_number->_bool(obj, &is_false)).type == ST_FAIL) return s;
+                if (is_false == false) {
+                    call_frame->ip = ip_to_jump;
+                }
+                break;
+            }
+
+            case OP_JUMP: {
+                u8 ip_to_jump = 0;
+                if ((s = read_8(call_frame->code, &call_frame->ip, &ip_to_jump)).type == ST_FAIL) return s;
+                call_frame->ip = ip_to_jump;
                 break;
             }
 

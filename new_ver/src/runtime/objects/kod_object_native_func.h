@@ -4,10 +4,10 @@
 
 typedef struct KodObjectNativeFunc {
     KodObject base;
-    normal_func _func;
+    native_func _func;
     char* name;
 } KodObjectNativeFunc;
 
 extern KodObjectType KodType_NativeFunc;
 
-Status kod_object_new_native_func(normal_func func, char* name, KodObjectNativeFunc** out);
+Status kod_object_new_native_func(native_func func, char* name, KodObjectNativeFunc** out);

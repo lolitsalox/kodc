@@ -6,7 +6,16 @@ Status kod_object_ref(KodObject* self) {
     
     ++self->ref_count;
     #ifdef DEBUG_VM
-    LOG_ARGS("(+) Referencing '%s' object (%d -> %d)\n", self->type->tp_name, self->ref_count - 1, self->ref_count);
+    LOG_ARGS("(+) Referencing object (%d -> %d)", self->ref_count - 1, self->ref_count);
+    if (self->type->str) {
+        char* buffer = NULL;
+        Status s = self->type->str(self, &buffer);
+        if (s.type == ST_FAIL) return s;
+
+        printf("\t('%s' - %s)", self->type->tp_name, buffer);
+        free(buffer);
+    }
+    puts("");
     #endif
     RETURN_STATUS_OK
 }
@@ -17,7 +26,16 @@ Status kod_object_deref(KodObject* self) {
 
     --self->ref_count;
     #ifdef DEBUG_VM
-    LOG_ARGS("(-) Dereferencing '%s' object (%d -> %d)\n", self->type->tp_name, self->ref_count + 1, self->ref_count);
+    LOG_ARGS("(-) Dereferencing object (%d -> %d)", self->ref_count + 1, self->ref_count);
+    if (self->type->str) {
+        char* buffer = NULL;
+        Status s = self->type->str(self, &buffer);
+        if (s.type == ST_FAIL) return s;
+
+        printf("\t('%s' - %s)", self->type->tp_name, buffer);
+        free(buffer);
+    }
+    puts("");
     #endif
     if (self->ref_count <= 0) {
         if (self->type->free)
@@ -32,7 +50,16 @@ Status kod_object_deref(KodObject* self) {
 Status kod_object_free(KodObject* self) {
     if (!self) RETURN_STATUS_FAIL("Can't free a null object")
     #ifdef DEBUG_VM
-    LOG_ARGS("(-) Freeing '%s' object\n", self->type->tp_name);
+    LOG("(-) Freeing object");
+    if (self->type->str) {
+        char* buffer = NULL;
+        Status s = self->type->str(self, &buffer);
+        if (s.type == ST_FAIL) return s;
+
+        printf("\t\t('%s' - %s)", self->type->tp_name, buffer);
+        free(buffer);
+    }
+    puts("");
     #endif
 
     free(self);

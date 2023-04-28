@@ -1,7 +1,7 @@
 #pragma once
 
-#include <defines.h>
-#include <parser/ast.h>
+#include "../defines.h"
+#include "../parser/ast.h"
 
 typedef struct CompilationStatus {
     enum STATUS code;

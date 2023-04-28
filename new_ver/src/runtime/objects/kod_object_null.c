@@ -4,7 +4,7 @@ static Status null_str(KodObject* self, char** out) {
     if (!self) RETURN_STATUS_FAIL("Invalid object");
     if (!out) RETURN_STATUS_FAIL("Invalid out");
 
-    *out = strdup("null");
+    *out = _strdup("null");
     RETURN_STATUS_OK
 }
 

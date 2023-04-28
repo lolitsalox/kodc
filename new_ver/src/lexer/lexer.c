@@ -84,7 +84,7 @@ enum STATUS lexer_get_next_token(Lexer* lexer, Token** out, char** err) {
 
 static void skip_whitespace(Lexer* lexer) {
     if (!lexer) return;
-    while (lexer->current_char == ' ' || lexer->current_char == '\r') advance(lexer);
+    while (lexer->current_char == ' ' || lexer->current_char == '\r' || lexer->current_char == '\t') advance(lexer);
 }
 
 static void advance(Lexer* lexer) {

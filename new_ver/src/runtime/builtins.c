@@ -2,8 +2,9 @@
 
 #include "objects/kod_object_tuple.h"
 #include "objects/kod_object_null.h"
+#include "vm.h"
 
-Status native_print(KodObject *args, KodObject *kwargs, KodObject **out) {
+Status native_print(VirtualMachine* vm, KodObject *args, KodObject *kwargs, KodObject **out) {
     if (args->kind != OBJECT_TUPLE) RETURN_STATUS_FAIL("args is not a tuple");
     if (!out) RETURN_STATUS_FAIL("out is null")
 
@@ -11,7 +12,7 @@ Status native_print(KodObject *args, KodObject *kwargs, KodObject **out) {
     char* buffer = NULL;
     Status s;
 
-    for (size_t i = 0; i < tuple->size; ++i) {
+    for (i64 i = 0; i < tuple->size; ++i) {
         KodObject* obj = tuple->data[i];
         if (obj->type->str) {
             if ((s = obj->type->str(obj, &buffer)).type == ST_FAIL) return s;
@@ -35,8 +36,33 @@ Status native_print(KodObject *args, KodObject *kwargs, KodObject **out) {
     return kod_object_new_null((KodObjectNull**)out);
 }
 
+
+Status native_globals(VirtualMachine* vm, KodObject* args, KodObject* kwargs, KodObject** out) {
+    if (args->kind != OBJECT_TUPLE) RETURN_STATUS_FAIL("args is not a tuple");
+    if (!out) RETURN_STATUS_FAIL("out is null");
+
+    object_map_print(&vm->globals);
+
+    return kod_object_new_null((KodObjectNull**)out);
+}
+
+Status native_locals(VirtualMachine* vm, KodObject* args, KodObject* kwargs, KodObject** out) {
+    if (args->kind != OBJECT_TUPLE) RETURN_STATUS_FAIL("args is not a tuple");
+    if (!out) RETURN_STATUS_FAIL("out is null");
+
+    CallFrame* curr_frame = NULL;
+    Status s = frame_stack_top(&vm->frame_stack, &curr_frame);
+    if (s.type == ST_FAIL) return s;
+
+    object_map_print(&curr_frame->locals);
+
+    return kod_object_new_null((KodObjectNull**)out);
+}
+
 static KodObjectNativeFunc native_funcs[] = {
     STRUCT_BUILTIN_FUNC(print)
+    STRUCT_BUILTIN_FUNC(globals)
+    STRUCT_BUILTIN_FUNC(locals)
 };
 
 Status builtins_init(VirtualMachine* vm) {

@@ -14,7 +14,16 @@ Status object_stack_push(ObjectStack* self, KodObject* obj) {
     if (!obj) RETURN_STATUS_FAIL("obj is null")
 
     #ifdef DEBUG_VM
-    LOG("(+) Pushing to object stack\n");
+    LOG("(+) Pushing to object stack");
+    if (obj->type->str) {
+        char* buffer = NULL;
+        Status s = obj->type->str(obj, &buffer);
+        if (s.type == ST_FAIL) return s;
+
+        printf("\t('%s' - %s)", obj->type->tp_name, buffer);
+        free(buffer);
+    }
+    puts("");
     #endif
 
     if (self->size < MAX_STACK_SIZE) {
@@ -28,17 +37,39 @@ Status object_stack_push(ObjectStack* self, KodObject* obj) {
 Status object_stack_pop(ObjectStack* self, KodObject** out) {
     if (!self) RETURN_STATUS_FAIL("stack is null")
     if (!out) RETURN_STATUS_FAIL("out is null")
-
-    #ifdef DEBUG_VM
-    LOG("(-) Popping from object stack\n");
-    #endif
-
+    
     if (self->size > 0) {
         *out = self->stack[--self->size];
+    }
+
+    #ifdef DEBUG_VM
+    LOG("(-) Popping from object stack");
+    if ((*out)->type->str) {
+        char* buffer = NULL;
+        Status s = (*out)->type->str(*out, &buffer);
+        if (s.type == ST_FAIL) return s;
+        
+        printf("\t('%s' - %s)", (*out)->type->tp_name, buffer);
+        free(buffer);
+    }
+    puts("");
+    #endif
+
+    RETURN_STATUS_OK
+
+    RETURN_STATUS_FAIL("Stack is empty. Cannot pop object from stack.")
+}
+
+Status object_stack_top(ObjectStack* self, KodObject** out) {
+    if (!self) RETURN_STATUS_FAIL("stack is null")
+    if (!out) RETURN_STATUS_FAIL("out is null")
+
+    if (self->size > 0) {
+        *out = self->stack[self->size - 1];
         RETURN_STATUS_OK
     }
 
-    RETURN_STATUS_FAIL("Stack is empty. Cannot pop object from stack.")
+    RETURN_STATUS_FAIL("Stack is empty. Can't return top.")
 }
 
 Status object_stack_clear(ObjectStack* self, bool deref_objects) {

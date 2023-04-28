@@ -1,6 +1,6 @@
 #include "kod_object_native_func.h"
 
-Status kod_object_new_native_func(normal_func func, char* name, KodObjectNativeFunc** out) {
+Status kod_object_new_native_func(native_func func, char* name, KodObjectNativeFunc** out) {
     KodObjectNativeFunc* obj = malloc(sizeof(KodObjectNativeFunc));
     if (!obj) RETURN_STATUS_FAIL("Couldn't allocate for native func object");
     if (!out) RETURN_STATUS_FAIL("Invalid out");
@@ -32,11 +32,11 @@ static Status func_str(KodObject* self, char** out) {
     return func_str_impl((KodObjectNativeFunc*)self, out);
 }
 
-static Status func_call(KodObject* self, KodObject* args, KodObject* kwargs, KodObject** out) {
+static Status func_call(VirtualMachine* vm, KodObject* self, KodObject* args, KodObject* kwargs, KodObject** out) {
     if (!self) RETURN_STATUS_FAIL("Invalid object");
     if (!out) RETURN_STATUS_FAIL("Invalid out");
     
-    return ((KodObjectNativeFunc*)self)->_func(args, kwargs, out);
+    return ((KodObjectNativeFunc*)self)->_func(vm, args, kwargs, out);
 }
 
 KodObjectType KodType_NativeFunc = {

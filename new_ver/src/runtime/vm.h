@@ -1,7 +1,7 @@
 #pragma once
 
-#include <defines.h>
-#include <compiler/compiler.h>
+#include "../defines.h"
+#include "../compiler/compiler.h"
 #include "objects/kod_object.h"
 #include "objects/object_map.h"
 #include "objects/frame_stack.h"
@@ -12,6 +12,7 @@ typedef struct VirtualMachine {
     bool running;
     bool repl;
     ObjectMap globals;
+    ObjectStack stack;
     CompiledModule* module;
     KodObject** constant_objects;
     size_t constant_objects_size;

@@ -92,6 +92,13 @@ Status float_int(KodObject* self, i64* out) {
     RETURN_STATUS_OK
 }
 
+Status float_bool(KodObject* self, bool* out) {
+    if (!self) RETURN_STATUS_FAIL("Invalid object");
+    if (!out) RETURN_STATUS_FAIL("Invalid out");
+
+    *out = (bool)((KodObjectFloat*)self)->_float;
+    RETURN_STATUS_OK
+}
 KodObjectNumberMethods float_as_number = {
     .add=float_add,
     .sub=float_sub,
@@ -100,7 +107,7 @@ KodObjectNumberMethods float_as_number = {
 
     ._int=float_int,
     ._float=float_float,
-    ._bool=0,
+    ._bool=float_bool,
 
 };
 

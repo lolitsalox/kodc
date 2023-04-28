@@ -1,14 +1,16 @@
 #pragma once
 
-#include <defines.h>
+#include "../../defines.h"
 
 #define AS_OBJECT(obj) ((KodObject*)obj)
 
 typedef struct KodObject KodObject;
+typedef struct VirtualMachine VirtualMachine;
 
+typedef Status (*native_func)   (VirtualMachine* vm, KodObject* args, KodObject* kwargs, KodObject** out);
 typedef Status (*full_func)     (KodObject* self, KodObject* args, KodObject* kwargs, KodObject** out);
 typedef full_func method_func;
-typedef Status (*normal_func)   (KodObject* args, KodObject* kwargs, KodObject** out);
+typedef Status (*normal_func)   (VirtualMachine* vm, KodObject* self, KodObject* args, KodObject* kwargs, KodObject** out);
 typedef Status (*binary_func)   (KodObject* self, KodObject* other, KodObject** out);
 typedef Status (*unary_func)    (KodObject* self, KodObject** out);
 typedef Status (*kod_func)      (KodObject* self);

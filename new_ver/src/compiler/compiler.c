@@ -1,6 +1,6 @@
 #include "compiler.h"
 
-#include <operations.h>
+#include "../operations.h"
 
 char* constant_tag_to_str(enum ConstantTag constant_tag) {
     switch (constant_tag) {
@@ -74,7 +74,9 @@ char* constant_tag_to_str(enum ConstantTag constant_tag) {
 
 static size_t write_data(Code* code, void* data, size_t size) {
     code->size += size;
-    code->code = realloc(code->code, code->size);
+    void* p = realloc(code->code, code->size);
+    if (p == NULL) return 0;
+    code->code = p;
     void* ptr = code->code + code->size - size;
     memcpy(ptr, data, size);
     return code->size - size;
@@ -290,7 +292,9 @@ static size_t update_name_pool(NamePool* name_pool, char* name) {
     // If the name is not already in the pool, add it
     if (index == name_pool->size) {
         // Reallocate memory for the data array to make room for the new name
-        name_pool->data = realloc(name_pool->data, ++name_pool->size * sizeof(char*));       
+        void* p = realloc(name_pool->data, ++name_pool->size * sizeof(char*));   
+        if (!p) return 0;
+        name_pool->data = p;
     } 
     // If the name is already in the pool, remove it and add the new name in its place
     else {
@@ -299,6 +303,7 @@ static size_t update_name_pool(NamePool* name_pool, char* name) {
     }
 
     // Add the new name at the appropriate index
+    if (!name_pool->data) return 0;
     name_pool->data[index] = name;
     return index;
 }
@@ -346,7 +351,9 @@ static size_t find_constant_pool(ConstPool* constant_pool, ConstantInformation c
 static size_t update_constant_pool(ConstPool* constant_pool, ConstantInformation constant_information) {
     size_t index = find_constant_pool(constant_pool, constant_information);
     if (index == constant_pool->size) {
-        constant_pool->data = realloc(constant_pool->data, ++constant_pool->size * sizeof(ConstantInformation));    
+        void* p = realloc(constant_pool->data, ++constant_pool->size * sizeof(ConstantInformation));    
+        if (!p) return 0;
+        constant_pool->data = p;
     } else {
         switch (constant_information.tag) {
                 case CONSTANT_ASCII: 
@@ -395,13 +402,6 @@ CompilationStatus compile_module(AstNode* root, CompiledModule* compiled_module,
         case AST_BLOCK: {
             AstListNode* list_node = root->_list.head;
             while (list_node) {
-                if (!list_node) {
-                    size_t index = update_constant_pool(&compiled_module->constant_pool, (ConstantInformation){.tag=CONSTANT_NULL});            
-                    write_8(code, OP_LOAD_CONST);
-                    write_8(code, index);
-                    write_8(code, OP_RETURN);
-                    break;
-                }
                 status = compile_module(list_node->node, compiled_module, code);
                 if (status.code == STATUS_FAIL) return status; 
                 
@@ -421,7 +421,10 @@ CompilationStatus compile_module(AstNode* root, CompiledModule* compiled_module,
                 list_node = list_node->next;
             }
 
-            if (root->_list.size == 0 || (root->_list.tail && root->_list.tail->node->type != AST_RETURN_STATEMENT)) {
+            if (root->_list.size == 0 || (root->_list.tail && (
+                    root->type == AST_FUNCTION ||
+                    root->type == AST_ROOT
+                ) && root->_list.tail->node->type != AST_RETURN_STATEMENT)) {
                 size_t index = update_constant_pool(&compiled_module->constant_pool, (ConstantInformation){.tag=CONSTANT_NULL});            
                 write_8(code, OP_LOAD_CONST);
                 write_8(code, index);
@@ -442,6 +445,7 @@ CompilationStatus compile_module(AstNode* root, CompiledModule* compiled_module,
             size_t ident_size = strlen(identifier) + 1;
 
             char* name = malloc(ident_size);
+            if (!name) return (CompilationStatus) { .code = STATUS_FAIL, .what = "[CompileModule]: Error - Coudln't allocate for name"};
             memcpy(name, identifier, ident_size);
 
             size_t index = update_name_pool(&compiled_module->name_pool, name);
@@ -466,6 +470,7 @@ CompilationStatus compile_module(AstNode* root, CompiledModule* compiled_module,
             size_t ident_size = strlen(identifier) + 1;
 
             char* name = malloc(ident_size);
+            if (!name) return (CompilationStatus) { .code = STATUS_FAIL, .what = "[CompileModule]: Error - Coudln't allocate for name" };
             memcpy(name, identifier, ident_size);
 
             size_t index = update_name_pool(&compiled_module->name_pool, name);
@@ -513,6 +518,8 @@ CompilationStatus compile_module(AstNode* root, CompiledModule* compiled_module,
             size_t string_size = strlen(root->_string) + 1;
 
             char* str = malloc(string_size);
+            if (!str) return (CompilationStatus) { .code = STATUS_FAIL, .what = "[CompileModule]: Error - Coudln't allocate for str" };
+
             memcpy(str, root->_string, string_size);
 
             size_t index = update_constant_pool(
@@ -531,6 +538,8 @@ CompilationStatus compile_module(AstNode* root, CompiledModule* compiled_module,
             size_t ident_size = strlen(root->_string) + 1;
 
             char* name = malloc(ident_size);
+            if (!name) return (CompilationStatus) { .code = STATUS_FAIL, .what = "[CompileModule]: Error - Coudln't allocate for name" };
+
             memcpy(name, root->_string, ident_size);
 
             size_t index = update_name_pool(
@@ -739,6 +748,7 @@ CompilationStatus compile_module(AstNode* root, CompiledModule* compiled_module,
                 
                 // updating param list
                 param_name = malloc(param_name_size);
+                if (!param_name) return (CompilationStatus) { .code = STATUS_FAIL, .what = "[CompileModule]: Error - Coudln't allocate for name" };
                 memcpy(param_name, ident->_string, param_name_size);
 
                 update_name_pool(
@@ -767,6 +777,8 @@ CompilationStatus compile_module(AstNode* root, CompiledModule* compiled_module,
             write_8(code, index);
 
             fn_name = malloc(fn_name_size);
+            if (!fn_name) return (CompilationStatus) { .code = STATUS_FAIL, .what = "[CompileModule]: Error - Coudln't allocate for name" };
+
             memcpy(fn_name, root->_function.name, fn_name_size);
 
             index = update_name_pool(
@@ -804,6 +816,7 @@ CompilationStatus compile_module(AstNode* root, CompiledModule* compiled_module,
                 );
                 
                 while (curr) {
+                    if (!curr->node) return (CompilationStatus) { .code = STATUS_FAIL, .what = "[CompileModule]: Error - curr->node is null" };
                     switch (curr->node->type) {
                         case AST_INT: 
                             update_constant_pool(
@@ -823,20 +836,21 @@ CompilationStatus compile_module(AstNode* root, CompiledModule* compiled_module,
                                 }
                             );
                             break;
-                        case AST_STRING: 
+                        case AST_STRING: {
                             size_t string_size = strlen(curr->node->_string) + 1;
 
                             char* str = malloc(string_size);
                             memcpy(str, curr->node->_string, string_size);
 
                             update_constant_pool(
-                                &compiled_module->constant_pool.data[index]._tuple, 
-                                (ConstantInformation){
-                                    .tag=CONSTANT_ASCII,
-                                    ._string=str
-                                }
+                                &compiled_module->constant_pool.data[index]._tuple,
+                                (ConstantInformation) {
+                                .tag = CONSTANT_ASCII,
+                                    ._string = str
+                            }
                             );
                             break;
+                        }
 
                         default: 
                             UNIMPLEMENTED 

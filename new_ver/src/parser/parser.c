@@ -247,6 +247,20 @@ static enum STATUS parse_statement(Parser* parser, AstNode** out, char** err) {
             if (parse_expression(parser, &(*out)->_return, err) == STATUS_FAIL) return STATUS_FAIL;
             break;
 
+        case KEYWORD_NULL:
+            if (ast_node_new((AstNode) {
+                .type = AST_NULL,
+            }, out, err) == STATUS_FAIL) return STATUS_FAIL;
+            break;
+
+        case KEYWORD_FALSE:
+        case KEYWORD_TRUE:
+            if (ast_node_new((AstNode) {
+                .type = AST_BOOL,
+                ._bool = ktype == KEYWORD_TRUE
+            }, out, err) == STATUS_FAIL) return STATUS_FAIL;
+            break;
+
         default: 
             ERROR_ARGS("Parser", "'%s' keyword hasn't been implemented yet.\n", keyword_type_to_str(ktype));
             *err = "Unimplemented keyword"; 

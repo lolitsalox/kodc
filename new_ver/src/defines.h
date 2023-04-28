@@ -11,9 +11,10 @@
 // #define DEBUG_TOKEN
 // #define DEBUG_LEXER
 // #define DEBUG_PARSER
+// #define DEBUG_COMPILER
 // #define DEBUG_VM
 
-#define RETURN_STATUS_FAIL(msg) { Status s = {.type=ST_FAIL,.what=malloc(sizeof(msg))}; memcpy(s.what, msg, sizeof(msg)); return s; }
+#define RETURN_STATUS_FAIL(msg) { Status s = {.type=ST_FAIL,.what=NULL}; s.what = malloc(sizeof(msg)); if (s.what == 0) { return s; }; memcpy(s.what, msg, sizeof(msg)); return s; }
 #define RETURN_STATUS_OK { return (Status){.type=ST_OK, .what=NULL }; }
 
 #define LOG(msg) { printf("INFO: %s", msg); }

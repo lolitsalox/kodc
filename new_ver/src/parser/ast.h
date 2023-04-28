@@ -1,7 +1,7 @@
 #pragma once
 
-#include <defines.h>
-#include <lexer/token.h>
+#include "../defines.h"
+#include "../lexer/token.h"
 
 typedef enum AstType {
     AST_ROOT,
