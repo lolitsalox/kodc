@@ -53,16 +53,16 @@ i32 run_module(CompiledModule* module) {
 }
 
 i32 main(i32 argc, char** argv) {
-    char *filename = "script.kod", *err = NULL, *buffer = NULL;
-    system("cd");
-    //filename = argv[1];
-    size_t buffer_size = 0;
-    /*
+    char *filename = NULL, *err = NULL, *buffer = NULL;
+    
+    
     if (argc < 2) {
         repl();
         return 0;
     }
-    */
+    
+    filename = argv[1];
+    size_t buffer_size = 0;
     
     if (io_read(filename, &buffer, &buffer_size, &err) == STATUS_FAIL) {
         ERROR("IO", err);
