@@ -26,8 +26,11 @@
     KodObject* obj; \
     if ((s = left->type->as_number->op(left, right, &obj)).type == ST_FAIL) return s; \
     \
+    if ((s = kod_object_ref(obj)).type == ST_FAIL) return s;\
     if ((s = object_stack_push(&vm->stack, AS_OBJECT(obj))).type == ST_FAIL) return s; \
-    break; \
+    if ((s = kod_object_deref(right)).type == ST_FAIL) return s;\
+    if ((s = kod_object_deref(left)).type == ST_FAIL) return s;\
+break; \
     }
 
 static Status read_data(Code* code, size_t* offset, size_t size, void* out) {
@@ -235,13 +238,15 @@ Status vm_run_code_object(VirtualMachine* vm, Code* code_obj, ObjectMap* initial
     while (call_frame->ip < call_frame->code->size) {
         enum Operation op = OP_UNKNOWN;
         if ((s = read_8(call_frame->code, &call_frame->ip, (u8*)&op)).type == ST_FAIL) return s;
-        // LOG_ARGS("OP: %s\n", op_to_str(op));
+#ifdef DEBUG_VM
+        LOG_ARGS("OP: %s\n", op_to_str(op));
+#endif
         switch (op) {
             case OP_POP_TOP: {
                 KodObject* obj = NULL;
                 if ((s = object_stack_pop(&vm->stack, &obj)).type == ST_FAIL) return s;
                 if (obj->kind == OBJECT_NULL) {
-                    //if ((s = kod_object_deref(obj)).type == ST_FAIL) return s;
+                    if ((s = kod_object_deref(obj)).type == ST_FAIL) return s;
                     break;
                 }
                 if (vm->repl) {
@@ -255,7 +260,7 @@ Status vm_run_code_object(VirtualMachine* vm, Code* code_obj, ObjectMap* initial
                     if (output)
                         free(output);
                 }
-                if (obj->ref_count == 0) if ((s = kod_object_deref(obj)).type == ST_FAIL) return s;
+                if ((s = kod_object_deref(obj)).type == ST_FAIL) return s;
                 break;
             }
             
@@ -265,8 +270,9 @@ Status vm_run_code_object(VirtualMachine* vm, Code* code_obj, ObjectMap* initial
                 if ((s = read_8(call_frame->code, &call_frame->ip, &index)).type == ST_FAIL) return s;
 
                 KodObject* obj = vm->constant_objects[index];
-                if (!obj) RETURN_STATUS_FAIL("Object found in constant objects was null")
+                if (!obj) RETURN_STATUS_FAIL("Object found in constant objects was null");
 
+                if ((s = kod_object_ref(obj)).type == ST_FAIL) return s;
                 if ((s = object_stack_push(&vm->stack, AS_OBJECT(obj))).type == ST_FAIL) return s;
                 break;
             }
@@ -282,6 +288,7 @@ Status vm_run_code_object(VirtualMachine* vm, Code* code_obj, ObjectMap* initial
                 KodObject* obj = NULL;
                 if ((s = vm_find_object(vm, name, &obj)).type == ST_FAIL) return s;
 
+                if ((s = kod_object_ref(obj)).type == ST_FAIL) return s;
                 if ((s = object_stack_push(&vm->stack, AS_OBJECT(obj))).type == ST_FAIL) return s;
                 break;
             }
@@ -297,8 +304,6 @@ Status vm_run_code_object(VirtualMachine* vm, Code* code_obj, ObjectMap* initial
                 KodObject* obj = NULL;
                 if ((s = object_stack_pop(&vm->stack, &obj)).type == ST_FAIL) return s;
 
-                if ((s = kod_object_ref(obj)).type == ST_FAIL) return s;
-                // 1
                 if ((s = object_map_insert(&call_frame->locals, name, obj)).type == ST_FAIL) return s;
                 break;
             }
@@ -315,10 +320,10 @@ Status vm_run_code_object(VirtualMachine* vm, Code* code_obj, ObjectMap* initial
                 for (u8 i = 0; i < tuple_size; ++i) {
                     obj = NULL;
                     if ((s = object_stack_pop(&vm->stack, &obj)).type == ST_FAIL) return s;
-                    if ((s = kod_object_ref(obj)).type == ST_FAIL) return s;
                     tuple->data[i] = obj;
                 }
 
+                if ((s = kod_object_ref(AS_OBJECT(tuple))).type == ST_FAIL) return s;
                 if ((s = object_stack_push(&vm->stack, AS_OBJECT(tuple))).type == ST_FAIL) return s;
                 break;
             }
@@ -343,7 +348,6 @@ Status vm_run_code_object(VirtualMachine* vm, Code* code_obj, ObjectMap* initial
                     for (u8 i = 0; i < code.params.size; ++i) {
                         obj = NULL;
                         if ((s = object_stack_pop(&vm->stack, &obj)).type == ST_FAIL) return s;
-                        if ((s = kod_object_ref(obj)).type == ST_FAIL) return s;
                         if ((s = object_map_insert(&new_frame.locals, code.params.data[i], obj)).type == ST_FAIL) return s;
                     }
                     if ((s = frame_stack_push(&vm->frame_stack, new_frame)).type == ST_FAIL) return s;
@@ -351,6 +355,11 @@ Status vm_run_code_object(VirtualMachine* vm, Code* code_obj, ObjectMap* initial
                     KodObject* result = NULL;
                     if ((s = vm_run_code_object(vm, &code, NULL, &result)).type == ST_FAIL) {
                         Status s_;
+
+                        if ((s_ = kod_object_deref(fn_obj)).type == ST_FAIL) {
+                            ERROR("KodRuntime", s_.what);
+                            free(s_.what);
+                        }
                         if ((s_ = frame_stack_pop(&vm->frame_stack, &call_frame)).type == ST_FAIL) {
                             ERROR("KodRuntime", s_.what);
                             free(s_.what);
@@ -367,6 +376,7 @@ Status vm_run_code_object(VirtualMachine* vm, Code* code_obj, ObjectMap* initial
                         return s;
                     }
 
+                    if ((s = kod_object_deref(fn_obj)).type == ST_FAIL) return s;
                     if ((s = frame_stack_top(&vm->frame_stack, &call_frame)).type == ST_FAIL) return s;
                     break;
                 }
@@ -381,7 +391,6 @@ Status vm_run_code_object(VirtualMachine* vm, Code* code_obj, ObjectMap* initial
                 for (u8 i = 0; i < arg_size; ++i) {
                     obj = NULL;
                     if ((s = object_stack_pop(&vm->stack, &obj)).type == ST_FAIL) return s;
-                    if ((s = kod_object_ref(obj)).type == ST_FAIL) return s;
                     args->data[i] = obj;
                 }
 
@@ -390,6 +399,7 @@ Status vm_run_code_object(VirtualMachine* vm, Code* code_obj, ObjectMap* initial
 
                 if ((s = kod_object_deref(AS_OBJECT(args))).type == ST_FAIL) return s;
 
+                if ((s = kod_object_ref(result)).type == ST_FAIL) return s;
                 if ((s = object_stack_push(&vm->stack, result)).type == ST_FAIL) return s;
                 break;
             }
@@ -422,6 +432,7 @@ Status vm_run_code_object(VirtualMachine* vm, Code* code_obj, ObjectMap* initial
                 if (is_false == false) {
                     call_frame->ip = ip_to_jump;
                 }
+                if ((s = kod_object_deref(obj)).type == ST_FAIL) return s;
                 break;
             }
 
@@ -436,6 +447,8 @@ Status vm_run_code_object(VirtualMachine* vm, Code* code_obj, ObjectMap* initial
             case OP_BINARY_SUB: BIN_OP_CASE(sub)
             case OP_BINARY_MUL: BIN_OP_CASE(mul)
             case OP_BINARY_DIV: BIN_OP_CASE(div)
+
+            case OP_BINARY_BOOLEAN_LESS_THAN: BIN_OP_CASE(lt)
 
             default: {
                 ERROR_ARGS("Runtime", "Unknown opcode: %s\n", op_to_str(op));

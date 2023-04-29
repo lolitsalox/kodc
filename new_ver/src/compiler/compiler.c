@@ -15,6 +15,14 @@ char* constant_tag_to_str(enum ConstantTag constant_tag) {
     return "CONSTANT_UNKNOWN";
 }
 
+static void free_name_pool(NamePool name_pool) {
+    if (!name_pool.data) return;
+    for (size_t i = 0; i < name_pool.size; ++i) {
+        free(name_pool.data[i]);
+    }
+    free(name_pool.data);
+}
+
 // static size_t read_until_null(FILE* fp, char** buffer) {
 //     char c = 0;
 //     char* data = calloc(1, sizeof(char));
@@ -321,15 +329,27 @@ static size_t find_constant_pool(ConstPool* constant_pool, ConstantInformation c
                         return i;
                     break;
                 
-                case CONSTANT_CODE: 
-                    if ( strcmp(constant_information._code.name, constant_pool->data[i]._code.name) == 0 &&
-                        constant_information._code.size == constant_pool->data[i]._code.size &&  (
+                case CONSTANT_CODE: break;
+                    if (strcmp(constant_information._code.name, constant_pool->data[i]._code.name) == 0 &&
+                        constant_information._code.size == constant_pool->data[i]._code.size && (
                             memcmp(
-                                constant_information._code.code, 
-                                constant_pool->data[i]._code.code, 
+                                constant_information._code.code,
+                                constant_pool->data[i]._code.code,
                                 constant_information._code.size) == 0
-                            )
-                    ) return i;
+                            ) &&
+                        constant_information._code.params.size == constant_pool->data[i]._code.params.size
+                        ) {
+                        bool is_diff = false;
+                        for (size_t j = 0; j < constant_information._code.params.size; ++j) {
+                            if (strcmp(
+                                    constant_information._code.params.data[j],
+                                    constant_pool->data[i]._code.params.data[j]
+                                ) != 0) {
+                                is_diff = true; break;
+                            }
+                        }
+                        if (is_diff) return i;
+                    }
                     break;
                 
                 case CONSTANT_INTEGER: 
@@ -363,7 +383,9 @@ static size_t update_constant_pool(ConstPool* constant_pool, ConstantInformation
                     if (constant_pool->data[index]._string) free(constant_pool->data[index]._string); 
                     break;
                 case CONSTANT_CODE: 
-                    if (constant_pool->data[index]._code.code) free(constant_pool->data[index]._code.code); 
+                    if (constant_pool->data[index]._code.code) free(constant_pool->data[index]._code.code);
+                    if (constant_pool->data[index]._code.name) free(constant_pool->data[index]._code.name);
+                    free_name_pool(constant_pool->data[index]._code.params);
                     break;
                 default: break;
             }
@@ -801,7 +823,12 @@ CompilationStatus compile_module(AstNode* root, CompiledModule* compiled_module,
             AstListNode* curr = list.head;
             if (!curr) return (CompilationStatus){.code=STATUS_FAIL,.what="head of tuple is null"};
             while (curr) {
-                if (curr->node && (curr->node->type == AST_IDENTIFIER || curr->node->type == AST_LAMBDA || curr->node->type == AST_FUNCTION)) {
+                if (curr->node &&
+                    (curr->node->type == AST_IDENTIFIER ||
+                        curr->node->type == AST_LAMBDA ||
+                        curr->node->type == AST_CALL ||
+                        curr->node->type == AST_ACCESS ||
+                        curr->node->type == AST_FUNCTION)) {
                     is_constant = false;
                     break;
                 }
@@ -885,14 +912,6 @@ CompilationStatus compile_module(AstNode* root, CompiledModule* compiled_module,
     }
 
     return status;
-}
-
-static void free_name_pool(NamePool name_pool) {
-    if (!name_pool.data) return;
-    for (size_t i = 0; i < name_pool.size; ++i) {
-        free(name_pool.data[i]);
-    }
-    free(name_pool.data);
 }
 
 void free_code(Code code) {

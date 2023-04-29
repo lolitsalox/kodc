@@ -39,7 +39,7 @@ i32 run_module(CompiledModule* module) {
         free(s.what);
     }
 
-    if (result && result->ref_count == 0 && (s = kod_object_deref(result)).type == ST_FAIL) {
+    if ((s = kod_object_deref(result)).type == ST_FAIL) {
         ERROR("KodRuntime", s.what);
         free(s.what);
         return 1;
@@ -173,7 +173,7 @@ void repl() {
         }
 
         free_stuff:
-        if (result && result->ref_count == 0 && (s = kod_object_deref(result)).type == ST_FAIL) {
+        if ((s = kod_object_deref(result)).type == ST_FAIL) {
             ERROR("KodRuntime", s.what);
             free(s.what);
         }
@@ -189,5 +189,6 @@ void repl() {
     };
     free_module(module);
     free(vm);
+    fgets(buffer, 1 << 8, stdin);
     puts("Exited kod!");
 }
