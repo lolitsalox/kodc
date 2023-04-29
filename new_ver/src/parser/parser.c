@@ -184,19 +184,26 @@ static enum STATUS parse_binary(
     
     if (next(parser, &left, err) == STATUS_FAIL) return STATUS_FAIL;
 
-    if (is_type_in_types(parser->current_token->type, types, types_size)) {
+    while (is_type_in_types(parser->current_token->type, types, types_size)) {
+        TokenType op = parser->current_token->type;
+
+        // Eating the operator token
+        if (eat(parser, op, err) == STATUS_FAIL) return STATUS_FAIL; 
+
+        AstNode* right = NULL;
+        if (next(parser, &right, err) == STATUS_FAIL) return STATUS_FAIL;
+
+        AstNode* new_node = NULL;
         if (ast_node_new(((AstNode){
             .type=AST_BIN_OP, 
             ._binary_op={
                 .left=left, 
-                .right=NULL,
-                .op=parser->current_token->type,
+                .right=right,
+                .op=op,
             }
-        }), &left, err) == STATUS_FAIL) return STATUS_FAIL;
+        }), &new_node, err) == STATUS_FAIL) return STATUS_FAIL;
 
-        // Eating the token
-        if (eat(parser, parser->current_token->type, err) == STATUS_FAIL) return STATUS_FAIL; 
-        if (parse_binary(parser, &left->_binary_op.right, err, types, types_size, next) == STATUS_FAIL) return STATUS_FAIL;
+        left = new_node;
     }
 
     *out = left;

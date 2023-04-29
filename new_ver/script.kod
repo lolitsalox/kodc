@@ -1,7 +1,6 @@
 /*
 
 TODO:
-	- change parsing to make it right to left cause 10/3*10 is actualy 10/(3*10)
 	- make a dict object
 	- implement attributes
 	- implement import, from, as
