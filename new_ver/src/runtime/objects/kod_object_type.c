@@ -18,12 +18,19 @@ static Status type_str(KodObject* self, char** out) {
     return type_str_impl((KodObjectType*)self, out);
 }
 
+static Status type_call(VirtualMachine* vm, KodObject* self, KodObject* args, KodObject* kwargs, KodObject** out) {
+    if (!self) RETURN_STATUS_FAIL("self is null");
+    if (!((KodObjectType*)self)->new) RETURN_STATUS_FAIL("type has no new method");
+
+    return ((KodObjectType*)self)->new(vm, self, args, kwargs, out);
+}
+
 KodObjectType KodType_Type = {
     TYPE_HEADER("type")
     .as_number=0,
     .as_subscript=0,
     .str=type_str,
     .hash=0,
-    .call=0,
+    .call=type_call,
     .free=0,
 };

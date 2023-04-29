@@ -51,6 +51,7 @@ typedef struct KodObjectType {
     Status (*str)(KodObject* self, char** out);
     unary_func hash;
     normal_func call;
+    normal_func new;
     kod_func free;
 } KodObjectType;
 

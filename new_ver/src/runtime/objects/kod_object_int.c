@@ -1,6 +1,8 @@
 #include "kod_object_int.h"
 #include "kod_object_float.h"
 #include "kod_object_bool.h"
+#include "kod_object_string.h"
+#include "kod_object_tuple.h"
 
 static inline i64 i64_add(i64 a, i64 b) { return a + b; }
 
@@ -71,6 +73,7 @@ Status int_sub(KodObject* self, KodObject* other, KodObject** out) {
 }
 
 Status int_mul(KodObject* self, KodObject* other, KodObject** out) {
+    if (other->kind == OBJECT_STRING) return other->type->as_number->mul(other, self, out);
     if (other->kind == OBJECT_FLOAT) return other->type->as_number->mul(self, other, out);
     return int_bin(self, other, out, i64_mul);
 }
@@ -107,6 +110,19 @@ Status int_bool(KodObject* self, bool* out) {
     RETURN_STATUS_OK
 }
 
+Status int_new(VirtualMachine* vm, KodObject* self, KodObject* args, KodObject* kwargs, KodObject** out) {
+    if (!self) RETURN_STATUS_FAIL("Invalid object");
+    if (!out) RETURN_STATUS_FAIL("Invalid out");
+    if (!args) RETURN_STATUS_FAIL("Invalid args");
+    if (args->type != &KodType_Tuple) RETURN_STATUS_FAIL("args is not a tuple");
+    if (((KodObjectTuple*)args)->size == 0) RETURN_STATUS_FAIL("args is empty");
+
+    if (((KodObjectTuple*)args)->data[0]->type == &KodType_Int) return kod_object_new_int(((KodObjectInt*)((KodObjectTuple*)args)->data[0])->_int, (KodObjectInt**)out);
+    if (((KodObjectTuple*)args)->data[0]->type == &KodType_Float) return kod_object_new_int((i64)((KodObjectFloat*)((KodObjectTuple*)args)->data[0])->_float, (KodObjectInt**)out);
+
+    RETURN_STATUS_FAIL("Can't construct an int from this type");
+}
+
 KodObjectNumberMethods int_as_number = {
     .add=int_add,
     .sub=int_sub,
@@ -126,6 +142,6 @@ KodObjectType KodType_Int = {
     .as_subscript=0,
     .str=int_str,
     .hash=0,
-    .call=0,
+    .new=int_new,
     .free=kod_object_free
 };

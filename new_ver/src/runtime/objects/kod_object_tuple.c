@@ -70,8 +70,7 @@ static Status tuple_free(KodObject* self) {
     }
     tuple->size = 0;
 
-    if ((s = kod_object_free(self)).type == ST_FAIL) return s;
-    RETURN_STATUS_OK
+    return kod_object_free(self);
 }
 
 KodObjectType KodType_Tuple = {

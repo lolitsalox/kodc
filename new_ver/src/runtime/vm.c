@@ -8,6 +8,7 @@
 #include "objects/kod_object_tuple.h"
 #include "objects/kod_object_null.h"
 #include "objects/kod_object_bool.h"
+#include "objects/kod_object_string.h"
 
 #include "builtins.h"
 
@@ -20,12 +21,22 @@
     KodObject* left = NULL; \
     if ((s = object_stack_pop(&vm->stack, &left)).type == ST_FAIL) return s; \
     \
-    if (!left->type->as_number) RETURN_STATUS_FAIL("Type has no number representation"); \
-    if (!left->type->as_number->op) RETURN_STATUS_FAIL("Type has no attribute "#op); \
-    \
+    if (!left->type->as_number) {\
+    if ((s = kod_object_deref(right)).type == ST_FAIL) return s;\
+    if ((s = kod_object_deref(left)).type == ST_FAIL) return s;\
+    RETURN_STATUS_FAIL("Type has no number representation"); \
+    }\
+    if (!left->type->as_number->op) {\
+    if ((s = kod_object_deref(right)).type == ST_FAIL) return s; \
+    if ((s = kod_object_deref(left)).type == ST_FAIL) return s; \
+    RETURN_STATUS_FAIL("Type has no attribute "#op); \
+    }\
     KodObject* obj; \
-    if ((s = left->type->as_number->op(left, right, &obj)).type == ST_FAIL) return s; \
-    \
+    if ((s = left->type->as_number->op(left, right, &obj)).type == ST_FAIL) {\
+    if ((s = kod_object_deref(right)).type == ST_FAIL) return s;\
+    if ((s = kod_object_deref(left)).type == ST_FAIL) return s;\
+    return s; \
+    }\
     if ((s = kod_object_ref(obj)).type == ST_FAIL) return s;\
     if ((s = object_stack_push(&vm->stack, AS_OBJECT(obj))).type == ST_FAIL) return s; \
     if ((s = kod_object_deref(right)).type == ST_FAIL) return s;\
@@ -103,7 +114,12 @@ Status load_constant_objects(ConstPool constant_pool, KodObject** data) {
             }
 
             case CONSTANT_CODE: {
-                if ((s = kod_object_new_func(ci._code, (KodObjectFunc**) &obj)).type == ST_FAIL) return s;
+                if ((s = kod_object_new_func(ci._code, (KodObjectFunc**)&obj)).type == ST_FAIL) return s;
+                break;
+            }
+
+            case CONSTANT_ASCII: {
+                if ((s = kod_object_new_string(ci._string, (KodObjectString**)&obj)).type == ST_FAIL) return s;
                 break;
             }
             
@@ -146,6 +162,9 @@ Status vm_init(CompiledModule* module, bool repl, VirtualMachine* out) {
         if ((s = frame_stack_init(&out->frame_stack)).type == ST_FAIL) return s;
         if ((s = object_stack_init(&out->stack)).type == ST_FAIL) return s;
         if ((s = object_map_init(&out->globals)).type == ST_FAIL) return s;
+
+        if ((s = kod_object_ref(AS_OBJECT(&KodType_String))).type == ST_FAIL) return s;
+        if ((s = object_map_insert(&out->globals, "str", AS_OBJECT(&KodType_String))).type == ST_FAIL) return s;
 
         if ((s = kod_object_ref(AS_OBJECT(&KodType_Int))).type == ST_FAIL) return s;
         if ((s = object_map_insert(&out->globals, "int", AS_OBJECT(&KodType_Int))).type == ST_FAIL) return s;
