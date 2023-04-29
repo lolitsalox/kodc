@@ -2,9 +2,10 @@
 #include "kod_object_int.h"
 #include "kod_object_float.h"
 
-static inline i64 b_add(bool a, bool b) { return a + b; }
-static inline i64 b_sub(bool a, bool b) { return a - b; }
-static inline i64 b_mul(bool a, bool b) { return a * b; }
+static inline i64 b_add(i64 a, i64 b) { return a + b; }
+static inline i64 b_sub(i64 a, i64 b) { return a - b; }
+static inline i64 b_mul(i64 a, i64 b) { return a * b; }
+static inline i64 b_lt(i64 a, i64 b) { return a < b; }
 
 Status bool_str(KodObject* self, char** out) {
     if (!self) RETURN_STATUS_FAIL("Invalid object");
@@ -24,11 +25,11 @@ static Status bool_bin(KodObject* self, KodObject* other, KodObject** out, i64 (
 
     if (self->type->as_number->_bool && other->type->as_number->_bool) {
         i64 left = 0;
-        Status s = self->type->as_number->_bool(self, (bool*) & left);
+        Status s = self->type->as_number->_int(self, (i64*)&left);
         if (s.type == ST_FAIL) return s;
 
         i64 right = 0;
-        s = other->type->as_number->_bool(other, (bool*) & right);
+        s = other->type->as_number->_int(other, (i64*)&right);
         if (s.type == ST_FAIL) return s;
         
         if (return_int) {
@@ -58,6 +59,10 @@ Status bool_mul(KodObject* self, KodObject* other, KodObject** out) {
 
 Status bool_div(KodObject* self, KodObject* other, KodObject** out) {
     return KodType_Float.as_number->div(self, other, out);
+}
+
+Status bool_lt(KodObject* self, KodObject* other, KodObject** out) {
+    return bool_bin(self, other, out, b_lt, false);
 }
 
 Status bool_int(KodObject* self, i64* out) {
@@ -90,8 +95,8 @@ KodObjectNumberMethods bool_as_number = {
     .mul=bool_mul,
     .div=bool_div,
 
+    .lt=bool_lt,
     
-
     ._int=bool_int,
     ._float=bool_float,
     ._bool=bool_bool,

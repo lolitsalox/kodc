@@ -25,7 +25,8 @@ Status kod_object_new_int(i64 value, KodObjectInt** out) {
 static Status int_str_impl(KodObjectInt* self, char** out) {
     char* buffer = malloc(32);
     if (!buffer) RETURN_STATUS_FAIL("Couldn't allocate buffer");
-    _ltoa_s((long)self->_int, buffer, 32, 10);
+    
+    snprintf(buffer, 32, "%lld", self->_int);
     
     *out = buffer;
     RETURN_STATUS_OK
@@ -78,8 +79,8 @@ Status int_div(KodObject* self, KodObject* other, KodObject** out) {
     return KodType_Float.as_number->div(self, other, out);
 }
 
-Status int_gt(KodObject* self, KodObject* other, KodObject** out) {
-    return KodType_Bool.as_number->gt(self, other, out);
+Status int_lt(KodObject* self, KodObject* other, KodObject** out) {
+    return KodType_Bool.as_number->lt(self, other, out);
 }
 
 Status int_int(KodObject* self, i64* out) {
@@ -112,7 +113,7 @@ KodObjectNumberMethods int_as_number = {
     .mul=int_mul,
     .div=int_div,
 
-    .gt=int_gt,
+    .lt = int_lt,
 
     ._int=int_int,
     ._float=int_float,
