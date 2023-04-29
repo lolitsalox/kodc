@@ -2,7 +2,7 @@
 
 #include "kod_object.h"
 
-#define MAX_TABLE_SIZE 256
+#define MAX_TABLE_SIZE 32
 
 typedef struct ObjectEntry {
     char* key;

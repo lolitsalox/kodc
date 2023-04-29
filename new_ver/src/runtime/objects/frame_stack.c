@@ -23,14 +23,16 @@ Status call_frame_clear(CallFrame* frame) {
 Status frame_stack_init(FrameStack* self) {
     if (!self) RETURN_STATUS_FAIL("frame stack is null");
 
-    self->frames = calloc(16, sizeof(CallFrame));
+    self->frames = calloc(FRAME_STACK_START_CAPACITY, sizeof(CallFrame));
     if (!self->frames) RETURN_STATUS_FAIL("Couldn't allocate for frames");
-    self->capacity = 16;
+    self->size = 0;
+    self->capacity = FRAME_STACK_START_CAPACITY;
     RETURN_STATUS_OK
 }
 
 Status frame_stack_push(FrameStack* self, CallFrame frame) {
-    if (!self) RETURN_STATUS_FAIL("frame stack is null")
+    if (!self) RETURN_STATUS_FAIL("frame stack is null");
+    if (self->size >= MAX_FRAME_STACK_SIZE) RETURN_STATUS_FAIL("Max frame stack size reached. (Stack overflow)");
 
     if (self->capacity <= self->size) {
         self->capacity *= 2;

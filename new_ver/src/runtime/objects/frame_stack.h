@@ -5,7 +5,8 @@
 #include "object_map.h"
 #include "object_stack.h"
 
-#define MAX_FRAMES 256 // somehow need to make this higher
+#define FRAME_STACK_START_CAPACITY 16
+#define MAX_FRAME_STACK_SIZE 400
 
 typedef struct CallFrame {
     ObjectMap locals;
@@ -18,7 +19,6 @@ typedef struct FrameStack {
     i32 size;
     u64 capacity;
 } FrameStack;
-
 
 Status call_frame_init(CallFrame* frame, Code* code);
 Status call_frame_clear(CallFrame* frame);
