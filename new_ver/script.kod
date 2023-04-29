@@ -1,8 +1,9 @@
 /*
 
 TODO:
-	- Make a string object
-	- Make a dict object
+	- add operators
+	- make a string object
+	- make a dict object
 	- implement attributes
 	- implement import, from, as
 	- std lib
@@ -11,8 +12,18 @@ TODO:
 
 */
 
-i = 100
-while i {
-	print(i)
-	i = i - 1
+fib(n) {
+	if n < 2 { return n }
+	return fib(n - 1) + fib(n - 2)
+}
+
+fac(n) {
+	if n < 2 { return 1 }
+	return n * fac(n - 1)
+}
+
+i = 0
+while i < 10 {
+	print(fac(i))
+	i = i + 1
 }
