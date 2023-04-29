@@ -119,6 +119,7 @@ Status int_new(VirtualMachine* vm, KodObject* self, KodObject* args, KodObject* 
 
     if (((KodObjectTuple*)args)->data[0]->type == &KodType_Int) return kod_object_new_int(((KodObjectInt*)((KodObjectTuple*)args)->data[0])->_int, (KodObjectInt**)out);
     if (((KodObjectTuple*)args)->data[0]->type == &KodType_Float) return kod_object_new_int((i64)((KodObjectFloat*)((KodObjectTuple*)args)->data[0])->_float, (KodObjectInt**)out);
+    if (((KodObjectTuple*)args)->data[0]->type == &KodType_String) return kod_object_new_int(_strtoi64(((KodObjectString*)((KodObjectTuple*)args)->data[0])->_string, NULL, 10), (KodObjectInt**)out);
 
     RETURN_STATUS_FAIL("Can't construct an int from this type");
 }

@@ -27,15 +27,16 @@
     RETURN_STATUS_FAIL("Type has no number representation"); \
     }\
     if (!left->type->as_number->op) {\
-    if ((s = kod_object_deref(right)).type == ST_FAIL) return s; \
-    if ((s = kod_object_deref(left)).type == ST_FAIL) return s; \
-    RETURN_STATUS_FAIL("Type has no attribute "#op); \
+        if ((s = kod_object_deref(right)).type == ST_FAIL) return s; \
+        if ((s = kod_object_deref(left)).type == ST_FAIL) return s; \
+        RETURN_STATUS_FAIL("Type has no attribute "#op); \
     }\
     KodObject* obj; \
     if ((s = left->type->as_number->op(left, right, &obj)).type == ST_FAIL) {\
-    if ((s = kod_object_deref(right)).type == ST_FAIL) return s;\
-    if ((s = kod_object_deref(left)).type == ST_FAIL) return s;\
-    return s; \
+        Status s_;\
+        if ((s_ = kod_object_deref(right)).type == ST_FAIL) return s_;\
+        if ((s_ = kod_object_deref(left)).type == ST_FAIL) return s_;\
+        return s; \
     }\
     if ((s = kod_object_ref(obj)).type == ST_FAIL) return s;\
     if ((s = object_stack_push(&vm->stack, AS_OBJECT(obj))).type == ST_FAIL) return s; \
@@ -211,17 +212,18 @@ Status vm_init(CompiledModule* module, bool repl, VirtualMachine* out) {
 
 Status vm_destroy(VirtualMachine* vm) {
     Status s;
+
+#ifdef DEBUG_VM
+    LOG("destroying frame stack\n");
+#endif
+    if ((s = frame_stack_clear(&vm->frame_stack)).type == ST_FAIL) return s;
+
 #ifdef DEBUG_VM
     LOG("destroying constant objects\n");
 #endif
     for (size_t i = 0; i < vm->module->constant_pool.size; ++i) {
         if ((s = kod_object_deref(vm->constant_objects[i])).type == ST_FAIL) return s;
     }
-
-#ifdef DEBUG_VM
-    LOG("destroying frame stack\n");
-#endif
-    if ((s = frame_stack_clear(&vm->frame_stack)).type == ST_FAIL) return s;
 
 #ifdef DEBUG_VM
     LOG("destroying globals\n");

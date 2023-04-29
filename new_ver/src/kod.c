@@ -27,22 +27,24 @@ i32 run_module(CompiledModule* module) {
 
     KodObject* result = NULL;
     s = vm_run_code_object(vm, &module->entry, NULL, &result);
-
     if (s.type == ST_FAIL) {
         ERROR("KodRuntime", s.what);
         free(s.what);
-        return 1;
     }
 
-    if ((s = object_stack_clear(&vm->stack, false)).type == ST_FAIL) {
+    if (result && (s = kod_object_ref(result)).type == ST_FAIL) {
         ERROR("KodAfterRuntime", s.what);
         free(s.what);
     }
 
-    if ((s = kod_object_deref(result)).type == ST_FAIL) {
-        ERROR("KodRuntime", s.what);
+    if ((s = object_stack_clear(&vm->stack, true)).type == ST_FAIL) {
+        ERROR("KodAfterRuntime", s.what);
         free(s.what);
-        return 1;
+    }
+
+    if (result && (s = kod_object_deref(result)).type == ST_FAIL) {
+        ERROR("KodAfter Runtime", s.what);
+        free(s.what);
     }
 
     if ((s = vm_destroy(vm)).type == ST_FAIL) {
@@ -161,20 +163,24 @@ void repl() {
 
         KodObject* result = NULL;
         s = vm_run_code_object(vm, &module->entry, NULL, &result);
-
         if (s.type == ST_FAIL) {
             ERROR("KodRuntime", s.what);
             free(s.what);
         }
 
-        if ((s = object_stack_clear(&vm->stack, false)).type == ST_FAIL) {
+        if (result && (s = kod_object_ref(result)).type == ST_FAIL) {
+            ERROR("KodAfterRuntime", s.what);
+            free(s.what);
+        }
+
+        if ((s = object_stack_clear(&vm->stack, true)).type == ST_FAIL) {
             ERROR("KodAfterRuntime", s.what);
             free(s.what);
         }
 
         free_stuff:
-        if ((s = kod_object_deref(result)).type == ST_FAIL) {
-            ERROR("KodRuntime", s.what);
+        if (result && (s = kod_object_deref(result)).type == ST_FAIL) {
+            ERROR("KodAfter Runtime", s.what);
             free(s.what);
         }
         free_code(module->entry);

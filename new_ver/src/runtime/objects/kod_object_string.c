@@ -1,6 +1,8 @@
 #include "kod_object_string.h"
 #include "kod_object_int.h"
+#include "kod_object_float.h"
 #include "kod_object_bool.h"
+#include "kod_object_tuple.h"
 
 Status kod_object_new_string(char* value, KodObjectString** out) {
     KodObjectString* obj = malloc(sizeof(KodObjectString));
@@ -40,7 +42,7 @@ Status str_add(KodObject* self, KodObject* other, KodObject** out) {
         
     snprintf(buffer, s->_len + o->_len + 1, "%s%s", s->_string, o->_string);
 
-    return kod_object_new_string(buffer, (KodObjectString*)out);
+    return kod_object_new_string(buffer, (KodObjectString**)out);
 }
 
 Status str_mul(KodObject* self, KodObject* other, KodObject** out) {
@@ -61,26 +63,10 @@ Status str_mul(KodObject* self, KodObject* other, KodObject** out) {
         memcpy(buffer + i * so->_len, so->_string, so->_len + 1);
     }
 
-    return kod_object_new_string(buffer, (KodObjectString*)out);
+    return kod_object_new_string(buffer, (KodObjectString**)out);
 }
 
-Status string_int(KodObject* self, i64* out) {
-    if (!self) RETURN_STATUS_FAIL("Invalid object");
-    if (!out) RETURN_STATUS_FAIL("Invalid out");
-    
-    *out = _strtoi64(((KodObjectString*)self)->_string, NULL, 10);
-    RETURN_STATUS_OK
-}
-
-Status string_float(KodObject* self, f64* out) {
-    if (!self) RETURN_STATUS_FAIL("Invalid object");
-    if (!out) RETURN_STATUS_FAIL("Invalid out");
-
-    *out = strtod(((KodObjectString*)self)->_string, NULL);
-    RETURN_STATUS_OK
-}
-
-Status string_bool(KodObject* self, bool* out) {
+Status str_bool(KodObject* self, bool* out) {
     if (!self) RETURN_STATUS_FAIL("Invalid object");
     if (!out) RETURN_STATUS_FAIL("Invalid out");
 
@@ -102,18 +88,52 @@ static Status str_free(KodObject* self) {
     return kod_object_free(self);
 }
 
-KodObjectNumberMethods string_as_number = {
+Status str_new(VirtualMachine* vm, KodObject* self, KodObject* args, KodObject* kwargs, KodObject** out) {
+    if (!self) RETURN_STATUS_FAIL("Invalid object");
+    if (!out) RETURN_STATUS_FAIL("Invalid out");
+    if (!args) RETURN_STATUS_FAIL("Invalid args");
+    if (args->type != &KodType_Tuple) RETURN_STATUS_FAIL("args is not a tuple");
+    if (((KodObjectTuple*)args)->size != 1) RETURN_STATUS_FAIL("args size doesn't match params size");
+    
+    KodObject* obj = ((KodObjectTuple*)args)->data[0];
+
+    if (obj->type == &KodType_String) return kod_object_new_string((((KodObjectString*)obj)->_string), (KodObjectString**)out);
+    if (obj->type == &KodType_Bool) return kod_object_new_string(((KodObjectBool*)obj)->_bool ? "true" : "false", (KodObjectString**)out);
+
+    char* buffer = malloc(32);
+    if (!buffer) RETURN_STATUS_FAIL("Failed to allocate for buffer");
+
+    if (obj->type == &KodType_Int) {
+        snprintf(buffer, 32, "%lld", ((KodObjectInt*)obj)->_int);
+        Status s = kod_object_new_string(buffer, (KodObjectString**)out);
+        free(buffer);
+        return s;
+    }
+
+    if (obj->type == &KodType_Float) {
+        snprintf(buffer, 32, "%g", ((KodObjectFloat*)obj)->_float);
+        Status s = kod_object_new_string(buffer, (KodObjectString**)out);
+        free(buffer);
+        return s;
+    }
+
+    RETURN_STATUS_FAIL("Can't construct a string from this type");
+}
+
+KodObjectNumberMethods str_as_number = {
     .add = str_add,
     .mul = str_mul,
 
+    ._bool = str_bool,
 };
 
 KodObjectType KodType_String = {
     TYPE_HEADER("str")
-    .as_number = &string_as_number,
+    .as_number = &str_as_number,
     .as_subscript = 0,
     .str = str_str,
     .hash = 0,
     .call = 0,
+    .new = str_new,
     .free = str_free
 };
