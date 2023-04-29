@@ -101,6 +101,7 @@ typedef struct AstConditionalStatement {
 
 struct AstNode {
     AstType type;
+    AstNode* parent;
 
     union {
         AstList _list;

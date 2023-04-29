@@ -349,7 +349,10 @@ static size_t find_constant_pool(ConstPool* constant_pool, ConstantInformation c
 }
 
 static size_t update_constant_pool(ConstPool* constant_pool, ConstantInformation constant_information) {
-    size_t index = find_constant_pool(constant_pool, constant_information);
+    size_t index = constant_pool->size;
+
+    if (constant_pool->is_set)
+        index = find_constant_pool(constant_pool, constant_information);
     if (index == constant_pool->size) {
         void* p = realloc(constant_pool->data, ++constant_pool->size * sizeof(ConstantInformation));    
         if (!p) return 0;
@@ -375,7 +378,7 @@ static CompiledModule init_compiled_module(char* filename, uint16_t major, uint1
         .major_version=major,
         .minor_version=minor,
         .name_pool={0},
-        .constant_pool={0},
+        .constant_pool={.data=0, .size=0, .is_set=true},
         .entry={.code=NULL, .params={0}, .size=0}
     };
 }
@@ -421,10 +424,10 @@ CompilationStatus compile_module(AstNode* root, CompiledModule* compiled_module,
                 list_node = list_node->next;
             }
 
-            if (root->_list.size == 0 || (root->_list.tail && (
-                    root->type == AST_FUNCTION ||
-                    root->type == AST_ROOT
-                ) && root->_list.tail->node->type != AST_RETURN_STATEMENT)) {
+            if ((root->type == AST_ROOT || (root->parent && root->parent->type == AST_FUNCTION)) && 
+                (root->_list.size == 0 || 
+                    (root->_list.tail && root->_list.tail->node->type != AST_RETURN_STATEMENT))) 
+            {
                 size_t index = update_constant_pool(&compiled_module->constant_pool, (ConstantInformation){.tag=CONSTANT_NULL});            
                 write_8(code, OP_LOAD_CONST);
                 write_8(code, index);

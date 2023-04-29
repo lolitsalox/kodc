@@ -38,6 +38,7 @@ typedef struct ConstantInformation ConstantInformation;
 typedef struct ConstPool {
     size_t size;
     ConstantInformation* data;
+    bool is_set;
 } ConstPool;
 
 struct ConstantInformation {

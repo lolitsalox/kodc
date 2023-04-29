@@ -485,7 +485,7 @@ static enum STATUS parse_after(Parser* parser, AstNode* value, AstNode** out, ch
                 }, &func, err) == STATUS_FAIL) return STATUS_FAIL;
 
                 if (parse_block(parser, &func->_function.body, err) == STATUS_FAIL) return STATUS_FAIL;
-
+                func->_function.body->parent = func;
                 // Freeing the value node (not the string) affects the system
                 // free(value);
                 size_t s_size = strlen(value->_string) + 1;
@@ -667,6 +667,8 @@ static enum STATUS parse_factor(Parser* parser, AstNode** out, char** err) {
                 }),
                 out, err
             ) == STATUS_FAIL) return STATUS_FAIL;
+
+            block->parent = *out;
             return STATUS_OK;
         }
         
