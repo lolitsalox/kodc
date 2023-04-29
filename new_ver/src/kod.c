@@ -55,7 +55,6 @@ i32 run_module(CompiledModule* module) {
 i32 main(i32 argc, char** argv) {
     char *filename = NULL, *err = NULL, *buffer = NULL;
     
-    
     if (argc < 2) {
         repl();
         return 0;

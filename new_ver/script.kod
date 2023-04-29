@@ -1,3 +1,16 @@
+/*
+
+TODO:
+	- Make a string object
+	- Make a dict object
+	- implement attributes
+	- implement import, from, as
+	- std lib
+	- structure for structs
+	- iterators
+
+*/
+
 i = 100
 while i {
 	print(i)
