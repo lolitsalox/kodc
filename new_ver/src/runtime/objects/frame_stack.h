@@ -5,7 +5,7 @@
 #include "object_map.h"
 #include "object_stack.h"
 
-#define FRAME_STACK_START_CAPACITY 16
+#define FRAME_STACK_START_CAPACITY 32
 #define MAX_FRAME_STACK_SIZE 400
 
 typedef struct CallFrame {

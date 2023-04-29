@@ -75,6 +75,8 @@ Status frame_stack_clear(FrameStack* self) {
     for (i32 i = self->size - 1; i >= 0 ; --i) {
         if ((s = call_frame_clear(&self->frames[i])).type == ST_FAIL) return s;
     }
+    free(self->frames);
+    self->capacity = 0;
     self->size = 0;
     RETURN_STATUS_OK
 }
