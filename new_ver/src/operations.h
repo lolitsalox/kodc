@@ -1,5 +1,7 @@
 #pragma once
 
+// TODO: Add extended arg when the index is higher than 1 byte
+
 enum Operation {
     // LOADs
     OP_LOAD_CONST,      // direct: constant index, stack: none
@@ -49,6 +51,10 @@ enum Operation {
     // LOOPs
     OP_JUMP,                // direct: relative byte offset, stack: none
     OP_POP_JUMP_IF_FALSE,   // direct: relative byte offset, stack: object
+
+    OP_BUILD_TUPLE,
+
+    OP_UNKNOWN,
 };
 
 char* op_to_str(enum Operation op);

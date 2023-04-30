@@ -11,7 +11,7 @@ where gcc > nul 2>&1 || (
 )
 echo on
 
-gcc -Wall -O3 -o kod.exe %a%
+gcc -Wall -O3 -o kod.exe %a% -I./src
 
 @echo off
 echo.

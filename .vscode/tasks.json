@@ -22,6 +22,12 @@
                 "D:\\kod\\ACTUAL\\kodc\\src\\vm\\object.c",
                 "D:\\kod\\ACTUAL\\kodc\\src\\vm\\env.c",
                 "D:\\kod\\ACTUAL\\kodc\\src\\vm\\objectStack.c",
+                "D:\\kod\\ACTUAL\\kodc\\src\\vm\\native\\null.c",
+                "D:\\kod\\ACTUAL\\kodc\\src\\vm\\native\\bool.c",
+                "D:\\kod\\ACTUAL\\kodc\\src\\vm\\native\\string.c",
+                "D:\\kod\\ACTUAL\\kodc\\src\\vm\\native\\int.c",
+                "D:\\kod\\ACTUAL\\kodc\\src\\vm\\native\\float.c",
+                "D:\\kod\\ACTUAL\\kodc\\src\\vm\\native\\code.c",
                 "-o",
                 "${fileDirname}\\${fileBasenameNoExtension}.exe"
             ],

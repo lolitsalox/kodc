@@ -19,7 +19,7 @@ static size_t read_until_null(FILE* fp, char** buffer) {
     return size;
 }
 
-static char* constant_tag_to_str(enum ConstantTag constant_tag);
+// static char* constant_tag_to_str(enum ConstantTag constant_tag);
 
 static ConstantInformation read_constant(FILE* fp) {
     ConstantInformation constant;
@@ -53,7 +53,7 @@ static ConstantInformation read_constant(FILE* fp) {
             fread(&constant._code.size, sizeof(size_t), 1, fp);
             constant._code.code = malloc(constant._code.size);
             fread(constant._code.code, constant._code.size, 1, fp);
-            init_environment(&constant._code.parent_closure);
+            constant._code.parent_closure = NULL;
             break;
         default:
             puts("[read_constant] weird constant tag");
@@ -102,25 +102,21 @@ void print_name_pool(NamePool* name_pool) {
     puts("");
 }
 
-static char* constant_tag_to_str(enum ConstantTag constant_tag) {
-    switch(constant_tag) {
-        case CONSTANT_NULL: return "CONST_NULL";
-        case CONSTANT_BOOL: return "CONST_BOOL";
-        case CONSTANT_INTEGER: return "CONST_INTEGER";
-        case CONSTANT_FLOAT: return "CONST_FLOAT";
-        case CONSTANT_ASCII: return "CONST_ASCII";
-        case CONSTANT_CODE: return "CONST_CODE";
-    }
-    return "CONST_UNKNOWN";
-}
+// static char* constant_tag_to_str(enum ConstantTag constant_tag) {
+//     switch(constant_tag) {
+//         case CONSTANT_NULL: return "CONST_NULL";
+//         case CONSTANT_BOOL: return "CONST_BOOL";
+//         case CONSTANT_INTEGER: return "CONST_INTEGER";
+//         case CONSTANT_FLOAT: return "CONST_FLOAT";
+//         case CONSTANT_ASCII: return "CONST_ASCII";
+//         case CONSTANT_CODE: return "CONST_CODE";
+//     }
+//     return "CONST_UNKNOWN";
+// }
 
-void print_code(Code* code, char* end) {
-    // for(size_t i = 0; i < code->size; ++i) {
-    //     printf("%02x ", code->code[i]);
-    // }
-    puts(code->name);
+void print_bytecode(Code* code, char* end, ConstPool* constant_pool, NamePool* name_pool) {
     for(size_t i = 0; i < code->size; ++i) {
-        printf("\t\t%02lld: ", i);
+        printf("\t%3lld ", i);
         enum Operation op = code->code[i];
         switch(op) {
             case OP_POP_JUMP_IF_FALSE:
@@ -129,14 +125,36 @@ void print_code(Code* code, char* end) {
             case OP_LOAD_CONST:
             case OP_STORE_NAME:
             case OP_CALL:
-                printf("%s ", op_to_str(op));
+            case OP_LOAD_METHOD:
+            case OP_LOAD_ATTRIBUTE:
+            case OP_STORE_ATTRIBUTE:
+                printf("%-25s", op_to_str(op));
                 i++;
                 if (code->size < i + 8) {
                     fputs("can't print", stderr);
                     return;
                 }
-
-                printf("%llu\n", *(uint64_t*)(code->code + i));
+                size_t index = *(uint64_t*)(code->code + i);
+                printf("%llu", index);
+                switch (op) {
+                    case OP_LOAD_NAME:
+                    case OP_STORE_NAME:
+                    case OP_LOAD_METHOD:
+                    case OP_LOAD_ATTRIBUTE:
+                    case OP_STORE_ATTRIBUTE:
+                        if (name_pool)
+                            printf(" (%s)", name_pool->data[index]);
+                        break;
+                    case OP_LOAD_CONST:
+                        // <CODE object at 0x00ff>
+                        if (constant_pool) {
+                            printf(" ");
+                            print_constant_information(constant_pool->data + index);
+                        }
+                        break;
+                    default: break;
+                }
+                puts("");
                 i += 7;
                 break;
             case OP_RETURN:
@@ -174,15 +192,52 @@ void print_code(Code* code, char* end) {
     printf(end);
 }
 
+void print_code(Code* code, char* end, ConstPool* constant_pool, NamePool* name_pool) {
+    if (code->name)
+        puts(code->name);
+
+    print_bytecode(code, "", constant_pool, name_pool);
+
+    for(size_t i = 0; i < code->size; ++i) {
+        enum Operation op = code->code[i];
+        switch(op) {
+            case OP_POP_JUMP_IF_FALSE:
+            case OP_JUMP:
+            case OP_LOAD_NAME:
+            case OP_STORE_NAME:
+            case OP_LOAD_METHOD:
+            case OP_LOAD_ATTRIBUTE:
+            case OP_STORE_ATTRIBUTE:
+            case OP_CALL:
+            case OP_LOAD_CONST: {
+                i++;
+                if (op == OP_LOAD_CONST && constant_pool) {
+                    size_t index = *(uint64_t*)(code->code + i);
+                    if (constant_pool->data[index].tag == CONSTANT_CODE) {
+                        printf("\nDisassembly of ");
+                        print_constant_information(constant_pool->data + index);
+                        puts("");
+                        print_bytecode(&constant_pool->data[index]._code, "", constant_pool, name_pool);
+                    }
+                }
+                i += 7;
+                break;
+            }
+            default: break;
+        }
+    }
+    printf(end);
+}
+
 void print_constant_information(ConstantInformation* constant_information) {
-    printf("%s: ", constant_tag_to_str(constant_information->tag));
+    // printf("%s: ", constant_tag_to_str(constant_information->tag));
     switch (constant_information->tag) {
-                case CONSTANT_NULL: printf("null"); break;
-                case CONSTANT_BOOL: printf("%d", constant_information->_bool); break;
-                case CONSTANT_ASCII: printf("%s", constant_information->_string); break;
-                case CONSTANT_CODE: print_code(&constant_information->_code, ""); break;
-                case CONSTANT_INTEGER: printf("%lld", constant_information->_int); break;
-                case CONSTANT_FLOAT: printf("%f", constant_information->_float); break;
+                case CONSTANT_NULL: printf("(null)"); break;
+                case CONSTANT_BOOL: printf("(%s)", constant_information->_bool ? "true" : "false"); break;
+                case CONSTANT_ASCII: printf("(%s)", constant_information->_string); break;
+                case CONSTANT_CODE: printf("(<code object <%s> at 0x%p>)", constant_information->_code.name, &constant_information->_code); break;
+                case CONSTANT_INTEGER: printf("(%lld)", constant_information->_int); break;
+                case CONSTANT_FLOAT: printf("(%g)", constant_information->_float); break;
                 default: printf("??? (tag=%u)", constant_information->tag); break;
             }
 }
@@ -327,6 +382,7 @@ CompilationStatus compile_module(ast_node_t* root, CompiledModule* compiled_modu
                 if (status.code == STATUS_FAIL) return status; 
                 switch (((ast_node_t*)node->item)->ast_type) {
                     case AST_ASSIGNMENT:
+                    case AST_STORE_ATTR:
                     case AST_IF_STATEMENT:
                     case AST_WHILE_STATEMENT:
                     case AST_FUNCTION:
@@ -359,6 +415,30 @@ CompilationStatus compile_module(ast_node_t* root, CompiledModule* compiled_modu
             size_t index = update_name_pool(&compiled_module->name_pool, name);
 
             write_8(code, OP_STORE_NAME);
+            write_64(code, index);
+            break;
+        }
+
+        case AST_STORE_ATTR: {
+            status = compile_module(root->ast_store_attr.right, compiled_module, code);
+            if (status.code == STATUS_FAIL) return status;
+
+            status = compile_module(root->ast_store_attr.left->ast_access.value, compiled_module, code);
+            if (status.code == STATUS_FAIL) return status;
+
+            if (root->ast_store_attr.left->ast_access.field->ast_type != AST_IDENTIFIER) {
+                return (CompilationStatus){.code=STATUS_FAIL,.what="[CompileModule]: Error - attribute is not an identifier"};
+            }
+
+            ast_string_t identifier = root->ast_store_attr.left->ast_access.field->ast_string; // some fucking how worked but was slower when i set it to root->ast_assignment.left->ast_string
+
+            char* name = malloc(identifier.length + 1);
+            strncpy(name, identifier.value, identifier.length);
+            name[identifier.length] = 0;
+
+            size_t index = update_name_pool(&compiled_module->name_pool, name);
+
+            write_8(code, OP_STORE_ATTRIBUTE);
             write_64(code, index);
             break;
         }
@@ -543,6 +623,52 @@ CompilationStatus compile_module(ast_node_t* root, CompiledModule* compiled_modu
             break;
         }
 
+        case AST_ACCESS: {
+            status = compile_module(root->ast_access.value, compiled_module, code);
+            if (status.code == STATUS_FAIL) return status;
+
+            // root->ast_access.field must be an identifier
+            char* name = malloc(root->ast_access.field->ast_string.length + 1);
+            strncpy(name, root->ast_access.field->ast_string.value, root->ast_access.field->ast_string.length);
+            name[root->ast_access.field->ast_string.length] = 0;
+
+            size_t index = update_name_pool(
+                &compiled_module->name_pool, 
+                name
+            );            
+            write_8(code, OP_LOAD_ATTRIBUTE);
+            write_64(code, index);
+            break;
+        }
+
+        case AST_METHOD_CALL: {
+            linked_list_node_t* curr_arg = root->ast_method_call.arguments->compound.tail;
+            while (curr_arg) {
+                status = compile_module((ast_node_t*)curr_arg->item, compiled_module, code);
+                if (status.code == STATUS_FAIL) return status;
+                curr_arg = curr_arg->prev;
+            }
+            
+            status = compile_module(root->ast_method_call.this, compiled_module, code);
+            if (status.code == STATUS_FAIL) return status;
+
+            // root->ast_method_call.callable must be an identifier
+            char* name = malloc(root->ast_method_call.callable->ast_string.length + 1);
+            strncpy(name, root->ast_method_call.callable->ast_string.value, root->ast_method_call.callable->ast_string.length);
+            name[root->ast_method_call.callable->ast_string.length] = 0;
+
+            size_t index = update_name_pool(
+                &compiled_module->name_pool, 
+                name
+            );            
+            write_8(code, OP_LOAD_METHOD);
+            write_64(code, index);
+
+            write_8(code, OP_CALL);
+            write_64(code, root->ast_method_call.arguments->compound.size + 1);
+            break;
+        }
+
         case AST_FUNCTION: {
             ConstantInformation constant_code = (ConstantInformation){
                     .tag=CONSTANT_CODE,
@@ -625,7 +751,6 @@ void free_code(Code code) {
     if (code.code)
         free(code.code);
 
-    free_environment(&code.parent_closure);
 }
 
 static void free_constant(ConstantInformation constant_info) {

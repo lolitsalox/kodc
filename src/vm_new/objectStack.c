@@ -15,35 +15,29 @@ ObjectStack* new_stack_object() {
     return stack;
 }
 
-#include "vm.h"
-void free_object_stack(ObjectStack* stack, ConstObjectPool* cop) {
+void free_object_stack(ObjectStack* stack) {
     ObjectNode* node = stack->top;
     ObjectNode* down = NULL;
 
     while (node) {
         down = node->down;
         debug_print("!!! object from type %s is on the stack\n", object_type_to_str(node->object->type));
-        
-        bool found = false;
-        for (size_t i = 0; !found && (i < cop->size); ++i) {
-            if (node->object == &cop->data[i]) found = true;
-        }
-        if (!found) deref_object(node->object);
+        deref_object(node->object);
         free(node);
         node = down;
     }
     stack->top = NULL;
 }
 
-Kod_Object* object_stack_top(ObjectStack* stack) {
+KodObject* object_stack_top(ObjectStack* stack) {
     if (!stack || !stack->top) return NULL;
     return stack->top->object;
 }
 
-Kod_Object* object_stack_pop(ObjectStack* stack) {
-    Kod_Object* top = object_stack_top(stack);
+KodObject* object_stack_pop(ObjectStack* stack) {
+    KodObject* top = object_stack_top(stack);
     if (!top) {
-        fputs("CANT POP FROM AN EMPTY STACK", stderr);
+        puts("CANT POP FROM AN EMPTY STACK");
         return NULL;
     }
     ObjectNode* down = stack->top->down;
@@ -52,7 +46,7 @@ Kod_Object* object_stack_pop(ObjectStack* stack) {
     return top;
 }
 
-void object_stack_push(ObjectStack* stack, Kod_Object* object) {
+void object_stack_push(ObjectStack* stack, KodObject* object) {
     if (!object) return;
     ObjectNode* new_node = malloc(sizeof(ObjectNode));
     new_node->object = object;

@@ -1,0 +1,28 @@
+/*
+
+TODO:
+	- make a dict object [key: value]
+	- implement import, from, as
+	- std lib
+	- structure for structs
+	- implement attributes (store and shiz)
+	- iterators
+
+*/
+
+fib(n) {
+	if n < 2 { return n }
+	return fib(n - 1) + fib(n - 2)
+}
+
+fac(n) {
+	if n < 2 { return 1 }
+	return n * fac(n - 1)
+}
+
+n = int(input("Enter num of iterations: "))
+i = 0
+while i < n {
+	print(str(i + 1) + ":", fib(i))
+	i = i + 1
+}

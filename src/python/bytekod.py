@@ -231,22 +231,22 @@ def kod_native_int_method_unary_not(self: IntObject) -> IntObject:
 def kod_native_int_method_unary_bool_not(self: IntObject) -> IntObject:
     return IntObject(+(not self.value))
 
-def kod_native_int_method_binary_add(self: IntObject, other: Object) -> IntObject | FloatObject:
+def kod_native_int_method_add(self: IntObject, other: Object) -> IntObject | FloatObject:
     if not isinstance(other, (IntObject, FloatObject)):
         raise RuntimeError()
     return IntObject(self.value + other.value) if isinstance(other, IntObject) else FloatObject(self.value + other.value)
 
-def kod_native_int_method_binary_sub(self: IntObject, other: Object) -> IntObject | FloatObject:
+def kod_native_int_method_sub(self: IntObject, other: Object) -> IntObject | FloatObject:
     if not isinstance(other, (IntObject, FloatObject)):
         raise RuntimeError()
     return IntObject(self.value - other.value) if isinstance(other, IntObject) else FloatObject(self.value - other.value)
 
-def kod_native_int_method_binary_mul(self: IntObject, other: Object) -> IntObject | FloatObject:
+def kod_native_int_method_mul(self: IntObject, other: Object) -> IntObject | FloatObject:
     if not isinstance(other, (IntObject, FloatObject)):
         raise RuntimeError()
     return IntObject(self.value * other.value) if isinstance(other, IntObject) else FloatObject(self.value * other.value)
 
-def kod_native_int_method_binary_lt(self: IntObject, other: Object) -> IntObject | FloatObject:
+def kod_native_int_method_lt(self: IntObject, other: Object) -> IntObject | FloatObject:
     if not isinstance(other, (IntObject, FloatObject)):
         raise RuntimeError()
     return IntObject(self.value < other.value) if isinstance(other, IntObject) else FloatObject(self.value < other.value)
@@ -257,10 +257,10 @@ native_int_methods = {
     "__unary_sub__": NativeFunctionObject("__unary_sub__", kod_native_int_method_unary_sub),
     "__unary_not__": NativeFunctionObject("__unary_not__", kod_native_int_method_unary_not),
     "__unary_bool_not__": NativeFunctionObject("__unary_bool_not__", kod_native_int_method_unary_bool_not),
-    "__add__": NativeFunctionObject("__add__", kod_native_int_method_binary_add),
-    "__sub__": NativeFunctionObject("__sub__", kod_native_int_method_binary_sub),
-    "__mul__": NativeFunctionObject("__mul__", kod_native_int_method_binary_mul),
-    "__lt__": NativeFunctionObject("__lt__", kod_native_int_method_binary_lt),
+    "__add__": NativeFunctionObject("__add__", kod_native_int_method_add),
+    "__sub__": NativeFunctionObject("__sub__", kod_native_int_method_sub),
+    "__mul__": NativeFunctionObject("__mul__", kod_native_int_method_mul),
+    "__lt__": NativeFunctionObject("__lt__", kod_native_int_method_lt),
 }
 
 @dataclass

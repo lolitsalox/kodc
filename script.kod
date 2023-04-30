@@ -1,22 +1,35 @@
 /* TODO: 
 * Load constant objects directly instead of creating new objects
 * add import
-* add float, list, dict
+* add list, dict
 * implement more native methods
 * implement more keywords/statements
 * implement global types
 * format strings
 * multiple and keyword arguments and default values
+* repl
+* with statement
 */
 
-sleep(seconds) {
-    end = time() + seconds
-    while time() < end {}
-}
 
+// sleep(seconds) {
+//     end = time() + seconds
+//     while time() < end {}
+// }
+
+/*
+start = time()
 i = 0
-while i < 10 {
+while i < 10000 {
     print(i)
-    sleep(1)
     i = i + 1
 }
+
+print("Time took:", time()-start, "seconds")
+*/
+
+print("Hello world")
+if 1 {
+    x = 10
+}
+print(x)
