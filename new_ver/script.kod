@@ -1,11 +1,11 @@
 /*
 
 TODO:
-	- make a dict object
-	- implement attributes
+	- make a dict object [key: value]
 	- implement import, from, as
 	- std lib
 	- structure for structs
+	- implement attributes (store and shiz)
 	- iterators
 
 */
@@ -20,8 +20,9 @@ fac(n) {
 	return n * fac(n - 1)
 }
 
+n = int(input("Enter num of iterations: "))
 i = 0
-while i < 10 {
-	print(fac(i))
+while i < n {
+	print(str(i + 1) + ":", fib(i))
 	i = i + 1
 }

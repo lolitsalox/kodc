@@ -1,14 +1,14 @@
 #include "vm.h"
 
-#include "objects/kod_object_type.h"
-#include "objects/kod_object_int.h"
-#include "objects/kod_object_float.h"
-#include "objects/kod_object_func.h"
-#include "objects/kod_object_native_func.h"
-#include "objects/kod_object_tuple.h"
-#include "objects/kod_object_null.h"
-#include "objects/kod_object_bool.h"
-#include "objects/kod_object_string.h"
+#include "objects/type_object.h"
+#include "objects/int_object.h"
+#include "objects/float_object.h"
+#include "objects/func_object.h"
+#include "objects/native_object.h"
+#include "objects/tuple_object.h"
+#include "objects/null_object.h"
+#include "objects/bool_object.h"
+#include "objects/str_object.h"
 
 #include "builtins.h"
 
@@ -21,18 +21,13 @@
     KodObject* left = NULL; \
     if ((s = object_stack_pop(&vm->stack, &left)).type == ST_FAIL) return s; \
     \
-    if (!left->type->as_number) {\
-    if ((s = kod_object_deref(right)).type == ST_FAIL) return s;\
-    if ((s = kod_object_deref(left)).type == ST_FAIL) return s;\
-    RETURN_STATUS_FAIL("Type has no number representation"); \
-    }\
-    if (!left->type->as_number->op) {\
+    if (!left->type->op) {\
         if ((s = kod_object_deref(right)).type == ST_FAIL) return s; \
         if ((s = kod_object_deref(left)).type == ST_FAIL) return s; \
         RETURN_STATUS_FAIL("Type has no attribute "#op); \
     }\
     KodObject* obj; \
-    if ((s = left->type->as_number->op(left, right, &obj)).type == ST_FAIL) {\
+    if ((s = left->type->op(left, right, &obj)).type == ST_FAIL) {\
         Status s_;\
         if ((s_ = kod_object_deref(right)).type == ST_FAIL) return s_;\
         if ((s_ = kod_object_deref(left)).type == ST_FAIL) return s_;\
@@ -186,7 +181,15 @@ Status vm_init(CompiledModule* module, bool repl, VirtualMachine* out) {
         if ((s = object_map_insert(&out->globals, "false", AS_OBJECT(&KodObject_False))).type == ST_FAIL) return s;
 
         if ((s = kod_object_ref(AS_OBJECT(&KodObject_Null))).type == ST_FAIL) return s;
-        if ((s = object_map_insert(&out->globals, "null", AS_OBJECT(&KodObject_Null))).type == ST_FAIL) return s;        
+        if ((s = object_map_insert(&out->globals, "null", AS_OBJECT(&KodObject_Null))).type == ST_FAIL) return s;
+
+        if ((s = kod_object_ref(AS_OBJECT(&KodType_Type))).type == ST_FAIL) return s;
+        if ((s = object_map_insert(&out->globals, "type", AS_OBJECT(&KodType_Type))).type == ST_FAIL) return s;
+
+        KodObjectString* name = NULL;
+        if ((s = kod_object_new_string("__main__", &name)).type == ST_FAIL) return s;
+        if ((s = kod_object_ref(AS_OBJECT(name))).type == ST_FAIL) return s;
+        if ((s = object_map_insert(&out->globals, "__name__", AS_OBJECT(name))).type == ST_FAIL) return s;
 
         // if ((s = kod_object_ref(AS_OBJECT(&KodType_Type))).type == ST_FAIL) return s;
         // if ((s = object_map_insert(&out->globals, "type", AS_OBJECT(&KodType_Type))).type == ST_FAIL) return s;
@@ -229,6 +232,11 @@ Status vm_destroy(VirtualMachine* vm) {
     LOG("destroying globals\n");
 #endif
     if ((s = object_map_clear(&vm->globals)).type == ST_FAIL) return s;
+
+#ifdef DEBUG_VM
+    LOG("destroying builtins\n");
+#endif
+    if ((s = builtins_destroy(vm)).type == ST_FAIL) return s;
     
     // object_map_print(&vm->globals);
     vm->initialized = false;
@@ -271,12 +279,12 @@ Status vm_run_code_object(VirtualMachine* vm, Code* code_obj, ObjectMap* initial
                     break;
                 }
                 if (vm->repl) {
-                    if (obj->type->str == 0) {
-                        RETURN_STATUS_FAIL("Type has no str attribute")
+                    if (obj->type->repr == 0) {
+                        RETURN_STATUS_FAIL("Type has no repr attribute")
                     }
 
                     char* output = NULL;
-                    if ((s = obj->type->str(obj, &output)).type == ST_FAIL) return s;
+                    if ((s = obj->type->repr(obj, &output)).type == ST_FAIL) return s;
                     puts(output);
                     if (output)
                         free(output);
@@ -326,6 +334,37 @@ Status vm_run_code_object(VirtualMachine* vm, Code* code_obj, ObjectMap* initial
                 if ((s = object_stack_pop(&vm->stack, &obj)).type == ST_FAIL) return s;
 
                 if ((s = object_map_insert(&call_frame->locals, name, obj)).type == ST_FAIL) return s;
+                break;
+            }
+
+            case OP_LOAD_METHOD:
+            case OP_LOAD_ATTRIBUTE: {
+                // index inside name pool
+                u8 index = 0;
+                if ((s = read_8(call_frame->code, &call_frame->ip, &index)).type == ST_FAIL) return s;
+
+                char* name = NULL;
+                if ((s = name_pool_get(&vm->module->name_pool, index, &name)).type == ST_FAIL) return s;
+
+                KodObject* obj = NULL;
+                if (op == OP_LOAD_ATTRIBUTE) {
+                    if ((s = object_stack_pop(&vm->stack, &obj)).type == ST_FAIL) return s;
+                } else if ((s = object_stack_top(&vm->stack, &obj)).type == ST_FAIL) return s;
+
+                KodObject* attr_obj = NULL;
+                if ((s = object_map_get(obj->attributes, name, &attr_obj)).type == ST_FAIL) {
+                    Status s_ = kod_object_deref(obj);
+                    if (s_.type == ST_FAIL) return s_;
+                    return s;
+                }
+                
+                if (op == OP_LOAD_ATTRIBUTE) {
+                    if ((s = kod_object_deref(obj)).type == ST_FAIL) return s;
+                }
+
+                // push attribute object into the stack
+                if ((s = kod_object_ref(attr_obj)).type == ST_FAIL) return s;
+                if ((s = object_stack_push(&vm->stack, AS_OBJECT(attr_obj))).type == ST_FAIL) return s;
                 break;
             }
 
@@ -402,12 +441,11 @@ Status vm_run_code_object(VirtualMachine* vm, Code* code_obj, ObjectMap* initial
                     break;
                 }
 
-                if (!fn_obj->type->call) RETURN_STATUS_FAIL("Type has no call attribute")
-                
+                if (!fn_obj->type->call) RETURN_STATUS_FAIL("Type has no call attribute");
                 // build a tuple for the args
                 KodObjectTuple* args = NULL;
                 if ((s = kod_object_new_tuple(arg_size, &args)).type == ST_FAIL) return s;
-                
+
                 KodObject* obj = NULL;
                 for (u8 i = 0; i < arg_size; ++i) {
                     obj = NULL;
@@ -416,8 +454,23 @@ Status vm_run_code_object(VirtualMachine* vm, Code* code_obj, ObjectMap* initial
                 }
 
                 KodObject* result = NULL;
-                if ((s = fn_obj->type->call(vm, fn_obj, AS_OBJECT(args), NULL, &result)).type == ST_FAIL) return s;
+                if ((s = fn_obj->type->call(vm, fn_obj, AS_OBJECT(args), NULL, &result)).type == ST_FAIL) {
+                    Status s_;
+                    
+                    if ((s_ = kod_object_deref(fn_obj)).type == ST_FAIL) {
+                        ERROR("KodRuntime", s_.what);
+                        free(s_.what);
+                    }
 
+                    if ((s_ = kod_object_deref(AS_OBJECT(args))).type == ST_FAIL) {
+                        ERROR("KodRuntime", s_.what);
+                        free(s_.what);
+                    }
+
+                    return s;
+                }
+
+                if ((s = kod_object_deref(AS_OBJECT(fn_obj))).type == ST_FAIL) return s;
                 if ((s = kod_object_deref(AS_OBJECT(args))).type == ST_FAIL) return s;
 
                 if ((s = kod_object_ref(result)).type == ST_FAIL) return s;
@@ -464,12 +517,15 @@ Status vm_run_code_object(VirtualMachine* vm, Code* code_obj, ObjectMap* initial
                 break;
             }
 
-            case OP_BINARY_ADD: BIN_OP_CASE(add)
-            case OP_BINARY_SUB: BIN_OP_CASE(sub)
-            case OP_BINARY_MUL: BIN_OP_CASE(mul)
-            case OP_BINARY_DIV: BIN_OP_CASE(div)
+            case OP_BINARY_ADD: BIN_OP_CASE(as_number->add)
+            case OP_BINARY_SUB: BIN_OP_CASE(as_number->sub)
+            case OP_BINARY_MUL: BIN_OP_CASE(as_number->mul)
+            case OP_BINARY_DIV: BIN_OP_CASE(as_number->div)
 
-            case OP_BINARY_BOOLEAN_LESS_THAN: BIN_OP_CASE(lt)
+            case OP_BINARY_BOOLEAN_LESS_THAN: BIN_OP_CASE(as_number->lt)
+            
+            case OP_BINARY_BOOLEAN_EQUAL: BIN_OP_CASE(eq)
+
 
             default: {
                 ERROR_ARGS("Runtime", "Unknown opcode: %s\n", op_to_str(op));

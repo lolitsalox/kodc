@@ -55,14 +55,14 @@ i32 run_module(CompiledModule* module) {
 }
 
 i32 main(i32 argc, char** argv) {
-    char *filename = "script.kod", *err = NULL, *buffer = NULL;
+    char *filename = NULL, *err = NULL, *buffer = NULL;
     
     if (argc < 2) {
         repl();
         return 0;
     }
     
-    //filename = argv[1];
+    filename = argv[1] ? argv[1] : "script.kod";
     size_t buffer_size = 0;
     
     if (io_read(filename, &buffer, &buffer_size, &err) == STATUS_FAIL) {
@@ -131,6 +131,7 @@ void repl() {
 
         Lexer lexer = lexer_init(buffer, (u32)length);
         Parser parser = parser_init(&lexer);
+        KodObject* result = NULL;
 
         AstNode* root = NULL;
         if (parse(&parser, &root, &err) == STATUS_FAIL) {
@@ -161,7 +162,6 @@ void repl() {
             return;
         }
 
-        KodObject* result = NULL;
         s = vm_run_code_object(vm, &module->entry, NULL, &result);
         if (s.type == ST_FAIL) {
             ERROR("KodRuntime", s.what);

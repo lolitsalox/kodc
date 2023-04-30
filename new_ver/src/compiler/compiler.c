@@ -452,7 +452,7 @@ CompilationStatus compile_module(AstNode* root, CompiledModule* compiled_module,
             {
                 size_t index = update_constant_pool(&compiled_module->constant_pool, (ConstantInformation){.tag=CONSTANT_NULL});            
                 write_8(code, OP_LOAD_CONST);
-                write_8(code, index);
+                write_8(code, (u8)index);
                 write_8(code, OP_RETURN);
             }
             break;
@@ -476,7 +476,7 @@ CompilationStatus compile_module(AstNode* root, CompiledModule* compiled_module,
             size_t index = update_name_pool(&compiled_module->name_pool, name);
 
             write_8(code, OP_STORE_NAME);
-            write_8(code, index);
+            write_8(code, (u8)index);
             break;
         }
 
@@ -501,28 +501,28 @@ CompilationStatus compile_module(AstNode* root, CompiledModule* compiled_module,
             size_t index = update_name_pool(&compiled_module->name_pool, name);
 
             write_8(code, OP_STORE_ATTRIBUTE);
-            write_8(code, index);
+            write_8(code, (u8)index);
             break;
         }
 
         case AST_NULL: {
             size_t index = update_constant_pool(&compiled_module->constant_pool, (ConstantInformation){.tag=CONSTANT_NULL});            
             write_8(code, OP_LOAD_CONST);
-            write_8(code, index);
+            write_8(code, (u8)index);
             break;
         }
         
         case AST_INT: {
             size_t index = update_constant_pool(&compiled_module->constant_pool, (ConstantInformation){.tag=CONSTANT_INTEGER,._int=root->_int});            
             write_8(code, OP_LOAD_CONST);
-            write_8(code, index);
+            write_8(code, (u8)index);
             break;
         }
         
         case AST_BOOL: {
             size_t index = update_constant_pool(&compiled_module->constant_pool, (ConstantInformation){.tag=CONSTANT_BOOL,._bool=root->_bool});            
             write_8(code, OP_LOAD_CONST);
-            write_8(code, index);
+            write_8(code, (u8)index);
             break;
         }
         
@@ -535,7 +535,7 @@ CompilationStatus compile_module(AstNode* root, CompiledModule* compiled_module,
                 }
             );            
             write_8(code, OP_LOAD_CONST);
-            write_8(code, index);
+            write_8(code, (u8)index);
             break;
         }
         
@@ -555,7 +555,7 @@ CompilationStatus compile_module(AstNode* root, CompiledModule* compiled_module,
                 }
             );            
             write_8(code, OP_LOAD_CONST);
-            write_8(code, index);
+            write_8(code, (u8)index);
             break;
         }
 
@@ -573,7 +573,7 @@ CompilationStatus compile_module(AstNode* root, CompiledModule* compiled_module,
             );            
 
             write_8(code, OP_LOAD_NAME);
-            write_8(code, index);
+            write_8(code, (u8)index);
             break;
         }
 
@@ -638,7 +638,7 @@ CompilationStatus compile_module(AstNode* root, CompiledModule* compiled_module,
             status = compile_module(root->_conditional.body, compiled_module, code);
             if (status.code == STATUS_FAIL) return status;
 
-            *(u8*)(code->code + offset) = code->size;
+            *(u8*)(code->code + offset) = (u8)code->size;
             break;
         }
 
@@ -654,9 +654,9 @@ CompilationStatus compile_module(AstNode* root, CompiledModule* compiled_module,
             if (status.code == STATUS_FAIL) return status;
             
             write_8(code, OP_JUMP);
-            write_8(code, expr_offset);
+            write_8(code, (u8)expr_offset);
 
-            *(u8*)(code->code + offset) = code->size;
+            *(u8*)(code->code + offset) = (u8)code->size;
             break;
         }
         
@@ -666,7 +666,7 @@ CompilationStatus compile_module(AstNode* root, CompiledModule* compiled_module,
                 // loading null
                 size_t index = update_constant_pool(&compiled_module->constant_pool, (ConstantInformation){.tag=CONSTANT_NULL});
                 write_8(code, OP_LOAD_CONST);
-                write_8(code, index);
+                write_8(code, (u8)index);
             } else {
                 status = compile_module(value, compiled_module, code);
                 if (status.code == STATUS_FAIL) return status;
@@ -690,7 +690,7 @@ CompilationStatus compile_module(AstNode* root, CompiledModule* compiled_module,
             if (status.code == STATUS_FAIL) return status;
 
             write_8(code, OP_CALL);
-            write_8(code, root->_call.args->_list.size);
+            write_8(code, (u8)root->_call.args->_list.size);
             break;
         }
 
@@ -702,6 +702,7 @@ CompilationStatus compile_module(AstNode* root, CompiledModule* compiled_module,
             size_t name_size = strlen(root->_access.field->_string) + 1;
 
             char* name = malloc(name_size);
+            if (!name) return (CompilationStatus) { .code = STATUS_FAIL, .what = "[CompileModule]: Error - Coudln't allocate for name" };
             memcpy(name, root->_access.field->_string, name_size);
 
             size_t index = update_name_pool(
@@ -710,7 +711,7 @@ CompilationStatus compile_module(AstNode* root, CompiledModule* compiled_module,
             );       
 
             write_8(code, OP_LOAD_ATTRIBUTE);
-            write_8(code, index);
+            write_8(code, (u8)index);
             break;
         }
 
@@ -731,6 +732,7 @@ CompilationStatus compile_module(AstNode* root, CompiledModule* compiled_module,
             size_t name_size = strlen(root->_method_call.callable->_string) + 1;
 
             char* name = malloc(name_size);
+            if (!name) return (CompilationStatus) { .code = STATUS_FAIL, .what = "[CompileModule]: Error - Coudln't allocate for name" };
             memcpy(name, root->_method_call.callable->_string, name_size);
 
             size_t index = update_name_pool(
@@ -738,10 +740,10 @@ CompilationStatus compile_module(AstNode* root, CompiledModule* compiled_module,
                 name
             );            
             write_8(code, OP_LOAD_METHOD);
-            write_8(code, index);
+            write_8(code, (u8)index);
 
             write_8(code, OP_CALL);
-            write_8(code, root->_method_call.args->_list.size + 1);
+            write_8(code, (u8)root->_method_call.args->_list.size + 1);
             break;
         }
 
@@ -763,6 +765,7 @@ CompilationStatus compile_module(AstNode* root, CompiledModule* compiled_module,
                 size_t param_name_size = strlen(ident->_string) + 1;
 
                 char* param_name = malloc(param_name_size);
+                if (!param_name) return (CompilationStatus) { .code = STATUS_FAIL, .what = "[CompileModule]: Error - Coudln't allocate for param_name" };
                 memcpy(param_name, ident->_string, param_name_size);
 
                 // updating global pool name
@@ -791,6 +794,7 @@ CompilationStatus compile_module(AstNode* root, CompiledModule* compiled_module,
             size_t fn_name_size = strlen(root->_function.name) + 1;
 
             char* fn_name = malloc(fn_name_size);
+            if (!fn_name) return (CompilationStatus) { .code = STATUS_FAIL, .what = "[CompileModule]: Error - Coudln't allocate for fn_name" };
             memcpy(fn_name, root->_function.name, fn_name_size);
 
             constant_code._code.name = fn_name;
@@ -799,7 +803,7 @@ CompilationStatus compile_module(AstNode* root, CompiledModule* compiled_module,
             size_t index = update_constant_pool(&compiled_module->constant_pool, constant_code);
             
             write_8(code, OP_LOAD_CONST);
-            write_8(code, index);
+            write_8(code, (u8)index);
 
             fn_name = malloc(fn_name_size);
             if (!fn_name) return (CompilationStatus) { .code = STATUS_FAIL, .what = "[CompileModule]: Error - Coudln't allocate for name" };
@@ -812,7 +816,7 @@ CompilationStatus compile_module(AstNode* root, CompiledModule* compiled_module,
             );
 
             write_8(code, OP_STORE_NAME);
-            write_8(code, index);
+            write_8(code, (u8)index);
             break;
         }
 
@@ -857,6 +861,26 @@ CompilationStatus compile_module(AstNode* root, CompiledModule* compiled_module,
                                 }
                             );
                             break;
+
+                        case AST_NULL:
+                            update_constant_pool(
+                                &compiled_module->constant_pool.data[index]._tuple,
+                                (ConstantInformation) {
+                                .tag = CONSTANT_NULL
+                            }
+                            );
+                            break;
+
+                        case AST_BOOL:
+                            update_constant_pool(
+                                &compiled_module->constant_pool.data[index]._tuple,
+                                (ConstantInformation) {
+                                .tag = CONSTANT_BOOL,
+                                    ._bool = curr->node->_bool
+                            }
+                            );
+                            break;
+
                         case AST_FLOAT: 
                             update_constant_pool(
                                 &compiled_module->constant_pool.data[index]._tuple,
@@ -870,6 +894,7 @@ CompilationStatus compile_module(AstNode* root, CompiledModule* compiled_module,
                             size_t string_size = strlen(curr->node->_string) + 1;
 
                             char* str = malloc(string_size);
+                            if (!str) return (CompilationStatus) { .code = STATUS_FAIL, .what = "[CompileModule]: Error - Coudln't allocate for str" };
                             memcpy(str, curr->node->_string, string_size);
 
                             update_constant_pool(
@@ -890,7 +915,7 @@ CompilationStatus compile_module(AstNode* root, CompiledModule* compiled_module,
                 }
 
                 write_8(code, OP_LOAD_CONST);
-                write_8(code, index);
+                write_8(code, (u8)index);
                 break;
             }
 
@@ -901,7 +926,7 @@ CompilationStatus compile_module(AstNode* root, CompiledModule* compiled_module,
                 curr = curr->prev;
             }
             write_8(code, OP_BUILD_TUPLE);
-            write_8(code, list.size);
+            write_8(code, (u8)list.size);
             break;
         }
 

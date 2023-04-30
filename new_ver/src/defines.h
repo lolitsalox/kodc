@@ -24,8 +24,9 @@
 #define UNIMPLEMENTED { printf("UnimplementedError: " __FILE__ ":%d inside %s\n", __LINE__, __FUNCTION__); }
 
 #define isdigit(c) (c >= '0' && c <= '9')
-#define isspace(c) (c == ' ' || c == '\r' || c == '\n')
-#define tolower(c) ((c >= 'A' || c <= 'Z') ? c | (1 << 5) : c)
+#define isspace(c) (c == ' ' || c == '\r' || c == '\n' || c == '\t')
+#define tolower(c) ((c >= 'A' && c <= 'Z') ? c | (1 << 5) : c)
+#define toupper(c) ((c >= 'a' && c <= 'z') ? c & ~(1 << 5) : c)
 
 #define ARRAYSIZE(arr) (sizeof(arr) / sizeof(arr[0]))
 

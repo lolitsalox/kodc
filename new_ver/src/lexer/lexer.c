@@ -248,6 +248,8 @@ static KeywordType find_keyword(char* s) {
     if (strcmp(s, "for") == 0)          return KEYWORD_FOR;
     if (strcmp(s, "return") == 0)       return KEYWORD_RETURN;
     if (strcmp(s, "import") == 0)       return KEYWORD_IMPORT;
+    if (strcmp(s, "as") == 0)           return KEYWORD_AS;
+    if (strcmp(s, "from") == 0)         return KEYWORD_FROM;
 
     return KEYWORD_UNKNOWN;
 }
@@ -263,6 +265,8 @@ char* keyword_type_to_str(KeywordType ktype) {
         case KEYWORD_FOR: return "for";
         case KEYWORD_RETURN: return "return";
         case KEYWORD_IMPORT: return "import";
+        case KEYWORD_AS: return "as";
+        case KEYWORD_FROM: return "from";
         default: return "KEYWORD_UNKNOWN";
     }
 }
@@ -311,6 +315,10 @@ enum STATUS collect_string(Lexer* lexer, Token** out, char** err) {
     advance(lexer);
 
     char* token_value = calloc(1, sizeof(char) * (length + 1));
+    if (!token_value) {
+        *err = "Coudln't allocate for token value";
+        return STATUS_FAIL;
+    }
     memcpy(token_value, value, length);
 
     return token_new(
@@ -355,6 +363,10 @@ static enum STATUS collect_number(Lexer* lexer, Token** out, char** err) {
     }
     
     char* token_value = calloc(1, sizeof(char) * (length + 1));
+    if (!token_value) {
+        *err = "Coudln't allocate for token value";
+        return STATUS_FAIL;
+    }
     memcpy(token_value, value, length);
 
     return token_new(
@@ -402,6 +414,10 @@ static enum STATUS collect_symbol(Lexer* lexer, Token** out, char** err) {
     }
 
     char* token_value = calloc(1, sizeof(char) * (length + 1));
+    if (!token_value) {
+        *err = "Coudln't allocate for token value";
+        return STATUS_FAIL;
+    }
     memcpy(token_value, value, length);
     
     return token_new(

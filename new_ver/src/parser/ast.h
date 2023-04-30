@@ -19,6 +19,7 @@ typedef enum AstType {
     AST_FUNCTION,
     AST_ASSIGNMENT,
     AST_STORE_ATTR,
+    AST_STORE_SUBSCRIPT,
     AST_IDENTIFIER,
     AST_INT,
     AST_FLOAT,
@@ -85,7 +86,7 @@ typedef struct AstMethodCall {
 
 typedef struct AstSubscript {
     AstNode* value;
-    AstNode* subscript; // must be tuple
+    AstNode* subscript; // must be list
 } AstSubscript;
 
 typedef struct AstAccess {
@@ -112,6 +113,7 @@ struct AstNode {
         AstNode* _return;
         AstBinary   _assignment;
         AstBinary   _store_attr; // left must be access
+        AstBinary   _store_subscript; // left must be subscript
         AstFunction _function;
         AstLambda _lambda;
         AstCall     _call;

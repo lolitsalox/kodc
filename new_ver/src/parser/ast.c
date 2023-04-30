@@ -12,6 +12,7 @@ const char* ast_type_to_str(AstType type) {
         case AST_SUBSCRIPT:     return "SUBSCRIPT";
         case AST_ACCESS:        return "ACCESS";
         case AST_STORE_ATTR:    return "STORE_ATTR";
+        case AST_STORE_SUBSCRIPT:return "STORE_SUBSCRIPT";
         case AST_FUNCTION:      return "FUNCTION";
         case AST_LAMBDA:        return "LAMBDA";
         case AST_ASSIGNMENT:    return "ASSIGNMENT";
@@ -80,6 +81,8 @@ void ast_print(const AstNode* node, u32 indent_level) {
             break;
         }
 
+        case AST_STORE_ATTR:
+        case AST_STORE_SUBSCRIPT:
         case AST_ASSIGNMENT:
             // If the node is an assignment, print the left and right sides of the assignment
             printf("\n");
@@ -242,6 +245,7 @@ void ast_free(AstNode* node) {
             break;
         }
 
+        case AST_STORE_SUBSCRIPT:
         case AST_STORE_ATTR:
         case AST_ASSIGNMENT:
             ast_free(node->_assignment.left);

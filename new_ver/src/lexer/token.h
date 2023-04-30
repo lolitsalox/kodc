@@ -80,6 +80,8 @@ typedef enum KeywordType {
     KEYWORD_FOR,
     KEYWORD_RETURN,
     KEYWORD_IMPORT,
+    KEYWORD_AS,
+    KEYWORD_FROM,
     KEYWORD_UNKNOWN,
 } KeywordType;
 

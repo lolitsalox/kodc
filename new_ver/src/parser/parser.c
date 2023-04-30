@@ -14,7 +14,7 @@ static enum STATUS parse_body(
     AstNode** out, char** err
 );
 
-static enum STATUS parse_list    (Parser* parser, AstNode** out, char** err, AstType type); // (...) or |...|
+static enum STATUS parse_list    (Parser* parser, AstNode** out, char** err, AstType type); // (...) or |...| or [...]
 static enum STATUS parse_block   (Parser* parser, AstNode** out, char** err); // {...}
 
 static enum STATUS parse_statement(Parser* parser, AstNode** out, char** err);
@@ -309,7 +309,7 @@ static enum STATUS parse_assignment(Parser* parser, AstNode** out, char** err) {
             ) == STATUS_FAIL) {
                 return STATUS_FAIL;
             };
-            if (parse_assignment(parser, &(*out)->_assignment.right, err) == STATUS_FAIL)
+            if (parse_bool_or(parser, &(*out)->_assignment.right, err) == STATUS_FAIL)
                 return STATUS_FAIL;
             
             return STATUS_OK;
@@ -330,10 +330,23 @@ static enum STATUS parse_assignment(Parser* parser, AstNode** out, char** err) {
                 return STATUS_FAIL;
             };
 
-            if (parse_assignment(parser, &(*out)->_store_attr.right, err) == STATUS_FAIL)
-                return STATUS_FAIL;
-            *out = left;
-            return STATUS_OK;
+            return parse_bool_or(parser, &(*out)->_store_attr.right, err);
+        }
+
+        case AST_SUBSCRIPT: {
+            if (ast_node_new(
+                ((AstNode) {
+                .type = AST_STORE_SUBSCRIPT,
+                    ._store_subscript = {
+                        .left = left,
+                        .right = NULL
+                    },
+                }),
+                out,
+                err
+                ) == STATUS_FAIL) { return STATUS_FAIL; };
+
+            return parse_bool_or(parser, &(*out)->_store_subscript.right, err);
         }
 
         default: ERROR_ARGS("Parser", "Assignment for %s is not implemented yet\n", 
@@ -506,20 +519,21 @@ static enum STATUS parse_after(Parser* parser, AstNode* value, AstNode** out, ch
                 return STATUS_OK;
             }
 
-            // if (value->type == AST_ACCESS) {
-            //     // This is a method call.
+             if (value->type == AST_ACCESS) {
+                 // This is a method call.
 
-            //     ast_node_t* method_call = ast_node_new((ast_node_t){
-            //         .ast_type=AST_METHOD_CALL,
-            //         .ast_method_call={
-            //             .callable=value->ast_access.field,
-            //             .arguments=list,
-            //             .this=value->ast_access.value
-            //         }
-            //     });
+                 AstNode* method_call = NULL;
+                 if (ast_node_new((AstNode) {
+                     .type=AST_METHOD_CALL,
+                     ._method_call={
+                         .callable=value->_access.field,
+                         .args=list,
+                         .self=value->_access.value
+                     }
+                 }, &method_call, err) == STATUS_FAIL) return STATUS_FAIL;
 
-            //     return parse_after(parser, method_call);
-            // }
+                 return parse_after(parser, method_call, out, err);
+             }
 
             // This is a function call.
             AstNode* function_call = NULL;
@@ -535,46 +549,57 @@ static enum STATUS parse_after(Parser* parser, AstNode* value, AstNode** out, ch
             return parse_after(parser, function_call, out, err);
         }
 
-    //     // Array subscript
-    //     case TOKEN_LBRACKET: {
-    //         // Parse the subscript expression inside the brackets.
-    //         ast_node_t* subscript = parse_brackets(parser);
-    //         // Create a new AST node for the array subscript and return it.
-    //         ast_node_t* array_subscript = ast_node_new((ast_node_t){
-    //             .ast_type=AST_SUBSCRIPT,
-    //             .ast_subscript={
-    //                 .value=value,
-    //                 .subscript=subscript
-    //             }
-    //         });
+         // Array subscript
+         case TOKEN_LBRACKET: {
+             // Parse the subscript expression inside the brackets.
+             AstNode* subscript = NULL;
+             if (parse_list(parser, &subscript, err, AST_LIST) == STATUS_FAIL) return STATUS_FAIL;
 
-    //         return parse_after(parser, array_subscript);
-    //     }
+             if (subscript->_list.size == 0) {
+                 *err = "subscript is empty!";
+                 return STATUS_FAIL;
+             }
 
-    //     // Class access expression (e.g. expr.id)
-    //     case TOKEN_DOT: {
-    //         // Eat the dot token and parse the field expression.
-    //         eat(parser, TOKEN_DOT);
-    //         ast_node_t* field = parse_factor(parser);
-    //         // Ensure that the field is an identifier.
-    //         if (field->ast_type != AST_IDENTIFIER) {
-    //             printf("[parser]: Error - invalid syntax (can't get a field that is an expression)\n");
-    //             exit(1);
-    //         }
+             // Create a new AST node for the array subscript and return it.
+             AstNode* array_subscript = NULL;
+             if (ast_node_new((AstNode) {
+                 .type=AST_SUBSCRIPT,
+                 ._subscript={
+                     .value=value,
+                     .subscript=subscript
+                 }
+             }, &array_subscript, err) == STATUS_FAIL) return STATUS_FAIL;
 
-    //         // Create a new AST node for the class access expression and return it.
-    //         ast_node_t* class_access = ast_node_new((ast_node_t){
-    //             .ast_type=AST_ACCESS,
-    //             .ast_access={
-    //                 .value=value,
-    //                 .field=field
-    //             }
-    //         });
+             return parse_after(parser, array_subscript, out, err);
+         }
 
-    //         return parse_after(parser, class_access);
-    //     }
+         // Struct access expression (e.g. expr.id)
+         case TOKEN_DOT: {
+             // Eat the dot token and parse the field expression.
+             if (eat(parser, TOKEN_DOT, err) == STATUS_FAIL) return STATUS_FAIL;
+             AstNode* field = NULL;
+             if (parse_factor(parser, &field, err) == STATUS_FAIL) return STATUS_FAIL;
+             
+             // Ensure that the field is an identifier.
+             if (field->type != AST_IDENTIFIER) {
+                 *err = "[parser]: Error - invalid syntax (can't get a field that is an expression)";
+                 return STATUS_FAIL;
+             }
 
-    //     // Default case: do nothing.
+             // Create a new AST node for the struct access expression and return it.
+             AstNode* struct_access = NULL;
+             if (ast_node_new((AstNode) {
+                 .type = AST_ACCESS,
+                 ._access={
+                     .value=value,
+                     .field=field
+                 }
+             }, &struct_access, err) == STATUS_FAIL) return STATUS_FAIL;
+
+             return parse_after(parser, struct_access, out, err);
+         }
+
+         // Default case: do nothing.
         default: break;
     }
 
@@ -600,6 +625,10 @@ static enum STATUS parse_factor(Parser* parser, AstNode** out, char** err) {
             }), out, err) == STATUS_FAIL) return STATUS_FAIL;
             
             (*out)->_string = malloc(sizeof(char) * (parser->current_token->length + 1));
+            if (!(*out)->_string) {
+                *err = "Coudln't allocate for string value";
+                return STATUS_FAIL;
+            }
             memcpy((*out)->_string, parser->current_token->value, parser->current_token->length + 1);
             break;
 
