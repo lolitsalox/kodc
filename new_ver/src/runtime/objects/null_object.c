@@ -1,4 +1,4 @@
-#include "kod_object_null.h"
+#include "null_object.h"
 
 static Status null_str(KodObject* self, char** out) {
     if (!self) RETURN_STATUS_FAIL("Invalid object");
@@ -40,6 +40,7 @@ KodObjectType KodType_Null = {
     .as_number=&null_as_number,
     .as_subscript=0,
     .str=null_str,
+    .repr=null_str,
     .hash=0,
     .call=0,
     .free=0

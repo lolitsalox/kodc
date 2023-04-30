@@ -1,6 +1,6 @@
 #pragma once
 
-#include "kod_object_type.h"
+#include "type_object.h"
 #include "../../compiler/compiler.h"
 
 typedef struct KodObjectFunc {

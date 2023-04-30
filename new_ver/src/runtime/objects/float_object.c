@@ -1,4 +1,4 @@
-#include "kod_object_float.h"
+#include "float_object.h"
 
 static inline f64 f64_add(f64 a, f64 b) { return a + b; }
 
@@ -115,6 +115,7 @@ KodObjectType KodType_Float = {
     TYPE_HEADER("float")
     .as_number=&float_as_number,
     .as_subscript=0,
+    .repr=float_str,
     .str=float_str,
     .hash=0,
     .call=0,

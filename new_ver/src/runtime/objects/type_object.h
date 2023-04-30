@@ -1,6 +1,7 @@
 #pragma once
 
 #include "kod_object.h"
+#include "object_map.h"
 
 #define TYPE_HEADER(name) .base={.kind=OBJECT_TYPE,.ref_count=1,.type=&KodType_Type},.tp_name=name,
 
@@ -43,19 +44,26 @@ typedef struct KodObjectSubscriptMethods {
     method_func set;
 } KodObjectSubscriptMethods;
 
+typedef struct KodObjectString KodObjectString;
+
 typedef struct KodObjectType {
     KodObject base;
     char* tp_name;
     KodObjectNumberMethods* as_number;
     KodObjectSubscriptMethods* as_subscript;
-    Status (*str)(KodObject* self, char** out);
-    unary_func hash;
+    Status (*repr)  (KodObject* self, char** out);
+    Status (*str)   (KodObject* self, char** out);
+    Status (*hash) (KodObject* self, size_t* out);
+    binary_func eq;
     normal_func call;
     normal_func new;
     kod_func free;
 } KodObjectType;
 
 extern KodObjectType KodType_Type;
+
+Status kod_object_initialize_type();
+Status kod_object_destroy_type();
 
 // Status kod_type_init(char* tp_name, KodObjectType* out);
 // Status kod_type_new(char* tp_name, KodObjectType** out);

@@ -1,6 +1,6 @@
-#include "kod_object_bool.h"
-#include "kod_object_int.h"
-#include "kod_object_float.h"
+#include "bool_object.h"
+#include "int_object.h"
+#include "float_object.h"
 
 static inline i64 b_add(i64 a, i64 b) { return a + b; }
 static inline i64 b_sub(i64 a, i64 b) { return a - b; }
@@ -23,7 +23,7 @@ static Status bool_bin(KodObject* self, KodObject* other, KodObject** out, i64 (
     if (!self->type->as_number) RETURN_STATUS_FAIL("self Type has no number representation")
     if (!other->type->as_number) RETURN_STATUS_FAIL("other Type has no number representation")
 
-    if (self->type->as_number->_bool && other->type->as_number->_bool) {
+    if (self->type->as_number->_int && other->type->as_number->_int) {
         i64 left = 0;
         Status s = self->type->as_number->_int(self, (i64*)&left);
         if (s.type == ST_FAIL) return s;
@@ -107,6 +107,7 @@ KodObjectType KodType_Bool = {
     TYPE_HEADER("bool")
     .as_number=&bool_as_number,
     .as_subscript=0,
+    .repr=bool_str,
     .str=bool_str,
     .hash=0,
     .call=0,

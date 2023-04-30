@@ -1,6 +1,6 @@
 #include "object_stack.h"
-#include "kod_object_float.h"
-#include "kod_object_int.h"
+#include "float_object.h"
+#include "int_object.h"
 
 Status object_stack_init(ObjectStack* self) {
     if (!self) RETURN_STATUS_FAIL("stack is null")

@@ -1,4 +1,4 @@
-#include "kod_object_tuple.h"
+#include "tuple_object.h"
 
 Status kod_object_new_tuple(size_t size, KodObjectTuple** out) {
     KodObjectTuple* obj = malloc(sizeof(KodObjectTuple));
@@ -23,12 +23,15 @@ static Status tuple_str_impl(KodObjectTuple* self, char** out) {
     for (i64 i = 0; i < self->size; i++) {
         template = "%s%s, ";
         tmp = NULL;
-        if (!self->data[i] || !self->data[i]->type->str) continue;
+        if (!self->data[i] || !self->data[i]->type->repr) {
+            if (buffer) free(buffer);
+            RETURN_STATUS_FAIL("arg is NULL or type doesn't have a repr attribute");
+        }
         if (!buffer) {
             buffer = _strdup("(");
             if (!buffer) RETURN_STATUS_FAIL("Couldn't allocate buffer")
         }
-        if ((s = self->data[i]->type->str(self->data[i], &tmp)).type == ST_FAIL) return s;
+        if ((s = self->data[i]->type->repr(self->data[i], &tmp)).type == ST_FAIL) return s;
         if (!tmp) RETURN_STATUS_FAIL("Couldn't get string from object")
 
         size_t size = strlen(buffer) + strlen(tmp) + 3; // "%s%s, "
@@ -77,6 +80,7 @@ KodObjectType KodType_Tuple = {
     TYPE_HEADER("tuple")
     .as_number=0,
     .as_subscript=0,
+    .repr=tuple_str,
     .str=tuple_str,
     .hash=0,
     .call=0,

@@ -1,4 +1,4 @@
-#include "kod_object_func.h"
+#include "func_object.h"
 
 Status kod_object_new_func(Code code, KodObjectFunc** out) {
     KodObjectFunc* obj = malloc(sizeof(KodObjectFunc));
@@ -35,6 +35,7 @@ KodObjectType KodType_Func = {
     TYPE_HEADER("function")
     .as_number=0,
     .as_subscript=0,
+    .repr=func_str,
     .str=func_str,
     .hash=0,
     .call=0,

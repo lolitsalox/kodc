@@ -17,6 +17,8 @@ typedef struct ObjectMap {
 } ObjectMap;
 
 Status object_map_init(ObjectMap* map);
+Status object_map_new(ObjectMap** map);
+
 Status object_map_insert(ObjectMap* map, char* key, KodObject* value);
 Status object_map_find(ObjectMap* map, char* key, KodObject** out); // returns null if didnt find
 Status object_map_get(ObjectMap* map, char* key, KodObject** out);  // returns status failed if didnt find

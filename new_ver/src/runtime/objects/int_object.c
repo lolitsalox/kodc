@@ -1,8 +1,8 @@
-#include "kod_object_int.h"
-#include "kod_object_float.h"
-#include "kod_object_bool.h"
-#include "kod_object_string.h"
-#include "kod_object_tuple.h"
+#include "int_object.h"
+#include "float_object.h"
+#include "bool_object.h"
+#include "str_object.h"
+#include "tuple_object.h"
 
 static inline i64 i64_add(i64 a, i64 b) { return a + b; }
 
@@ -124,6 +124,18 @@ Status int_new(VirtualMachine* vm, KodObject* self, KodObject* args, KodObject* 
     RETURN_STATUS_FAIL("Can't construct an int from this type");
 }
 
+Status int_eq(KodObject* self, KodObject* other, KodObject** out) {
+    if (!self) RETURN_STATUS_FAIL("Invalid object");
+    if (!other) RETURN_STATUS_FAIL("Invalid other");
+    if (!out) RETURN_STATUS_FAIL("Invalid out");
+
+    if (self->type != other->type) {
+        return kod_object_new_bool(false, (KodObjectBool**)out);
+    }
+
+    return kod_object_new_bool(((KodObjectInt*)self)->_int == ((KodObjectInt*)other)->_int, (KodObjectBool**)out);
+}
+
 KodObjectNumberMethods int_as_number = {
     .add=int_add,
     .sub=int_sub,
@@ -141,7 +153,9 @@ KodObjectType KodType_Int = {
     TYPE_HEADER("int")
     .as_number=&int_as_number,
     .as_subscript=0,
+    .repr=int_str,
     .str=int_str,
+    .eq=int_eq,
     .hash=0,
     .new=int_new,
     .free=kod_object_free

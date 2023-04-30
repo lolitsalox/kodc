@@ -1,6 +1,6 @@
 #pragma once
 
-#include "kod_object_type.h"
+#include "type_object.h"
 
 typedef struct KodObjectFloat {
     KodObject base;

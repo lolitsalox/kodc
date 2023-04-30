@@ -6,6 +6,7 @@
 
 typedef struct KodObject KodObject;
 typedef struct VirtualMachine VirtualMachine;
+typedef struct ObjectMap ObjectMap;
 
 typedef Status (*native_func)   (VirtualMachine* vm, KodObject* args, KodObject* kwargs, KodObject** out);
 typedef Status (*full_func)     (KodObject* self, KodObject* args, KodObject* kwargs, KodObject** out);
@@ -20,7 +21,9 @@ typedef enum ObjectKind {
     OBJECT_FLOAT,
     OBJECT_STRING,
     OBJECT_FUNC,
+    OBJECT_METHOD,
     OBJECT_NATIVE_FUNC,
+    OBJECT_NATIVE_METHOD,
     OBJECT_TYPE,
     OBJECT_CLASS,
     OBJECT_NULL,
@@ -34,6 +37,7 @@ struct KodObject {
     ObjectKind kind;
     i32 ref_count;
     struct KodObjectType* type;
+    ObjectMap* attributes;
 };
 
 Status kod_object_ref(KodObject* self);

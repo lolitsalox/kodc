@@ -1,5 +1,5 @@
 #include "kod_object.h"
-#include "kod_object_type.h"
+#include "type_object.h"
 
 Status kod_object_ref(KodObject* self) {
     if (!self) RETURN_STATUS_FAIL("Can't increase ref count to a null object")

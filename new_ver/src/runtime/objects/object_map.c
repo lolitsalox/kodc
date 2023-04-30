@@ -1,15 +1,19 @@
 #include "object_map.h"
 
-#include "kod_object_type.h"
+#include "type_object.h"
 
 Status object_map_init(ObjectMap* map) {
-    if (!map) RETURN_STATUS_FAIL("map is null")
-    for (int i = 0; i < MAX_TABLE_SIZE; i++) {
-        map->table[i] = NULL;
-    }
+    if (!map) RETURN_STATUS_FAIL("map* is null");
+    memset(map->table, 0, MAX_TABLE_SIZE * sizeof(ObjectEntry*));
     map->size = 0;
     map->capacity = MAX_TABLE_SIZE;
     RETURN_STATUS_OK
+}
+
+Status object_map_new(ObjectMap** map) {
+    if (!map) RETURN_STATUS_FAIL("map** is null");
+    *map = malloc(sizeof(ObjectMap));
+    return object_map_init(*map);
 }
 
 Status object_map_insert(ObjectMap* map, char* key, KodObject* value) {
@@ -127,9 +131,9 @@ void object_map_print(ObjectMap* map) {
         ObjectEntry* entry = map->table[i];
         while (entry != NULL) {
             printf("Index %zu: Key=%s Value=%p", i, entry->key, (void*)entry->value);
-            if (entry->value->type->str) {
+            if (entry->value->type->repr) {
                 char* buffer = NULL;
-                Status s = entry->value->type->str(entry->value, &buffer);
+                Status s = entry->value->type->repr(entry->value, &buffer);
                 if (s.type == ST_FAIL) {
                     ERROR("KodRuntime", s.what);
                     free(s.what);
