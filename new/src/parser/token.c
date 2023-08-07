@@ -27,7 +27,7 @@ Result token_new(Token token, Token** out) {
     return res;
 }
 
-const char* token_type_to_str(TokenType type) {
+const char* token_type_to_str(TokenType_t type) {
     switch (type) {
         case TOKEN_ADD:             return          "ADD";
         case TOKEN_SUB:             return          "SUB";               
@@ -131,7 +131,7 @@ bool is_symbol(char c) {
     return strchr("()[]{}=@#,.:;?\\+-/*%&|^<>~!", c) != NULL;
 }
 
-TokenType find_symbol(char* s, u32 length) {
+TokenType_t find_symbol(char* s, u32 length) {
     if (length == 2) {
         switch (s[0]) {
             case ':': if (s[1] == s[0]) return TOKEN_NAMESPACE; break;

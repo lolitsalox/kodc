@@ -2,7 +2,7 @@
 
 #include "../defines.h"
 
-typedef enum TokenType {
+typedef enum TokenType_t {
     TOKEN_UNKNOWN,
     
     TOKEN_ADD,                //  +
@@ -69,7 +69,7 @@ typedef enum TokenType {
 
     TOKEN_NL,                 //  New line
     TOKEN_EOF,                //  The end of the file
-} TokenType;
+} TokenType_t;
 
 typedef enum KeywordType {
     KEYWORD_UNKNOWN,
@@ -87,7 +87,7 @@ typedef enum KeywordType {
 } KeywordType;
 
 typedef struct Token{
-    TokenType type;
+    TokenType_t type;
     
     char* value;
     u32 length;
@@ -96,7 +96,7 @@ typedef struct Token{
     u32 row, column;
 } Token;
 
-const char* token_type_to_str(TokenType type);
+const char* token_type_to_str(TokenType_t type);
 const char* keyword_type_to_str(KeywordType ktype);
 
 Result token_new(Token token, Token** out);
@@ -104,5 +104,5 @@ void token_print(const Token* token);
 void token_free(Token* token);
 
 bool is_symbol(char c);
-TokenType find_symbol(char* s, u32 length);
+TokenType_t find_symbol(char* s, u32 length);
 KeywordType find_keyword(char* s);

@@ -2,7 +2,7 @@
 
 static void skip_whitespace(Lexer* lexer);
 static void skip_until(Lexer* lexer, char c);
-static Result skip_comments(Lexer* lexer, TokenType comment_type);
+static Result skip_comments(Lexer* lexer, TokenType_t comment_type);
 static void advance(Lexer* lexer);
 static bool can_advance(Lexer* lexer);
 static bool can_collect_string(Lexer* lexer, bool single_quote);
@@ -12,7 +12,7 @@ static Result collect_number(Lexer* lexer, Token* out);
 static Result collect_symbol(Lexer* lexer, Token* out);
 static Result collect_id    (Lexer* lexer, Token* out);
 
-static Token create_token(Lexer* lexer, TokenType type) {
+static Token create_token(Lexer* lexer, TokenType_t type) {
     return (Token){
         .type=type, 
         .value=NULL,
@@ -59,7 +59,7 @@ Result lexer_get_next_token(Lexer* lexer, Token* out) {
         Result res = collect_symbol(lexer, out);
         
         if (res.is_err) return res;
-        TokenType comment_type = out->type;
+        TokenType_t comment_type = out->type;
         if (comment_type == TOKEN_LINE_COMMENT || comment_type == TOKEN_MULTILINE_COMMENT_START) {
             *out = create_token(lexer, TOKEN_NL);
             return skip_comments(lexer, comment_type);
@@ -98,7 +98,7 @@ void skip_until(Lexer* lexer, char c) {
     }
 }
 
-Result skip_comments(Lexer* lexer, TokenType comment_type) {
+Result skip_comments(Lexer* lexer, TokenType_t comment_type) {
     switch (comment_type) {
         case TOKEN_LINE_COMMENT:
             skip_until(lexer, '\n');
@@ -282,11 +282,11 @@ Result collect_symbol(Lexer* lexer, Token* out) {
     advance(lexer);
     ++length;
     
-    TokenType type = find_symbol(buf, length);
+    TokenType_t type = find_symbol(buf, length);
 
     // If the next character is also a symbol
     if (can_advance(lexer) && is_symbol(lexer->current_char)) {
-        TokenType second_type = find_symbol((char[]){buf[0], lexer->current_char, 0}, length + 1);
+        TokenType_t second_type = find_symbol((char[]){buf[0], lexer->current_char, 0}, length + 1);
         if (second_type != TOKEN_UNKNOWN) {
             buf[length] = lexer->current_char;
             ++length;
@@ -323,7 +323,7 @@ Result collect_id(Lexer* lexer, Token* out) {
         advance(lexer);
     }
 
-    TokenType type = TOKEN_ID;
+    TokenType_t type = TOKEN_ID;
     KeywordType keyword_type = KEYWORD_UNKNOWN;
 
     char* token_value = calloc((length + 1), sizeof(char));
