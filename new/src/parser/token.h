@@ -100,7 +100,7 @@ const char* token_type_to_str(TokenType_t type);
 const char* keyword_type_to_str(KeywordType ktype);
 
 Result token_new(Token token, Token** out);
-void token_print(const Token* token);
+void token_print(Token token);
 void token_free(Token* token);
 
 bool is_symbol(char c);

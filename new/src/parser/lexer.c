@@ -166,7 +166,7 @@ Result collect_string(Lexer* lexer, Token* out) {
 
     // Setting the start of the token
     row = lexer->current_line;
-    column = lexer->current_column;
+    column = lexer->current_column - 1; // bc of quote
 
     // Collecting the string
     while (can_collect_string(lexer, single_quote)) {

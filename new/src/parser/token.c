@@ -108,11 +108,9 @@ const char* keyword_type_to_str(KeywordType ktype) {
     }
 }
 
-void token_print(const Token* token) {
-    assert(token && "Token is NULL");
-
-    printf("(%d:%d - %s)", token->row, token->column, token_type_to_str(token->type));
-    if (token->value) printf(": %s", token->value);
+void token_print(Token token) {
+    printf("(%d:%d - %s)", token.row, token.column, token_type_to_str(token.type));
+    if (token.value) printf(": %s", token.value);
     puts("");
 }
 
@@ -125,6 +123,7 @@ void token_free(Token* token) {
     #endif
 
     if (token->value) free(token->value);
+    token->value = NULL;
 }
 
 bool is_symbol(char c) {
