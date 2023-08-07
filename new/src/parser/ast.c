@@ -54,7 +54,7 @@ void ast_print(const AstNode* node, u32 indent_level) {
         case AST_NULL: puts("null"); break;
 
         case AST_IDENTIFIER:
-        case AST_STRING: if (node->string) printf(node->string); break;
+        case AST_STRING: if (node->string) puts(node->string); break;
         
         case AST_ROOT:
         case AST_COMPOUND:
