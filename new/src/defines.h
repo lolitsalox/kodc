@@ -16,8 +16,8 @@
 // #define DEBUG_COMPILER
 // #define DEBUG_VM
 
-#define LOG(type, msg) printf("%s: %s\n", type, msg)
-#define LOG_ARGS(type, fmt, ...) printf("%s: " fmt "\n", type, __VA_ARGS__)
+#define LOG(type, msg) printf("%s: %s", type, msg)
+#define LOG_ARGS(type, fmt, ...) printf("%s: " fmt, type, __VA_ARGS__)
 
 #define INFO(msg) LOG("Info", msg)
 #define INFO_ARGS(fmt, ...) LOG_ARGS("Info", fmt, __VA_ARGS__)
@@ -25,8 +25,8 @@
 #define WARNING(msg) LOG("Warning", msg)
 #define WARNING_ARGS(fmt, ...) LOG_ARGS("Warning", fmt, __VA_ARGS__)
 
-#define ERROR_LOG(type, msg) printf("%sError: %s\n", type, msg)
-#define ERROR_ARGS(type, fmt, ...) printf("%sError: " fmt "\n", type, __VA_ARGS__)
+#define ERROR_LOG(type, msg) printf("%sError: %s", type, msg)
+#define ERROR_ARGS(type, fmt, ...) printf("%sError: " fmt, type, __VA_ARGS__)
 
 #define UNIMPLEMENTED printf("Unimplemented: " __FILE__ ":%d inside %s\n", __LINE__, __FUNCTION__)
 

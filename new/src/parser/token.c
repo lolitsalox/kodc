@@ -111,7 +111,6 @@ const char* keyword_type_to_str(KeywordType ktype) {
 void token_print(Token token) {
     printf("(%d:%d - %s)", token.row, token.column, token_type_to_str(token.type));
     if (token.value) printf(": %s", token.value);
-    puts("");
 }
 
 // DOES NOT FREE THE TOKEN ITSELF, ONLY THE CONTENTS

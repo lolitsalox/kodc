@@ -34,7 +34,7 @@ const char* ast_type_to_str(AstType type) {
 
 #define PRINT_SPACE(n) printf("%*c", n, ' ')
 #define PRINT_INDENT() PRINT_SPACE(indent_level * 4)
-#define PRINT_INDENT_DOUBLE() PRINT_SPACE(indent_level * 8)
+#define PRINT_INDENT_DOUBLE() PRINT_SPACE((indent_level + 1) * 4)
 
 void ast_print(const AstNode* node, u32 indent_level) {
     assert(node && "Ast node is NULL");
