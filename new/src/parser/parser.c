@@ -1,11 +1,67 @@
 #include "parser.h"
 
-static Result compound  (Parser* parser, AstNode** out);
-static Result assignment(Parser* parser, AstNode** out);
-static Result factor    (Parser* parser, AstNode** out);
-static Result string    (Parser* parser, AstNode** out);
-static Result int_      (Parser* parser, AstNode** out);
-static Result float_    (Parser* parser, AstNode** out);
+typedef struct BinaryOperators_t {
+    Result (*next)(Parser*, AstNode** out);
+    TokenType_t* ops;
+} BinaryOperators_t;
+
+#define BIN_OP_STRUCT(next, ...) {next, (TokenType_t[]){__VA_ARGS__, TOKEN_UNKNOWN}}
+#define PARSE(ops, precedence) \
+    Result ops(Parser* parser, AstNode** out) \
+        { return binary(parser, out, operators[precedence]); }
+
+enum {
+    e_bool_or,
+    e_bool_and,
+};
+
+typedef Result (parse_function) (Parser* parser, AstNode** out);
+static parse_function compound;
+static parse_function assignment;
+static parse_function bool_or;
+static parse_function bool_and;
+static parse_function bitwise_or;
+static parse_function bitwise_xor;
+static parse_function bitwise_and;
+static parse_function bool_equals;
+static parse_function bool_gtlt;
+static parse_function bitwise_shlr;
+static parse_function add_sub;
+static parse_function mul_div_mod;
+static parse_function pow_;
+static parse_function before;
+static parse_function after;
+static parse_function factor;
+static parse_function string;
+static parse_function int_;
+static parse_function float_;
+
+BinaryOperators_t operators[] = {
+    BIN_OP_STRUCT(bool_and, TOKEN_BOOL_OR),
+    BIN_OP_STRUCT(bitwise_or, TOKEN_BOOL_AND),
+    BIN_OP_STRUCT(bitwise_xor, TOKEN_OR),
+    BIN_OP_STRUCT(bitwise_and, TOKEN_HAT),
+    BIN_OP_STRUCT(bool_equals, TOKEN_AND),
+    BIN_OP_STRUCT(bool_gtlt, TOKEN_BOOL_EQ, TOKEN_BOOL_NE),
+    BIN_OP_STRUCT(bitwise_shlr, TOKEN_BOOL_GT, TOKEN_BOOL_GTE, TOKEN_BOOL_LT, TOKEN_BOOL_LTE),
+    BIN_OP_STRUCT(add_sub, TOKEN_SHL, TOKEN_SHR),
+    BIN_OP_STRUCT(mul_div_mod, TOKEN_ADD, TOKEN_SUB),
+    BIN_OP_STRUCT(pow_, TOKEN_MUL, TOKEN_DIV, TOKEN_MOD),
+    BIN_OP_STRUCT(before, TOKEN_POW),
+};
+
+static Result binary(Parser* parser, AstNode** out, BinaryOperators_t binop);
+PARSE(bool_or, 0)
+PARSE(bool_and, 1)
+PARSE(bitwise_or, 2)
+PARSE(bitwise_xor, 3)
+PARSE(bitwise_and, 4)
+PARSE(bool_equals, 5)
+PARSE(bool_gtlt, 6)
+PARSE(bitwise_shlr, 7)
+PARSE(add_sub, 8)
+PARSE(mul_div_mod, 9)
+PARSE(pow_, 10)
 
 inline Parser parser_init(Lexer lexer) {
     return (Parser) {.lexer=lexer};
@@ -28,7 +84,7 @@ Result parser_parse(Parser* parser, AstNode** out) {
 
 Result eat(Parser* parser, TokenType_t ttype) {
     if (parser->current_token.type != ttype) {
-        ERROR_LOG("Parser", "unexpected token at");
+        ERROR_LOG("Parser", "unexpected token at ");
 
         token_print(parser->current_token);
 
@@ -41,9 +97,42 @@ Result eat(Parser* parser, TokenType_t ttype) {
     return lexer_get_next_token(&parser->lexer, &parser->current_token);
 }
 
-void skip_newlines(Parser* parser) {
+static inline void skip_newlines(Parser* parser) {
     while (parser->current_token.type == TOKEN_NL)
         unwrap(eat(parser, TOKEN_NL));
+}
+
+inline bool is_type_in_types(TokenType_t type, TokenType_t* types) {
+    for (size_t i = 0; types[i] != TOKEN_UNKNOWN; ++i) {
+        if (type == types[i]) return true;
+    }
+    return false;
+}
+
+Result binary(Parser* parser, AstNode** out, BinaryOperators_t binop) {
+    AstNode* left = NULL;
+    TokenType_t op = TOKEN_UNKNOWN;
+
+    unwrap(binop.next(parser, &left));
+    
+
+    op = parser->current_token.type;
+    while (is_type_in_types(op, binop.ops)) {
+
+        unwrap(eat(parser, op)); // eating the operator
+
+        AstNode* right = NULL;
+        unwrap(binop.next(parser, &right));
+
+        AstNode* new_node = NULL;
+        unwrap(ast_new((AstNode){.type=AST_BIN_OP,.binary_op={left,right,op}}, &new_node));
+
+        left = new_node;
+        op = parser->current_token.type;
+    }
+
+    *out = left;
+    return result_ok();
 }
 
 Result compound(Parser* parser, AstNode** out) {
@@ -67,7 +156,7 @@ Result compound(Parser* parser, AstNode** out) {
 
 Result assignment(Parser* parser, AstNode** out) {
     AstNode* left = NULL;
-    unwrap(factor(parser, &left));
+    unwrap(bool_or(parser, &left));
 
     if (parser->current_token.type != TOKEN_EQUALS) {
         *out = left;
@@ -88,6 +177,14 @@ Result assignment(Parser* parser, AstNode** out) {
     }
 
     assert(0 && "Unreachable");
+}
+
+Result before(Parser* parser, AstNode** out) {
+    return after(parser, out);
+}
+
+Result after(Parser* parser, AstNode** out) {
+    return factor(parser, out);
 }
 
 Result factor(Parser* parser, AstNode** out) {
