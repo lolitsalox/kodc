@@ -24,11 +24,11 @@
 // Appends a new item to the array
 #define DA_APPEND(arr, item) { \
     if ((arr).items == NULL) { \
-        (arr).items = calloc(sizeof(item), DA_INIT_CAPACITY); \
+        (arr).items = kod_calloc(sizeof(item), DA_INIT_CAPACITY); \
         (arr).capacity = DA_INIT_CAPACITY; \
     } else if ((arr).count >= (arr).capacity) { \
         size_t new_cap = (arr).capacity * 2; \
-        void* p = realloc((arr).items, new_cap * sizeof(item)); \
+        void* p = kod_realloc((arr).items, new_cap * sizeof(item)); \
         if (!p) { fprintf(stderr, DA_ERROR_PREFIX": "DA_ERROR_REALLOC"\n"); exit(1); } \
         memset((arr).items + (arr).capacity, 0, new_cap - (arr).capacity); \
         (arr).capacity = new_cap; \
@@ -69,7 +69,7 @@
 }
 
 // Frees the array and zeroes the count and capacity
-#define DA_FREE(arr) { free((arr).items); (arr).count=0; (arr).capacity=0; }
+#define DA_FREE(arr) { kod_free((arr).items); (arr).count=0; (arr).capacity=0; }
 
 // Zeroing the count and the elements
 #define DA_CLEAN(arr) { (arr).count=0; memset(arr.items, 0, a.capacity * sizeof(*a.items)); }

@@ -1,8 +1,11 @@
 #include "parser.h"
 
-static Result compound(Parser* parser, AstNode** out);
+static Result compound  (Parser* parser, AstNode** out);
 static Result assignment(Parser* parser, AstNode** out);
-static Result factor  (Parser* parser, AstNode** out);
+static Result factor    (Parser* parser, AstNode** out);
+static Result string    (Parser* parser, AstNode** out);
+static Result int_      (Parser* parser, AstNode** out);
+static Result float_    (Parser* parser, AstNode** out);
 
 inline Parser parser_init(Lexer lexer) {
     return (Parser) {.lexer=lexer};
@@ -20,7 +23,7 @@ Result parser_parse(Parser* parser, AstNode** out) {
     (*out)->type = AST_ROOT;
 
     token_free(&parser->current_token);
-    return (Result){0};
+    return result_ok();
 }
 
 Result eat(Parser* parser, TokenType_t ttype) {
@@ -30,7 +33,7 @@ Result eat(Parser* parser, TokenType_t ttype) {
         token_print(parser->current_token);
 
         printf(", expected (%s)\n", token_type_to_str(ttype));
-        return (Result){.what="unexpected token"};
+        return result_error("unexpected token");
     }
 
     token_free(&parser->current_token);
@@ -59,7 +62,7 @@ Result compound(Parser* parser, AstNode** out) {
         DA_APPEND((*out)->compound, value);
     }
 
-    return (Result){0};
+    return result_ok();
 }
 
 Result assignment(Parser* parser, AstNode** out) {
@@ -68,7 +71,7 @@ Result assignment(Parser* parser, AstNode** out) {
 
     if (parser->current_token.type != TOKEN_EQUALS) {
         *out = left;
-        return (Result){0};
+        return result_ok();
     }
 
     unwrap(eat(parser, TOKEN_EQUALS));
@@ -81,7 +84,7 @@ Result assignment(Parser* parser, AstNode** out) {
 
         default:
             ERROR_ARGS("Parser", "Assignment for %s is not implemented yet", ast_type_to_str(left->type));
-            return (Result){.what="unimplemented"};
+            return result_error("unimplemented");
     }
 
     assert(0 && "Unreachable");
@@ -92,31 +95,43 @@ Result factor(Parser* parser, AstNode** out) {
         
         case TOKEN_ID:
         case TOKEN_STRING:
-            unwrap(ast_new((AstNode){
-                .type=(parser->current_token.type == TOKEN_STRING ? AST_STRING : AST_IDENTIFIER),
-                .string=strdup(parser->current_token.value)
-            }, out));
+            unwrap(string(parser, out));
             break;
 
         case TOKEN_INT:
-            unwrap(ast_new((AstNode){
-                .type=AST_INT,
-                .int_=strtoi64(parser->current_token.value, NULL, 10)
-            }, out));
+            unwrap(int_(parser, out));
             break;
 
         case TOKEN_FLOAT:
-            unwrap(ast_new((AstNode){
-                .type=AST_FLOAT,
-                .float_=strtod(parser->current_token.value, NULL)
-            }, out));
+            unwrap(float_(parser, out));
             break;
 
         default:
             ERROR_LOG("Syntax", "unexpected token");
             token_print(parser->current_token);
-            return (Result){.what="unexpected token"};
+            return result_error("unexpected token");
     }
 
     return eat(parser, parser->current_token.type);
+}
+
+Result string(Parser* parser, AstNode** out) {
+    return ast_new((AstNode){
+        .type=(parser->current_token.type == TOKEN_STRING ? AST_STRING : AST_IDENTIFIER),
+        .string=strdup(parser->current_token.value)
+    }, out);
+}
+
+Result int_(Parser* parser, AstNode** out) {
+    return ast_new((AstNode){
+        .type=AST_INT,
+        .int_=strtoi64(parser->current_token.value, NULL, 10)
+    }, out);
+}
+
+Result float_(Parser* parser, AstNode** out) {
+    return ast_new((AstNode){
+        .type=AST_FLOAT,
+        .float_=strtod(parser->current_token.value, NULL)
+    }, out);
 }

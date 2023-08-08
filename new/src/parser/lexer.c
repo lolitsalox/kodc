@@ -41,7 +41,7 @@ Result lexer_get_next_token(Lexer* lexer, Token* out) {
     // Validating first character
     if (lexer->current_char == '\0') {
         *out = create_token(lexer, TOKEN_EOF);
-        return (Result) {0};
+        return result_ok();
     }
 
     skip_whitespace(lexer);
@@ -81,7 +81,7 @@ Result lexer_get_next_token(Lexer* lexer, Token* out) {
     }
 
     ERROR_ARGS("Lexer", "Unexpected token at %d:%d\n", lexer->current_line, lexer->current_column);
-    return (Result) {.what="Unexpected token"};
+    return result_error("Unexpected token");
 }
 
 void skip_whitespace(Lexer* lexer) {
@@ -112,12 +112,12 @@ Result skip_comments(Lexer* lexer, TokenType_t comment_type) {
                 token_free(&tok);
             } while (tok.type != TOKEN_MULTILINE_COMMENT_END && tok.type != TOKEN_EOF);
             
-            if (tok.type == TOKEN_EOF) return (Result){.what="Multiline comment was not closed."};
+            if (tok.type == TOKEN_EOF) return result_error("Multiline comment was not closed.");
             break;
 
-        default: return (Result){.what="Invalid comment_type"};
+        default: result_error("Invalid comment_type");
     }
-    return (Result) {0};
+    return result_ok();
 }
 
 void advance(Lexer* lexer) {
@@ -178,7 +178,7 @@ Result collect_string(Lexer* lexer, Token* out) {
                 printf("%*s\n%*c\n", length, start, length + 2, '^');
 
                 ERROR_ARGS("Syntax", "Unterminated string literal (at line: %d)", row);
-                return (Result){.what="Unterminated string literal"};
+                return result_error("Unterminated string literal");
             }
 
             switch (lexer->current_char) {
@@ -188,7 +188,7 @@ Result collect_string(Lexer* lexer, Token* out) {
                 default: 
                     printf("%*s\n%*c\n", length, start, length + 2, '^');
                     ERROR_ARGS("Syntax", "Escape character %c hasn't been implemented yet.", lexer->current_char);
-                    return (Result) {.what="Unimplemented escape character"};
+                    return result_error("Unimplemented escape character");
             }
         }
 
@@ -201,15 +201,15 @@ Result collect_string(Lexer* lexer, Token* out) {
         (lexer->current_char != '"' && !single_quote)) {
         
         ERROR_ARGS("Lexer", "Unexpected end of string at %d:%d\n", lexer->current_line, lexer->current_column);
-        return (Result){.what="Unexpected end of string"};
+        return result_error("Unexpected end of string");
     }
 
     // Eating other quote
     advance(lexer);
 
-    char* token_value = calloc((length + 1), sizeof(char));
+    char* token_value = kod_calloc((length + 1), sizeof(char));
     if (!token_value) {
-        return (Result){.what="Coudln't allocate for token value"};
+        return result_error("Coudln't allocate for token value");
     }
 
     memcpy(token_value, buf, length);
@@ -222,7 +222,7 @@ Result collect_string(Lexer* lexer, Token* out) {
         .row=row,
         .column=column,
     };
-    return (Result) {0};
+    return result_ok();
 }
 
 Result collect_number(Lexer* lexer, Token* out) {
@@ -249,9 +249,9 @@ Result collect_number(Lexer* lexer, Token* out) {
         advance(lexer);
     }
 
-    char* token_value = calloc((length + 1), sizeof(char));
+    char* token_value = kod_calloc((length + 1), sizeof(char));
     if (!token_value) {
-        return (Result){.what="Coudln't allocate for token value"};
+        return result_error("Coudln't allocate for token value");
     }
 
     memcpy(token_value, buf, length);
@@ -264,7 +264,7 @@ Result collect_number(Lexer* lexer, Token* out) {
         .row=row,
         .column=column,
     };
-    return (Result) {0};
+    return result_ok();
 }
 
 Result collect_symbol(Lexer* lexer, Token* out) {
@@ -303,7 +303,7 @@ Result collect_symbol(Lexer* lexer, Token* out) {
         .row=row,
         .column=column,
     };
-    return (Result) {0};
+    return result_ok();
 }
 
 Result collect_id(Lexer* lexer, Token* out) {
@@ -326,9 +326,9 @@ Result collect_id(Lexer* lexer, Token* out) {
     TokenType_t type = TOKEN_ID;
     KeywordType keyword_type = KEYWORD_UNKNOWN;
 
-    char* token_value = calloc((length + 1), sizeof(char));
+    char* token_value = kod_calloc((length + 1), sizeof(char));
     if (!token_value) {
-        return (Result){.what="Coudln't allocate for token value"};
+        return result_error("Coudln't allocate for token value");
     }
 
     memcpy(token_value, buf, length);

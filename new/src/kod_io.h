@@ -20,7 +20,7 @@ Result io_read(const char* filename, char** buffer, size_t* buffer_size) {
     fseek(fp, 0, SEEK_SET);
     *buffer_size = (size_t)fsize;
 
-    *buffer = (char*) malloc(fsize * sizeof(char) + 1);
+    *buffer = (char*) kod_malloc(fsize * sizeof(char) + 1);
     if (!*buffer) {
         res.what = "Couldn't allocate for buffer";
         return res;
@@ -28,7 +28,7 @@ Result io_read(const char* filename, char** buffer, size_t* buffer_size) {
 
     if (fread(*buffer, fsize, 1, fp) != 1) {
         res.what = "Couldn't read file";
-        free(*buffer);
+        kod_free(*buffer);
         fclose(fp);
         return res;
     }

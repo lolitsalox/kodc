@@ -17,7 +17,7 @@ Result token_new(Token token, Token** out) {
     INFO_ARGS("Creating a token from type %s\n", token_type_to_str(token.type));
     #endif
 
-    *out = malloc(sizeof(Token));
+    *out = kod_malloc(sizeof(Token));
     if (!*out) {
         res.what = "Coudln't allocate for token";
         return res;
@@ -122,7 +122,7 @@ void token_free(Token* token) {
     INFO_ARGS("Freeing token from type %s", token_type_to_str(token->type));
     #endif
 
-    if (token->value) free(token->value);
+    if (token->value) kod_free(token->value);
     token->value = NULL;
 }
 

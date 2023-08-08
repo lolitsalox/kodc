@@ -57,7 +57,15 @@ typedef double f64;
 
 typedef union Result {
     size_t is_err;
-    char* what;
+    const char* what;
 } Result; 
 
+inline Result result_ok() { return (Result){0}; }
+inline Result result_error(const char* what) { return (Result){.what=what}; }
+
 i64 strtoi64(const char* nptr, char** endptr, i32 base);
+
+void* kod_malloc(size_t n);
+void* kod_calloc(size_t n, size_t elem_size);
+void* kod_realloc(void* p, size_t new_size);
+void kod_free(void* p);

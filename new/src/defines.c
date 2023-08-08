@@ -64,3 +64,19 @@ i64 strtoi64(const char* nptr, char** endptr, i32 base) {
  
     return ret;
 }
+
+void* kod_malloc(size_t n) {
+    return malloc(n);
+}
+
+void* kod_calloc(size_t n, size_t elem_size) {
+    return calloc(n, elem_size);
+}
+
+void* kod_realloc(void* p, size_t new_size) {
+    return realloc(p, new_size);
+}
+
+void kod_free(void* p) {
+    free(p);
+}
