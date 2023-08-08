@@ -39,16 +39,19 @@ static parse_function add_sub;
 static parse_function mul_div_mod;
 static parse_function pow_;
 static parse_function before;
-static parse_function after;
 static parse_function factor;
 static parse_function string;
 static parse_function int_;
 static parse_function float_;
-static parse_function tuple;
 static parse_function list;
 static parse_function block;
 
+static Result tuple(Parser* parser, AstNode** out, bool must_be_tuple);
+static Result after(Parser* parser, AstNode** out, AstNode* value);
 static Result body(Parser* parser, AstNode** out, delims_t delims, bool commas);
+static Result function(Parser* parser, AstNode** out, AstNode* identifier, AstNode* params);
+static Result method_call(Parser* parser, AstNode** out, AstNode* self, AstNode* args);
+static Result call(Parser* parser, AstNode** out, AstNode* callable, AstNode* args);
 
 BinaryOperators_t operators[] = {
     BIN_OP_STRUCT(bool_and, TOKEN_BOOL_OR),
@@ -112,8 +115,8 @@ Result eat(Parser* parser, TokenType_t ttype) {
 }
 
 static inline void skip_newlines(Parser* parser) {
-    while (parser->current_token.type == TOKEN_NL)
-        unwrap(eat(parser, TOKEN_NL));
+    while (parser->current_token.type == TOKEN_NL || parser->current_token.type == TOKEN_SEMI)
+        unwrap(eat(parser, parser->current_token.type));
 }
 
 inline bool is_type_in_types(TokenType_t type, TokenType_t* types) {
@@ -187,7 +190,7 @@ Result assignment(Parser* parser, AstNode** out) {
         
         case AST_IDENTIFIER:
             unwrap(ast_new((AstNode){.type=AST_ASSIGNMENT,.assignment={.left=left,.right=NULL}}, out));
-            return factor(parser, &(*out)->assignment.right);
+            return expression(parser, &(*out)->assignment.right);
 
         default:
             ERROR_ARGS("Parser", "Assignment for %s is not implemented yet\n", ast_type_to_str(left->type));
@@ -198,11 +201,45 @@ Result assignment(Parser* parser, AstNode** out) {
 }
 
 Result before(Parser* parser, AstNode** out) {
-    return after(parser, out);
+    return after(parser, out, NULL);
 }
 
-Result after(Parser* parser, AstNode** out) {
-    return factor(parser, out);
+Result after(Parser* parser, AstNode** out, AstNode* value) {
+    if (!value) {
+        unwrap(factor(parser, &value));
+    }
+    *out = value;
+    
+    switch (parser->current_token.type) {
+        case TOKEN_LPAREN: {
+            AstNode* tup = NULL;
+            
+            // Method call
+            if (value->type == AST_ACCESS) {
+                unwrap(tuple(parser, &tup, true));
+                AstNode* meth_call = NULL;
+                unwrap(method_call(parser, &meth_call, value, tup));
+                return after(parser, out, meth_call);
+            }
+
+            if (value->type != AST_IDENTIFIER) break;
+
+            unwrap(tuple(parser, &tup, true));
+
+            // Function decleration
+            if (parser->current_token.type == TOKEN_LBRACE) {
+                return function(parser, out, value, tup);
+            }
+
+            // Call
+            AstNode* func_call = NULL;
+            unwrap(call(parser, &func_call, value, tup));
+            return after(parser, out, func_call);
+        }
+        default: break;
+    }
+
+    return result_ok();
 }
 
 Result factor(Parser* parser, AstNode** out) {
@@ -222,13 +259,19 @@ Result factor(Parser* parser, AstNode** out) {
             break;
 
         case TOKEN_LPAREN:
-            unwrap(tuple(parser, out));
+            unwrap(tuple(parser, out, false));
             return result_ok(); // bc we have already eaten the ) inside tuple
             break;
 
+        case TOKEN_LBRACKET:
+            unwrap(list(parser, out));
+            return result_ok(); // bc we have already eaten the ] inside list
+            break;
+
         default:
-            ERROR_LOG("Syntax", "unexpected token");
+            ERROR_LOG("Syntax", "unexpected token ");
             token_print(parser->current_token);
+            puts("");
             return result_error("unexpected token");
     }
 
@@ -256,12 +299,12 @@ Result float_(Parser* parser, AstNode** out) {
     }, out);
 }
 
-Result tuple(Parser* parser, AstNode** out) {
+Result tuple(Parser* parser, AstNode** out, bool must_be_tuple) {
     AstNode* tup = NULL;
     
     unwrap(body(parser, &tup, tuple_delims, true));
     
-    if (tup->type == AST_UNKNOWN) {
+    if (tup->type == AST_UNKNOWN || must_be_tuple) {
         tup->type = AST_TUPLE;
         *out = tup;
     } 
@@ -276,11 +319,15 @@ Result tuple(Parser* parser, AstNode** out) {
 }
 
 Result list(Parser* parser, AstNode** out) {
-    return body(parser, out, list_delims, true);
+    unwrap(body(parser, out, list_delims, true));
+    (*out)->type = AST_LIST;
+    return result_ok();
 }
 
 Result block(Parser* parser, AstNode** out) {
-    return body(parser, out, block_delims, false);
+    unwrap(body(parser, out, block_delims, false));
+    (*out)->type = AST_BLOCK;
+    return result_ok();
 }
 
 Result body(Parser* parser, AstNode** out, delims_t delims, bool commas) {
@@ -313,4 +360,43 @@ Result body(Parser* parser, AstNode** out, delims_t delims, bool commas) {
     }
 
     return eat(parser, delims[RIGHT_DELIM]);
+}
+
+Result function(Parser* parser, AstNode** out, AstNode* identifier, AstNode* params) {
+    AstNode* func = NULL;
+    unwrap(ast_new((AstNode){
+        .type=AST_FUNCTION,
+        .function={
+            .name=strdup(identifier->identifer),
+            .params=params
+        }
+    }, &func));
+
+    ast_free(identifier);
+
+    unwrap(block(parser, &func->function.body));
+    func->function.body->parent = func;
+    *out = func;
+    return result_ok();
+}
+
+Result method_call(Parser* parser, AstNode** out, AstNode* self, AstNode* args) {
+    return ast_new((AstNode){
+        .type=AST_METHOD_CALL,
+        .method_call={
+            .self=self->access.value,
+            .callable=self->access.field,
+            .args=args
+        }
+    }, out);
+}
+
+Result call(Parser* parser, AstNode** out, AstNode* callable, AstNode* args) {
+    return ast_new((AstNode){
+        .type=AST_CALL,
+        .call={
+            .callable=callable,
+            .args=args
+        }
+    }, out);
 }
