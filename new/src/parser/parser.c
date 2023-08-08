@@ -15,8 +15,17 @@ enum {
     e_bool_and,
 };
 
+#define LEFT_DELIM 0
+#define RIGHT_DELIM 1
+typedef TokenType_t delims_t[2];
+
+static delims_t tuple_delims = {TOKEN_LPAREN, TOKEN_RPAREN};
+static delims_t list_delims = {TOKEN_LBRACKET, TOKEN_RBRACKET};
+static delims_t block_delims = {TOKEN_LBRACE, TOKEN_RBRACE};
+
 typedef Result (parse_function) (Parser* parser, AstNode** out);
 static parse_function compound;
+static parse_function expression;
 static parse_function assignment;
 static parse_function bool_or;
 static parse_function bool_and;
@@ -35,6 +44,11 @@ static parse_function factor;
 static parse_function string;
 static parse_function int_;
 static parse_function float_;
+static parse_function tuple;
+static parse_function list;
+static parse_function block;
+
+static Result body(Parser* parser, AstNode** out, delims_t delims, bool commas);
 
 BinaryOperators_t operators[] = {
     BIN_OP_STRUCT(bool_and, TOKEN_BOOL_OR),
@@ -143,7 +157,7 @@ Result compound(Parser* parser, AstNode** out) {
 
         skip_newlines(parser);
 
-        unwrap(assignment(parser, &value));
+        unwrap(expression(parser, &value));
         if (!value) continue;
 
         skip_newlines(parser);
@@ -152,6 +166,10 @@ Result compound(Parser* parser, AstNode** out) {
     }
 
     return result_ok();
+}
+
+Result expression(Parser* parser, AstNode** out) {
+    return assignment(parser, out);
 }
 
 Result assignment(Parser* parser, AstNode** out) {
@@ -172,8 +190,8 @@ Result assignment(Parser* parser, AstNode** out) {
             return factor(parser, &(*out)->assignment.right);
 
         default:
-            ERROR_ARGS("Parser", "Assignment for %s is not implemented yet", ast_type_to_str(left->type));
-            return result_error("unimplemented");
+            ERROR_ARGS("Parser", "Assignment for %s is not implemented yet\n", ast_type_to_str(left->type));
+            return result_error("assignment unimplemented");
     }
 
     assert(0 && "Unreachable");
@@ -201,6 +219,11 @@ Result factor(Parser* parser, AstNode** out) {
 
         case TOKEN_FLOAT:
             unwrap(float_(parser, out));
+            break;
+
+        case TOKEN_LPAREN:
+            unwrap(tuple(parser, out));
+            return result_ok(); // bc we have already eaten the ) inside tuple
             break;
 
         default:
@@ -231,4 +254,63 @@ Result float_(Parser* parser, AstNode** out) {
         .type=AST_FLOAT,
         .float_=strtod(parser->current_token.value, NULL)
     }, out);
+}
+
+Result tuple(Parser* parser, AstNode** out) {
+    AstNode* tup = NULL;
+    
+    unwrap(body(parser, &tup, tuple_delims, true));
+    
+    if (tup->type == AST_UNKNOWN) {
+        tup->type = AST_TUPLE;
+        *out = tup;
+    } 
+    else {
+        // If not unknown then it's not a tuple
+        *out = tup->tuple.items[0];
+        DA_FREE(tup->tuple);
+        kod_free(tup);
+    }
+    
+    return result_ok();
+}
+
+Result list(Parser* parser, AstNode** out) {
+    return body(parser, out, list_delims, true);
+}
+
+Result block(Parser* parser, AstNode** out) {
+    return body(parser, out, block_delims, false);
+}
+
+Result body(Parser* parser, AstNode** out, delims_t delims, bool commas) {
+    unwrap(ast_new((AstNode){.type=AST_UNKNOWN}, out));
+
+    unwrap(eat(parser, delims[LEFT_DELIM]));
+
+    skip_newlines(parser);
+
+    while (parser->current_token.type != delims[RIGHT_DELIM]) {
+        AstNode* value = NULL;
+
+        unwrap(expression(parser, &value));
+        skip_newlines(parser);
+
+        if (!value) continue;
+
+        DA_APPEND((*out)->list, value);
+
+        if (commas) {
+            if (parser->current_token.type != TOKEN_COMMA) {
+                // special case for tuple (x)
+                if ((*out)->list.count == 1) {
+                    (*out)->type = (*out)->list.items[0]->type;
+                }
+                break;
+            }
+            unwrap(eat(parser, TOKEN_COMMA));
+        }
+    }
+
+    return eat(parser, delims[RIGHT_DELIM]);
 }
