@@ -28,8 +28,8 @@ const char* ast_type_to_str(AstType type) {
         case AST_WHILE_STATEMENT:       return "WHILE_STATEMENT";
         case AST_FOR_STATEMENT:         return "FOR_STATEMENT";
         case AST_RETURN_STATEMENT:      return "RETURN_STATEMENT";
+        default: return "AST_UNKNOWN";
     }
-    return "UNKNOWN_AST_TYPE";
 }
 
 #define PRINT_SPACE(n) printf("%*c", n, ' ')
@@ -312,8 +312,9 @@ void ast_free(AstNode* node) {
             ast_free(node->method_call.args);
             break;
 
-        case AST_FOR_STATEMENT:
+        default:
             UNIMPLEMENTED;
+            exit(1);
             break;
     }
 

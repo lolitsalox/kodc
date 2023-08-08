@@ -4,11 +4,12 @@
 #include "token.h"
 
 typedef enum AstType {
+    AST_UNKNOWN,
     AST_ROOT, // root
     AST_COMPOUND, // body
     AST_TUPLE, // (..., )
     AST_LIST, // [..., ]
-    AST_BLOCK, // {}
+    AST_BLOCK, // {...}
     AST_CALL,  // f()
     AST_METHOD_CALL, // f.method()
     AST_SUBSCRIPT,  // a[x]
