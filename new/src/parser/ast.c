@@ -32,7 +32,9 @@ const char* ast_type_to_str(AstType type) {
     return "UNKNOWN_AST_TYPE";
 }
 
-#define PRINT_INDENT() printf("%*c", indent_level * 4, ' ')
+#define PRINT_SPACE(n) printf("%*c", n, ' ')
+#define PRINT_INDENT() PRINT_SPACE(indent_level * 4)
+#define PRINT_INDENT_DOUBLE() PRINT_SPACE(indent_level * 8)
 
 void ast_print(const AstNode* node, u32 indent_level) {
     assert(node && "Ast node is NULL");
@@ -71,11 +73,11 @@ void ast_print(const AstNode* node, u32 indent_level) {
         case AST_ASSIGNMENT:
             puts("");
 
-            PRINT_INDENT();
+            PRINT_INDENT_DOUBLE();
             puts("left:");
             ast_print(node->assignment.left, indent_level + 2);
 
-            PRINT_INDENT();
+            PRINT_INDENT_DOUBLE();
             puts("right:");
             ast_print(node->assignment.right, indent_level + 2);
             break;
@@ -83,11 +85,11 @@ void ast_print(const AstNode* node, u32 indent_level) {
         case AST_FUNCTION:
             printf("name: %s", node->function.name);
 
-            PRINT_INDENT();
+            PRINT_INDENT_DOUBLE();
             puts("params:");
             ast_print(node->function.params, indent_level + 2);
 
-            PRINT_INDENT();
+            PRINT_INDENT_DOUBLE();
             puts("body:");
             ast_print(node->function.body, indent_level + 2);
             break;
@@ -95,11 +97,11 @@ void ast_print(const AstNode* node, u32 indent_level) {
         case AST_LAMBDA:
             puts("");
 
-            PRINT_INDENT();
+            PRINT_INDENT_DOUBLE();
             puts("params:");
             ast_print(node->lambda.params, indent_level + 2);
 
-            PRINT_INDENT();
+            PRINT_INDENT_DOUBLE();
             puts("body:");
             ast_print(node->lambda.body, indent_level + 2);
             break;
@@ -107,7 +109,7 @@ void ast_print(const AstNode* node, u32 indent_level) {
         case AST_UNARY_OP:
             printf("op: %s\n", token_type_to_str(node->unary_op.op));
 
-            PRINT_INDENT();
+            PRINT_INDENT_DOUBLE();
             puts("value:");
             ast_print(node->unary_op.value, indent_level + 2);
             break;
@@ -115,11 +117,11 @@ void ast_print(const AstNode* node, u32 indent_level) {
         case AST_BIN_OP:
             printf("op: %s\n", token_type_to_str(node->binary_op.op));
             
-            PRINT_INDENT();
+            PRINT_INDENT_DOUBLE();
             puts("left:");
             ast_print(node->binary_op.left, indent_level + 2);
             
-            PRINT_INDENT();
+            PRINT_INDENT_DOUBLE();
             puts("right:");
             ast_print(node->binary_op.right, indent_level + 2);
             break;
@@ -127,11 +129,11 @@ void ast_print(const AstNode* node, u32 indent_level) {
         case AST_SUBSCRIPT:
             puts("");
             
-            PRINT_INDENT();
+            PRINT_INDENT_DOUBLE();
             puts("subscript:");
             ast_print(node->subscript.subscript, indent_level + 2);
             
-            PRINT_INDENT();
+            PRINT_INDENT_DOUBLE();
             puts("value:");
             ast_print(node->subscript.value, indent_level + 2);
             break;
@@ -139,11 +141,11 @@ void ast_print(const AstNode* node, u32 indent_level) {
         case AST_ACCESS:
             puts("");
             
-            PRINT_INDENT();
+            PRINT_INDENT_DOUBLE();
             printf("field:\n");
             ast_print(node->access.field, indent_level + 2);
             
-            PRINT_INDENT();
+            PRINT_INDENT_DOUBLE();
             printf("value:\n");
             ast_print(node->access.value, indent_level + 2);
             break;
@@ -152,11 +154,11 @@ void ast_print(const AstNode* node, u32 indent_level) {
         case AST_WHILE_STATEMENT:
             puts("");
             
-            PRINT_INDENT();
+            PRINT_INDENT_DOUBLE();
             puts("expression:");
             ast_print(node->if_s.expr, indent_level + 2);
             
-            PRINT_INDENT();
+            PRINT_INDENT_DOUBLE();
             puts("body:");
             ast_print(node->if_s.body, indent_level + 2);
             break;
@@ -164,7 +166,7 @@ void ast_print(const AstNode* node, u32 indent_level) {
         case AST_RETURN_STATEMENT:
             puts("");
             
-            PRINT_INDENT();
+            PRINT_INDENT_DOUBLE();
             puts("value:");
             ast_print(node->return_s, indent_level + 2);
             break;
@@ -172,7 +174,7 @@ void ast_print(const AstNode* node, u32 indent_level) {
         case AST_CALL:
             puts("");
             
-            PRINT_INDENT();
+            PRINT_INDENT_DOUBLE();
             puts("callable:");
             ast_print(node->call.callable, indent_level + 2);
             
@@ -184,17 +186,17 @@ void ast_print(const AstNode* node, u32 indent_level) {
         case AST_METHOD_CALL:
             puts("");
             
-            PRINT_INDENT();
+            PRINT_INDENT_DOUBLE();
             puts("this:");
             ast_print(node->method_call.self, indent_level + 2);
 
             
-            PRINT_INDENT();
+            PRINT_INDENT_DOUBLE();
             puts("callable:");
             ast_print(node->method_call.callable, indent_level + 2);
 
             
-            PRINT_INDENT();
+            PRINT_INDENT_DOUBLE();
             puts("arguments:");
             ast_print(node->method_call.args, indent_level + 2);
             break;
@@ -208,25 +210,19 @@ void ast_print(const AstNode* node, u32 indent_level) {
 Result ast_new(AstNode node, AstNode** out) {
     assert(out && "Out is NULL");
     
-    Result res = {0};
-
-    if (!out) {
-        res.what = "out parameter is NULL";
-        return res;
-    }
+    if (!out) return result_error("out parameter is NULL");
     
     #ifdef DEBUG_PARSER
-    INFO_ARGS("Creating an ast node from type %s\n", ast_type_to_str(node.type));
+    INFO_ARGS("Creating an ast node from type %s", ast_type_to_str(node.type));
     #endif
 
-    *out = malloc(sizeof(AstNode));
+    *out = kod_malloc(sizeof(AstNode));
     if (!*out) {
-        res.what = "Coudln't allocate for ast node";
-        return res;
+        result_error("Coudln't allocate for ast node");
     }
 
     **out = node;
-    return res;
+    return result_ok();
 }
 
 void ast_free(AstNode* node) {
@@ -246,7 +242,7 @@ void ast_free(AstNode* node) {
         case AST_IDENTIFIER:
         case AST_STRING:
             if (node->string)
-                free(node->string);
+                kod_free(node->string);
             break;
 
         case AST_ROOT:
@@ -266,7 +262,7 @@ void ast_free(AstNode* node) {
             break;
 
         case AST_FUNCTION:
-            free(node->function.name);
+            kod_free(node->function.name);
             ast_free(node->function.params);
             ast_free(node->function.body);
             break;
@@ -321,7 +317,7 @@ void ast_free(AstNode* node) {
             break;
     }
 
-    free(node);
+    kod_free(node);
 }
 
 inline void ast_list_print(const AstList* list, u32 indent_level) {
