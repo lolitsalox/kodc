@@ -83,7 +83,7 @@ void ast_print(const AstNode* node, u32 indent_level) {
             break;
 
         case AST_FUNCTION:
-            printf("name: %s", node->function.name);
+            printf("name: %s\n", node->function.name);
 
             PRINT_INDENT_DOUBLE();
             puts("params:");
@@ -178,7 +178,7 @@ void ast_print(const AstNode* node, u32 indent_level) {
             puts("callable:");
             ast_print(node->call.callable, indent_level + 2);
             
-            PRINT_INDENT();
+            PRINT_INDENT_DOUBLE();
             puts("arguments:");
             ast_print(node->call.args, indent_level + 2);
             break;
