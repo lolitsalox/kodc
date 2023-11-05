@@ -400,4 +400,97 @@ std::vector<std::unique_ptr<Node>> Parser::parse_block() {
     return parse_body(TokenType::LBRACE, TokenType::RBRACE, false);
 }
 
+void ProgramNode::compile(CompiledModule& module, Code& code) {
+    for (auto& statement : statements) {
+        statement->compile(module, code);
+        if (!statement->pushes()) break;
+        code.write8((uint8_t)Opcode::OP_POP_TOP);
+    }
+
+    if (statements.empty() || (statements.size() > 0 && !statements.back()->returns())) {
+        // Find the index of the null constant in the constant pool (if there isn't, create one)
+        auto it = std::find(module.constant_pool.begin(), module.constant_pool.end(), Constant(ConstantTag::C_NULL));
+        if (it == module.constant_pool.end()) {
+            // Create a new entry in the constant pool
+            module.constant_pool.push_back(Constant(ConstantTag::C_NULL));
+            it = std::prev(module.constant_pool.end());
+        }
+
+        // Get the index of the null constant
+        size_t index = std::distance(module.constant_pool.begin(), it);
+
+        // Push the null constant
+        code.write8((uint8_t)Opcode::OP_LOAD_CONST);
+        code.write32(index);
+        code.write8((uint8_t)Opcode::OP_RETURN);
+    }
+}
+
+void IntegerNode::compile(CompiledModule& module, Code& code) {
+    auto constant = Constant(value);
+
+    auto it = std::find(module.constant_pool.begin(), module.constant_pool.end(), constant);
+    if (it == module.constant_pool.end()) {
+        // Create a new entry in the constant pool
+        module.constant_pool.push_back(constant);
+        it = std::prev(module.constant_pool.end());
+    }
+
+    size_t index = std::distance(module.constant_pool.begin(), it);
+    code.write8((uint8_t)Opcode::OP_LOAD_CONST);
+    code.write32(index);
+}
+
+void FloatNode::compile(CompiledModule& module, Code& code) {
+    auto constant = Constant(value);
+
+    auto it = std::find(module.constant_pool.begin(), module.constant_pool.end(), constant);
+    if (it == module.constant_pool.end()) {
+        // Create a new entry in the constant pool
+        module.constant_pool.push_back(constant);
+        it = std::prev(module.constant_pool.end());
+    }
+
+    size_t index = std::distance(module.constant_pool.begin(), it);
+    code.write8((uint8_t)Opcode::OP_LOAD_CONST);
+    code.write32(index);
+}
+
+void StringNode::compile(CompiledModule& module, Code& code) {
+    auto constant = Constant(value);
+
+    auto it = std::find(module.constant_pool.begin(), module.constant_pool.end(), constant);
+    if (it == module.constant_pool.end()) {
+        // Create a new entry in the constant pool
+        module.constant_pool.push_back(constant);
+        it = std::prev(module.constant_pool.end());
+    }
+
+    size_t index = std::distance(module.constant_pool.begin(), it);
+    code.write8((uint8_t)Opcode::OP_LOAD_CONST);
+    code.write32(index);
+}
+
+void ReturnNode::compile(CompiledModule& module, Code& code) {
+    if (value) {
+        value.value()->compile(module, code);
+    } else {
+        // load null constant
+        auto it = std::find(module.constant_pool.begin(), module.constant_pool.end(), Constant(ConstantTag::C_NULL));
+        if (it == module.constant_pool.end()) {
+            // Create a new entry in the constant pool
+            module.constant_pool.push_back(Constant(ConstantTag::C_NULL));
+            it = std::prev(module.constant_pool.end());
+        }
+
+        // Get the index of the null constant
+        size_t index = std::distance(module.constant_pool.begin(), it);
+
+        // Push the null constant
+        code.write8((uint8_t)Opcode::OP_LOAD_CONST);
+        code.write32(index);
+    }
+    code.write8((uint8_t)Opcode::OP_RETURN);
+}
+
 }

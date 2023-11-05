@@ -4,6 +4,7 @@
 #include <vector>
 
 #include <parser/lexer.hpp>
+#include <compiler/compiler.hpp>
 
 namespace kod {
 
@@ -18,11 +19,18 @@ struct Node {
     Node() = default;
     virtual ~Node() = default;
     virtual std::string to_string() const = 0;
+    virtual void compile(CompiledModule& module, Code& code) {
+        throw std::runtime_error("Unimplemented");
+    };
+    virtual bool pushes() const { return true; }
+    virtual bool returns() const {return false;}
 };
 
 struct ProgramNode : public Node {
     std::vector<std::unique_ptr<Node>> statements;
     std::string to_string() const override;
+    void compile(CompiledModule& module, Code& code) override;
+    bool pushes() const { return false; }
 };
 
 struct BinaryOpNode : public Node {
@@ -33,6 +41,8 @@ struct BinaryOpNode : public Node {
 
     BinaryOpNode(TokenType op, std::unique_ptr<Node> left, std::unique_ptr<Node> right)
         : op(op), left(std::move(left)), right(std::move(right)) {}
+
+    
 };
 
 struct UnaryOpNode : public Node {
@@ -42,6 +52,8 @@ struct UnaryOpNode : public Node {
 
     UnaryOpNode(TokenType op, std::unique_ptr<Node> value)
         : op(op), value(std::move(value)) {}
+
+    
 };
 
 struct AssignmentNode : public Node {
@@ -51,6 +63,9 @@ struct AssignmentNode : public Node {
 
     AssignmentNode(std::unique_ptr<Node> left, std::unique_ptr<Node> right)
         : left(std::move(left)), right(std::move(right)) {}
+
+    bool pushes() const { return false; }
+    
 };
 
 struct CallNode : public Node {
@@ -60,6 +75,8 @@ struct CallNode : public Node {
 
     CallNode(std::unique_ptr<Node> callee, std::vector<std::unique_ptr<Node>> args)
         : callee(std::move(callee)), args(std::move(args)) {}  
+
+    
 };
 
 struct FunctionDefNode : public Node {
@@ -70,6 +87,10 @@ struct FunctionDefNode : public Node {
 
     FunctionDefNode(std::unique_ptr<Node> callee, std::vector<std::unique_ptr<Node>> args, std::vector<std::unique_ptr<Node>> body)
         : callee(std::move(callee)), args(std::move(args)), body(std::move(body)) {}
+
+    bool pushes() const { return false; }
+
+    
 };
 
 struct LambdaNode : public Node {
@@ -79,6 +100,8 @@ struct LambdaNode : public Node {
 
     LambdaNode(std::vector<std::unique_ptr<Node>> args, std::vector<std::unique_ptr<Node>> body)
         : args(std::move(args)), body(std::move(body)) {}
+
+    
 };
 
 struct ReturnNode : public Node {
@@ -87,6 +110,11 @@ struct ReturnNode : public Node {
 
     ReturnNode(std::optional<std::unique_ptr<Node>> value)
         : value(std::move(value)) {}
+
+    void compile(CompiledModule& module, Code& code) override;
+    bool pushes() const { return false; }
+    bool returns() const {return true;}
+    
 };
 
 struct IntegerNode : public Node {
@@ -94,6 +122,9 @@ struct IntegerNode : public Node {
     std::string to_string() const override;
 
     IntegerNode(int64_t value) : value(value) {}
+
+    void compile(CompiledModule& module, Code& code) override;
+
 };
 
 struct FloatNode : public Node {
@@ -101,6 +132,9 @@ struct FloatNode : public Node {
     std::string to_string() const override;
 
     FloatNode(double value) : value(value) {}
+
+    void compile(CompiledModule& module, Code& code) override;
+
 };
 
 struct StringNode : public Node {
@@ -108,6 +142,9 @@ struct StringNode : public Node {
     std::string to_string() const override;
 
     StringNode(std::string value) : value(std::move(value)) {}
+
+    void compile(CompiledModule& module, Code& code) override;
+
 };
 
 struct BooleanNode : public Node {
