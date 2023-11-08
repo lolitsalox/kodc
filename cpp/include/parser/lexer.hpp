@@ -112,19 +112,11 @@ struct Token {
 };
 
 struct Lexer {
-    std::stringstream input;
+    std::stringstream& input;
     int current_char = -1;
     size_t line = 1, column = 1;
 
-    Lexer(const std::string& filename) {
-        if (filename.empty()) {
-            throw std::runtime_error("File does not exist");
-        }
-
-        auto file = std::ifstream(filename);
-        input << file.rdbuf();
-        file.close();
-
+    Lexer(std::stringstream& input) : input(input) {
         if ((current_char = input.get()) == -1) {
             throw std::runtime_error("Unexpected end of file");
         }

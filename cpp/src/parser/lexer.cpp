@@ -9,7 +9,7 @@ namespace kod {
 std::string Token::to_string() const {
     std::ostringstream os;
     os << "(" << line << ":" << column << ") ";
-    os << "[" << static_cast<int>(type) << "] = ";
+    os << "[" << static_cast<int>(type) << "]: ";
     os << value;
     return os.str();
 }

@@ -76,7 +76,7 @@ std::string BooleanNode::to_string() const {
 }
 
 std::string IdentifierNode::to_string() const {
-    return "IdentifierNode: " + value;
+    return value;
 }
 
 Parser::Parser(kod::Lexer& lexer) 
@@ -128,7 +128,7 @@ std::optional<std::unique_ptr<Node>> Parser::parse_assignment() {
     }
     eat(TokenType::EQUALS);
 
-    auto right = parse_bool_or();
+    auto right = parse_assignment();
     if (!right) {
         throw std::runtime_error("Error parsing assignment");
     }
@@ -256,17 +256,32 @@ std::optional<std::unique_ptr<Node>> Parser::parse_after(std::optional<std::uniq
             // Parse a list of args/params
             std::vector<std::unique_ptr<Node>> args = parse_tuple(); // parses a () list
 
-            if (lexer.peek().value_or(Token{}).type == TokenType::LBRACE) {
-                // Function definition
-                auto block = parse_block();
-                return std::make_unique<FunctionDefNode>(std::move(value.value()), std::move(args), std::move(block));
+            // check if value is from type identifier
+            if (dynamic_cast<IdentifierNode*>(value.value().get())) {
+                if (lexer.peek().value_or(Token{}).type == TokenType::LBRACE) {
+                    // Function definition
+                    auto block = parse_block();
+                    return std::make_unique<FunctionDefNode>(std::move(value.value()), std::move(args), std::move(block));
+                }
             }
 
             // Function call
             return std::make_unique<CallNode>(std::move(value.value()), std::move(args));
 
         } break;
-        
+
+        // case TokenType::LBRACE: {
+        //     // subscript
+        //     auto subscript = parse_list();
+
+        //     // check if it's empty, if so throw an error
+        //     if (subscript.empty()) {
+        //         throw std::runtime_error("Subscript is empty");
+        //     }
+
+        //     return std::make_unique<SubscriptNode>(std::move(value.value()), std::move(subscript));
+        // }
+
         default: break;
     }
 
@@ -305,7 +320,10 @@ std::optional<std::unique_ptr<Node>> Parser::parse_factor() {
 
         switch (keyword.ktype) {
             case KeywordType::RETURN: {
-                auto value = parse_expression();
+                std::optional<std::unique_ptr<Node>> value = {}; 
+                if (lexer.peek().value_or(Token{}).type != TokenType::NEW_LINE) {
+                    value = parse_expression();
+                }
                 return std::make_unique<ReturnNode>(std::move(value));
             } break;
 
@@ -313,6 +331,7 @@ std::optional<std::unique_ptr<Node>> Parser::parse_factor() {
         }
     } break;
 
+    case TokenType::UNKNOWN:
     case TokenType::END_OF_FILE:
         return {};
     
@@ -401,9 +420,11 @@ std::vector<std::unique_ptr<Node>> Parser::parse_block() {
 }
 
 void ProgramNode::compile(CompiledModule& module, Code& code) {
+    code.code.clear();
+
     for (auto& statement : statements) {
         statement->compile(module, code);
-        if (!statement->pushes()) break;
+        if (!statement->pushes()) continue;;
         code.write8((uint8_t)Opcode::OP_POP_TOP);
     }
 
@@ -471,9 +492,25 @@ void StringNode::compile(CompiledModule& module, Code& code) {
     code.write32(index);
 }
 
+void IdentifierNode::compile(CompiledModule& module, Code& code) {
+    auto it = std::find(module.name_pool.begin(), module.name_pool.end(), value);
+    if (it == module.name_pool.end()) {
+        // Create a new entry in the name pool
+        module.name_pool.push_back(value);
+        it = std::prev(module.name_pool.end());
+    }
+
+    size_t index = std::distance(module.name_pool.begin(), it);
+    code.write8((uint8_t)Opcode::OP_LOAD_NAME);
+    code.write32(index);
+}
+
 void ReturnNode::compile(CompiledModule& module, Code& code) {
     if (value) {
         value.value()->compile(module, code);
+        if (!value.value()->pushes()) {
+            value.value()->push(module, code);
+        }
     } else {
         // load null constant
         auto it = std::find(module.constant_pool.begin(), module.constant_pool.end(), Constant(ConstantTag::C_NULL));
@@ -491,6 +528,160 @@ void ReturnNode::compile(CompiledModule& module, Code& code) {
         code.write32(index);
     }
     code.write8((uint8_t)Opcode::OP_RETURN);
+}
+
+void AssignmentNode::compile(CompiledModule& module, Code& code) {
+    right->compile(module, code);
+    if (!right->pushes()) {
+        right->push(module, code);
+    }
+
+    // Check if the left side is an identifier
+    if (auto identifier = dynamic_cast<IdentifierNode*>(left.get())) {
+        // Get the index of the identifier
+        auto it = std::find(module.name_pool.begin(), module.name_pool.end(), identifier->value);
+
+        if (it == module.name_pool.end()) {
+            // Create a new entry in the name pool
+            module.name_pool.push_back(identifier->value);
+            it = std::prev(module.name_pool.end());
+        }
+
+        size_t index = std::distance(module.name_pool.begin(), it);
+        code.write8((uint8_t)Opcode::OP_STORE_NAME);
+        code.write32(index);
+
+    } else {
+        throw std::runtime_error("Left side of assignment must be an identifier (unimplemented)");
+    }
+}
+
+void AssignmentNode::push(CompiledModule& module, Code& code) const {
+    // Push the value by loading it from the name pool (LOAD_NAME)
+    if (auto identifier = dynamic_cast<IdentifierNode*>(left.get())) {
+        // Get the index of the identifier
+        auto it = std::find(module.name_pool.begin(), module.name_pool.end(), identifier->value);
+
+        if (it == module.name_pool.end()) {
+            // Create a new entry in the name pool
+            module.name_pool.push_back(identifier->value);
+            it = std::prev(module.name_pool.end());
+        }
+
+        size_t index = std::distance(module.name_pool.begin(), it);
+        code.write8((uint8_t)Opcode::OP_LOAD_NAME);
+        code.write32(index);
+
+    } else {
+        throw std::runtime_error("Left side of assignment must be an identifier (unimplemented)");
+    }
+}
+
+void FunctionDefNode::compile(CompiledModule& module, Code& code) {
+    // Creating a Code object for the function
+    Code func;
+    func.name = this->callee->to_string();
+
+    // Convert the arguments to a vector of strings
+    std::vector<std::string> args;
+    for (auto& arg : this->args) {
+        args.push_back(arg->to_string());
+    }
+
+    func.params = std::move(args);
+
+    for (auto& statement : body) {
+        statement->compile(module, func);
+        if (!statement->pushes()) continue;;
+        func.write8((uint8_t)Opcode::OP_POP_TOP);
+    }
+
+    if (body.empty() || (body.size() > 0 && !body.back()->returns())) {
+        // Find the index of the null constant in the constant pool (if there isn't, create one)
+        auto it = std::find(module.constant_pool.begin(), module.constant_pool.end(), Constant(ConstantTag::C_NULL));
+        if (it == module.constant_pool.end()) {
+            // Create a new entry in the constant pool
+            module.constant_pool.push_back(Constant(ConstantTag::C_NULL));
+            it = std::prev(module.constant_pool.end());
+        }
+
+        // Get the index of the null constant
+        size_t index = std::distance(module.constant_pool.begin(), it);
+
+        // Push the null constant
+        func.write8((uint8_t)Opcode::OP_LOAD_CONST);
+        func.write32(index);
+        func.write8((uint8_t)Opcode::OP_RETURN);
+    }
+
+    // Add the code object to the constant pool
+    Constant func_constant(func);
+    auto code_it = std::find(module.constant_pool.begin(), module.constant_pool.end(), func_constant);
+    if (code_it == module.constant_pool.end()) {
+        // Create a new entry in the constant pool
+        module.constant_pool.push_back(func_constant);
+        code_it = std::prev(module.constant_pool.end());
+    }
+
+    // Load the constant and store it by name index
+    size_t index = std::distance(module.constant_pool.begin(), code_it);
+    code.write8((uint8_t)Opcode::OP_LOAD_CONST);
+    code.write32(index);
+
+    // find the index of the callee name
+    auto name_it = std::find(module.name_pool.begin(), module.name_pool.end(), this->callee->to_string());
+    if (name_it == module.name_pool.end()) {
+        // Create a new entry in the name pool
+        module.name_pool.push_back(this->callee->to_string());
+        name_it = std::prev(module.name_pool.end());
+    }
+
+    index = std::distance(module.name_pool.begin(), name_it);
+    code.write8((uint8_t)Opcode::OP_STORE_NAME);
+    code.write32(index);
+
+}
+
+void CallNode::compile(CompiledModule& module, Code& code) {
+    for (auto& arg : args) {
+        arg->compile(module, code); // todo, build tuple before calling
+    }
+
+    callee->compile(module, code);
+
+    code.write8((uint8_t)Opcode::OP_CALL);
+    code.write32((uint8_t)args.size());
+}
+
+void BinaryOpNode::compile(CompiledModule& module, Code& code) {
+    left->compile(module, code);
+    right->compile(module, code);
+
+    Opcode bin_op = Opcode::OP_UNKNOWN;
+    switch (this->op) {
+        case TokenType::ADD:         bin_op = Opcode::OP_BINARY_ADD; break;
+        case TokenType::SUB:         bin_op = Opcode::OP_BINARY_SUB; break;
+        case TokenType::MUL:         bin_op = Opcode::OP_BINARY_MUL; break;
+        case TokenType::DIV:         bin_op = Opcode::OP_BINARY_DIV; break;
+        case TokenType::MOD:         bin_op = Opcode::OP_BINARY_MOD; break;
+        case TokenType::POW:         bin_op = Opcode::OP_BINARY_POW; break;
+        case TokenType::AND:         bin_op = Opcode::OP_BINARY_AND; break;
+        case TokenType::OR:          bin_op = Opcode::OP_BINARY_OR; break;
+        case TokenType::HAT:         bin_op = Opcode::OP_BINARY_XOR; break;
+        case TokenType::SHL:         bin_op = Opcode::OP_BINARY_LEFT_SHIFT; break;
+        case TokenType::SHR:         bin_op = Opcode::OP_BINARY_RIGHT_SHIFT; break;
+        case TokenType::BOOL_AND:    bin_op = Opcode::OP_BINARY_BOOLEAN_AND; break;
+        case TokenType::BOOL_OR:     bin_op = Opcode::OP_BINARY_BOOLEAN_OR; break;
+        case TokenType::BOOL_EQ:     bin_op = Opcode::OP_BINARY_BOOLEAN_EQUAL; break;
+        case TokenType::BOOL_NE:     bin_op = Opcode::OP_BINARY_BOOLEAN_NOT_EQUAL; break;
+        case TokenType::BOOL_GT:     bin_op = Opcode::OP_BINARY_BOOLEAN_GREATER_THAN; break;
+        case TokenType::BOOL_GTE:    bin_op = Opcode::OP_BINARY_BOOLEAN_GREATER_THAN_OR_EQUAL_TO; break;
+        case TokenType::BOOL_LT:     bin_op = Opcode::OP_BINARY_BOOLEAN_LESS_THAN; break;
+        case TokenType::BOOL_LTE:    bin_op = Opcode::OP_BINARY_BOOLEAN_LESS_THAN_OR_EQUAL_TO; break;
+        default: throw std::runtime_error("Dont know how to compile this op");
+    }
+
+    code.write8((uint8_t)bin_op);
 }
 
 }

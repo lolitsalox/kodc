@@ -2,13 +2,13 @@
 
 #include <memory>
 #include <vector>
+#include <type_traits>
 
 #include <parser/lexer.hpp>
 #include <compiler/compiler.hpp>
 
 namespace kod {
 
-#include <type_traits>
 
 template <typename Derived, typename Base>
 struct is_instance_of {
@@ -20,10 +20,14 @@ struct Node {
     virtual ~Node() = default;
     virtual std::string to_string() const = 0;
     virtual void compile(CompiledModule& module, Code& code) {
-        throw std::runtime_error("Unimplemented");
+        throw std::runtime_error("Unimplemented: " + to_string());
     };
     virtual bool pushes() const { return true; }
     virtual bool returns() const {return false;}
+
+    virtual void push(CompiledModule& module, Code& code) const {
+        throw std::runtime_error("Unimplemented push: " + to_string());
+    };
 };
 
 struct ProgramNode : public Node {
@@ -42,7 +46,7 @@ struct BinaryOpNode : public Node {
     BinaryOpNode(TokenType op, std::unique_ptr<Node> left, std::unique_ptr<Node> right)
         : op(op), left(std::move(left)), right(std::move(right)) {}
 
-    
+    void compile(CompiledModule& module, Code& code) override;
 };
 
 struct UnaryOpNode : public Node {
@@ -65,6 +69,10 @@ struct AssignmentNode : public Node {
         : left(std::move(left)), right(std::move(right)) {}
 
     bool pushes() const { return false; }
+
+    void compile(CompiledModule& module, Code& code) override;
+
+    void push(CompiledModule& module, Code& code) const override;
     
 };
 
@@ -76,7 +84,7 @@ struct CallNode : public Node {
     CallNode(std::unique_ptr<Node> callee, std::vector<std::unique_ptr<Node>> args)
         : callee(std::move(callee)), args(std::move(args)) {}  
 
-    
+    void compile(CompiledModule& module, Code& code) override;
 };
 
 struct FunctionDefNode : public Node {
@@ -89,6 +97,7 @@ struct FunctionDefNode : public Node {
         : callee(std::move(callee)), args(std::move(args)), body(std::move(body)) {}
 
     bool pushes() const { return false; }
+    void compile(CompiledModule& module, Code& code) override;
 
     
 };
@@ -159,6 +168,8 @@ struct IdentifierNode : public Node {
     std::string to_string() const override;
 
     IdentifierNode(std::string value) : value(std::move(value)) {}
+    void compile(CompiledModule& module, Code& code) override;
+
 };
 
 class Parser {

@@ -8,11 +8,20 @@
 
 namespace kod {
 
+struct Constant;
 struct Code {
     std::string name;
     std::vector<std::string> params;
     std::vector<uint8_t> code;
 
+    Code() = default;
+    Code(std::string name, std::vector<std::string> params, std::vector<uint8_t> code)
+        : name(std::move(name)), params(std::move(params)), code(std::move(code)) {}
+
+    Code(const Code& other) = default;
+    Code(Code& other) : name(other.name), params(other.params), code(other.code) {}
+
+    ~Code() = default;
     std::string to_string() const;
 
     bool operator==(const Code& other) const {
@@ -49,7 +58,16 @@ struct Code {
         code.push_back((value >> 56) & 0xFF);
     }
 
-    uint32_t read32(size_t offset) const {
+    uint8_t read8(size_t& offset) const {
+        // TODO: check bounds
+        if (offset >= code.size()) {
+            throw std::out_of_range("Offset out of bounds");
+        }
+
+        return code[offset++];
+    }
+
+    uint32_t read32(size_t& offset) const {
         // TODO: check bounds
         if (offset + 3 >= code.size()) {
             throw std::out_of_range("Offset out of bounds");
@@ -60,6 +78,26 @@ struct Code {
         result |= (code[offset + 1] & 0xFF) << 8;
         result |= (code[offset + 2] & 0xFF) << 16;
         result |= (code[offset + 3] & 0xFF) << 24;
+        offset += 4;
+        return result;
+    }
+
+    uint64_t read64(size_t& offset) const {
+        // TODO: check bounds
+        if (offset + 7 >= code.size()) {
+            throw std::out_of_range("Offset out of bounds");
+        }
+
+        uint64_t result = 0;
+        result |= static_cast<uint64_t>(code[offset]) & 0xFF;
+        result |= static_cast<uint64_t>(code[offset + 1] & 0xFF) << 8;
+        result |= static_cast<uint64_t>(code[offset + 2] & 0xFF) << 16;
+        result |= static_cast<uint64_t>(code[offset + 3] & 0xFF) << 24;
+        result |= static_cast<uint64_t>(code[offset + 4] & 0xFF) << 32;
+        result |= static_cast<uint64_t>(code[offset + 5] & 0xFF) << 40;
+        result |= static_cast<uint64_t>(code[offset + 6] & 0xFF) << 48;
+        result |= static_cast<uint64_t>(code[offset + 7] & 0xFF) << 56;
+        offset += 8;
         return result;
     }
 };
@@ -99,23 +137,28 @@ struct Constant {
         }
     }
 
+    Constant() = default;
+    Constant(const Constant& other) = default;
+    Constant(Constant&& other) = default;
     Constant(ConstantTag tag) : tag(tag) {}
     Constant(int64_t value) : tag(ConstantTag::C_INTEGER), _int(value) {}
     Constant(double value) : tag(ConstantTag::C_FLOAT), _float(value) {}
     Constant(const std::string& value) : tag(ConstantTag::C_ASCII), _string(value) {}
-    Constant(const Code& value) : tag(ConstantTag::C_CODE), _code(value) {}
+    Constant(Code& value) : tag(ConstantTag::C_CODE), _code(value) {}
     ~Constant() {}
 
 };
 
 struct CompiledModule {
     std::string filename;
-    std::unordered_set<std::string> name_pool;  
+    std::vector<std::string> name_pool;  
     std::vector<Constant> constant_pool;
     Code entry;
 
     CompiledModule(const std::string& filename)
         : filename(filename) {}
+
+    void compile(const std::string& filename);
 
 };
 
