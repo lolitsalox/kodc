@@ -213,6 +213,8 @@ enum class Opcode : uint8_t {
     OP_POP_JUMP_IF_FALSE,   // direct: relative byte offset, stack: object
 
     OP_BUILD_TUPLE,
+    OP_BUILD_LIST,
+    OP_BUILD_DICT,
 
     OP_UNKNOWN,
 };

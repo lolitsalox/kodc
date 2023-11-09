@@ -254,19 +254,19 @@ std::optional<std::unique_ptr<Node>> Parser::parse_after(std::optional<std::uniq
         // Function definition/Call
         case TokenType::LPAREN: {
             // Parse a list of args/params
-            std::vector<std::unique_ptr<Node>> args = parse_tuple(); // parses a () list
+            auto args = parse_tuple(); // parses a () list
 
             // check if value is from type identifier
             if (dynamic_cast<IdentifierNode*>(value.value().get())) {
                 if (lexer.peek().value_or(Token{}).type == TokenType::LBRACE) {
                     // Function definition
                     auto block = parse_block();
-                    return std::make_unique<FunctionDefNode>(std::move(value.value()), std::move(args), std::move(block));
+                    return std::make_unique<FunctionDefNode>(std::move(value.value()), std::move(dynamic_cast<TupleNode*>(args.get()))->values, std::move(block));
                 }
-            }
+            } // call(1)
 
             // Function call
-            return std::make_unique<CallNode>(std::move(value.value()), std::move(args));
+            return std::make_unique<CallNode>(std::move(value.value()), std::move(dynamic_cast<TupleNode*>(args.get()))->values);
 
         } break;
 
@@ -303,10 +303,7 @@ std::optional<std::unique_ptr<Node>> Parser::parse_factor() {
         return parse_identifier();
 
     case TokenType::LPAREN: {
-        eat(TokenType::LPAREN);
-        auto result = parse_expression();
-        eat(TokenType::RPAREN);
-        return result;
+        return parse_tuple();
     } break;
 
     case TokenType::OR: {
@@ -365,8 +362,9 @@ std::optional<std::unique_ptr<Node>> Parser::parse_identifier() {
     );
 }
 
-std::vector<std::unique_ptr<Node>> Parser::parse_body(TokenType left_delim, TokenType right_delim, bool parse_commas = true) {
+std::vector<std::unique_ptr<Node>> Parser::parse_body(TokenType left_delim, TokenType right_delim, bool parse_commas = true, std::optional<bool&> got_comma = {}) {
     std::vector<std::unique_ptr<Node>> nodes;
+    if (got_comma) got_comma.value() = false;
     eat(left_delim);
 
     skip_newlines();
@@ -390,6 +388,7 @@ std::vector<std::unique_ptr<Node>> Parser::parse_body(TokenType left_delim, Toke
         if (parse_commas) {
             if (lexer.peek().value_or(Token{}).type == TokenType::COMMA) {
                 eat(TokenType::COMMA);
+                if (got_comma) got_comma.value() = true;
             } else {
                 eat(right_delim);
                 break;
@@ -400,8 +399,13 @@ std::vector<std::unique_ptr<Node>> Parser::parse_body(TokenType left_delim, Toke
     return nodes;
 }
 
-std::vector<std::unique_ptr<Node>> Parser::parse_tuple() {
-    return parse_body(TokenType::LPAREN, TokenType::RPAREN);
+std::unique_ptr<Node> Parser::parse_tuple() {
+    bool got_comma = false;
+    auto body = parse_body(TokenType::LPAREN, TokenType::RPAREN, true, got_comma);
+    if (!got_comma) { // need to fix this part
+        return std::move(body.back());
+    }
+    return std::make_unique<TupleNode>(std::move(body));
 }
 
 std::vector<std::unique_ptr<Node>> Parser::parse_lambda_params() {
@@ -411,8 +415,8 @@ std::vector<std::unique_ptr<Node>> Parser::parse_lambda_params() {
     return body;
 }
 
-std::vector<std::unique_ptr<Node>> Parser::parse_list() {
-    return parse_body(TokenType::LBRACKET, TokenType::RBRACKET);
+std::unique_ptr<ListNode> Parser::parse_list() {
+    return std::make_unique<ListNode>(parse_body(TokenType::LBRACKET, TokenType::RBRACKET));
 }
 
 std::vector<std::unique_ptr<Node>> Parser::parse_block() {
@@ -643,11 +647,11 @@ void FunctionDefNode::compile(CompiledModule& module, Code& code) {
 }
 
 void CallNode::compile(CompiledModule& module, Code& code) {
+    callee->compile(module, code);
+
     for (auto& arg : args) {
         arg->compile(module, code); // todo, build tuple before calling
     }
-
-    callee->compile(module, code);
 
     code.write8((uint8_t)Opcode::OP_CALL);
     code.write32((uint8_t)args.size());
@@ -682,6 +686,24 @@ void BinaryOpNode::compile(CompiledModule& module, Code& code) {
     }
 
     code.write8((uint8_t)bin_op);
+}
+
+void TupleNode::compile(CompiledModule& module, Code& code) {
+    for (auto& value : values) {
+        value->compile(module, code);
+    }
+
+    code.write8((uint8_t)Opcode::OP_BUILD_TUPLE);
+    code.write32((uint8_t)values.size());
+}
+
+void ListNode::compile(CompiledModule& module, Code& code) {
+    for (auto& value : values) {
+        value->compile(module, code);
+    }
+
+    code.write8((uint8_t)Opcode::OP_BUILD_LIST);
+    code.write32((uint8_t)values.size());
 }
 
 }

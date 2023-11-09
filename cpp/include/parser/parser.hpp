@@ -172,6 +172,23 @@ struct IdentifierNode : public Node {
 
 };
 
+struct TupleNode : public Node {
+    std::vector<std::unique_ptr<Node>> values;
+    virtual std::string to_string() const override;
+
+    TupleNode(std::vector<std::unique_ptr<Node>> values) : values(std::move(values)) {}
+    void compile(CompiledModule& module, Code& code) override;
+};
+
+struct ListNode : public TupleNode {
+    std::string to_string() const override;
+
+    ListNode(std::vector<std::unique_ptr<Node>> values) : TupleNode(std::move(values)) {}
+    void compile(CompiledModule& module, Code& code) override;
+}
+
+
+
 class Parser {
 public:
     Lexer& lexer;
@@ -195,10 +212,10 @@ private:
     std::optional<std::unique_ptr<Node>> parse_boolean();
     std::optional<std::unique_ptr<Node>> parse_identifier();
 
-    std::vector<std::unique_ptr<Node>> parse_body(TokenType left_delim, TokenType right_delim, bool parse_commas);
-    std::vector<std::unique_ptr<Node>> parse_tuple(); // (..., )
+    std::vector<std::unique_ptr<Node>> parse_body(TokenType left_delim, TokenType right_delim, bool parse_commas, std::optional<bool&> got_comma);
+    std::unique_ptr<Node> parse_tuple(); // (..., )
     std::vector<std::unique_ptr<Node>> parse_lambda_params(); // |..., |
-    std::vector<std::unique_ptr<Node>> parse_list();  // [..., ]
+    std::unique_ptr<ListNode> parse_list();  // [..., ]
     std::vector<std::unique_ptr<Node>> parse_block();  // {...}
 
     std::optional<std::unique_ptr<Node>> parse_bool_or();

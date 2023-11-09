@@ -49,6 +49,8 @@ std::string Opcode_to_string(Opcode opcode) {
         case Opcode::OP_JUMP:       return "JUMP";
         case Opcode::OP_POP_JUMP_IF_FALSE:  return "POP_JUMP_IF_FALSE";
         case Opcode::OP_BUILD_TUPLE:        return "BUILD_TUPLE";
+        case Opcode::OP_BUILD_LIST:         return "BUILD_LIST";
+        case Opcode::OP_BUILD_DICT:         return "BUILD_DICT";
         case Opcode::OP_UNKNOWN: return "OP_UNKNOWN";
     }
     return "Unknown opcode: " + std::to_string(static_cast<uint32_t>(opcode));

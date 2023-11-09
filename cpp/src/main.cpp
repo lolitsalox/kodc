@@ -26,7 +26,7 @@ void repl() {
             vm.update_constants();
             auto obj = vm.run();
             if (obj) {
-                std::cout << "Program returned: " << obj.value()->to_string() << std::endl;
+                // std::cout << "Program returned: " << obj.value()->to_string() << std::endl;
             }
         } 
         catch (std::exception const& e) {
@@ -43,6 +43,10 @@ void repl() {
 }
 
 int main(int argc, char* argv[]) {
+
+    // kod::test();
+    // return 0;
+
     bool repl = argc < 2;
 
     if (repl) {
@@ -63,7 +67,7 @@ int main(int argc, char* argv[]) {
         kod::CompiledModule module("out.bkod");
         root->compile(module, module.entry);
         
-        #if 0
+        #if 1
         std::cout << root->to_string() << std::endl;
         std::cout << module.entry.to_string() << std::endl;
 
@@ -88,7 +92,7 @@ int main(int argc, char* argv[]) {
         kod::VM vm(module);
         auto obj = vm.run();
         if (obj) {
-            std::cout << "Program returned: " << obj.value()->to_string() << std::endl;
+            // std::cout << "Program returned: " << obj.value()->to_string() << std::endl;
         }
         
     } catch (std::exception const& e) {
