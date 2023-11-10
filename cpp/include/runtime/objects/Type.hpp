@@ -2,7 +2,8 @@
 #include <runtime/objects/Object.hpp>
 
 namespace kod {
-    
+
+struct Tuple;
 struct Type : public Object {
     
     std::string type_name = "type";
@@ -14,6 +15,13 @@ struct Type : public Object {
     
     virtual ~Type() = default;
 
+    virtual int64_t to_int() const {
+        throw std::runtime_error("Can't convert to int from <" + type_name + ">.");
+    }
+
+    virtual std::shared_ptr<Object> __new__(std::shared_ptr<Tuple> args);
+    virtual std::string __str__(std::shared_ptr<Tuple> args);
+
 
 };
 
@@ -23,6 +31,9 @@ struct TypeInt : public Type {
 
     TypeInt() : Type(kod_type_type, "int") {};
     ~TypeInt() = default;
+
+    // std::string __new__(std::shared_ptr<Tuple> args) override;
+    std::string __str__(std::shared_ptr<Tuple> args) override;
 
 };
 
@@ -35,6 +46,18 @@ struct Int : public Object {
 
     int64_t value;
 
+};
+
+struct TypeNull : public Type {
+    TypeNull() : Type(kod_type_type, "null_type") {};
+    ~TypeNull() = default;
+};
+
+static TypeNull kod_type_null;
+
+struct Null : public Object {
+    Null() : Object(kod_type_null) {}
+    ~Null() = default;
 };
 
 }

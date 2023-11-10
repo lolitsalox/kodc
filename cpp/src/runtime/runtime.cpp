@@ -1,5 +1,6 @@
 #include <runtime/runtime.hpp>
 #include <runtime/objects/Type.hpp>
+#include <runtime/objects/Tuple.hpp>
 
 namespace kod {
 
@@ -10,15 +11,22 @@ void test() {
     std::cout << i.type.type.to_string() << std::endl;
 }
 
+void VM::load_globals() {
+    globals[kod_type_type.type_name] = std::make_shared<Object>(reinterpret_cast<Object&&>(kod_type_type));
+    globals[kod_type_int.type_name] = std::make_shared<Object>(TypeInt());
+    globals[kod_type_tuple.type_name] = std::make_shared<Object>(reinterpret_cast<Object&&>(kod_type_tuple));
+    globals[kod_type_null.type_name] = std::make_shared<Object>(reinterpret_cast<Object&&>(kod_type_null));
+}
+
 std::shared_ptr<Object> constant_to_object(Constant const& constant) {
     switch (constant.tag) {
-        // case ConstantTag::C_NULL: return std::make_shared<ObjectNull>();
+        case ConstantTag::C_NULL: return std::make_shared<Null>();
         // case ConstantTag::C_BOOL: return std::make_shared<ObjectBool>(constant._bool);
-        // case ConstantTag::C_INTEGER: return std::make_shared<ObjectInt>(constant._int);
         // case ConstantTag::C_FLOAT: return std::make_shared<ObjectFloat>(constant._float);
         // case ConstantTag::C_ASCII: return std::make_shared<ObjectString>(constant._string);
         // case ConstantTag::C_CODE: return std::make_shared<ObjectCode>(constant._code);
-        // case ConstantTag::C_TUPLE: return std::make_shared<ObjectTuple>(constant._tuple);
+        case ConstantTag::C_INTEGER: return std::make_shared<Int>(constant._int);
+        case ConstantTag::C_TUPLE: return std::make_shared<Tuple>(constant._tuple);
         default: throw std::runtime_error("Unknown constant tag: " + std::to_string(static_cast<uint32_t>(constant.tag)));
     }
 }
@@ -43,7 +51,10 @@ std::optional<std::shared_ptr<Object>> VM::run() {
 
             case Opcode::OP_POP_TOP: {
                 auto obj = object_stack.back();
-                // if (repl) std::cout << obj->to_string() << std::endl;
+                if (repl) {
+                    auto tuple = std::make_shared<Tuple>(std::vector<std::shared_ptr<Object>>{obj});
+                    std::cout << obj->type.__str__(tuple) << std::endl;
+                }
                 object_stack.pop_back();
             } break;
 
@@ -83,9 +94,10 @@ std::optional<std::shared_ptr<Object>> VM::run() {
                 }
 
                 // Search the global environment
-                std::optional<std::shared_ptr<Object>> global_result = search_global_name(name);
-                if (global_result.has_value()) {
-                    object_stack.push_back(global_result.value());
+                if (globals.count(name) > 0) {
+                    auto& obj = globals[name];
+                    std::cout << obj->type.type_name << std::endl;
+                    object_stack.push_back(obj);
                     break;
                 }
 
