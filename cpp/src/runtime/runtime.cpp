@@ -2,6 +2,7 @@
 #include <runtime/objects/Type.hpp>
 #include <runtime/objects/Tuple.hpp>
 #include <runtime/objects/Int.hpp>
+#include <runtime/objects/String.hpp>
 
 #include <algorithm>
 
@@ -28,12 +29,12 @@ void VM::load_globals() {
 std::shared_ptr<Object> constant_to_object(Constant const& constant) {
     switch (constant.tag) {
         case ConstantTag::C_NULL: return std::make_shared<Null>();
-        // case ConstantTag::C_BOOL: return std::make_shared<ObjectBool>(constant._bool);
-        // case ConstantTag::C_FLOAT: return std::make_shared<ObjectFloat>(constant._float);
-        // case ConstantTag::C_ASCII: return std::make_shared<ObjectString>(constant._string);
-        // case ConstantTag::C_CODE: return std::make_shared<ObjectCode>(constant._code);
         case ConstantTag::C_INTEGER: return std::make_shared<Int>(constant._int);
         case ConstantTag::C_TUPLE: return std::make_shared<Tuple>(constant._tuple);
+        case ConstantTag::C_ASCII: return std::make_shared<String>(constant._string);
+        // case ConstantTag::C_BOOL: return std::make_shared<ObjectBool>(constant._bool);
+        // case ConstantTag::C_FLOAT: return std::make_shared<ObjectFloat>(constant._float);
+        // case ConstantTag::C_CODE: return std::make_shared<ObjectCode>(constant._code);
         default: throw std::runtime_error("Unknown constant tag: " + std::to_string(static_cast<uint32_t>(constant.tag)));
     }
 }
