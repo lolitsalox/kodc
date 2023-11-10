@@ -4,11 +4,12 @@
 
 namespace kod {
 std::string vec_to_string(std::vector<Constant> const& vec) {
-    std::string result = "[";
-    for (auto const& constant : vec) {
-        result += constant.to_string() + ", ";
+    std::string result = "(";
+    // dont print a comma if its the last element
+    for (size_t i = 0; i < vec.size(); ++i) {
+        result += vec[i].to_string() + (i == vec.size() - 1 ? "" : ", ");
     }
-    result += "]";
+    result += ")";
     return result;
 }
 
@@ -65,6 +66,7 @@ std::string Code::to_string() const {
 
         switch (opcode) {
             case Opcode::OP_CALL:
+            case Opcode::OP_BUILD_TUPLE:
             case Opcode::OP_LOAD_NAME:
             case Opcode::OP_STORE_NAME:
             case Opcode::OP_LOAD_CONST: {

@@ -20,8 +20,26 @@ void repl() {
             auto root = parser.parse_program();
 
             root->compile(module, module.entry);
-            #if 0
-            std::cout << module.entry.to_string() << std::endl;
+            #if 1
+        std::cout << root->to_string() << std::endl;
+        std::cout << module.entry.to_string() << std::endl;
+
+        for (auto const& constant : module.constant_pool) {
+            if (constant.tag != kod::ConstantTag::C_CODE) continue;
+            std::cout << constant._code.to_string() + "\n";
+        }
+
+        std::cout << "\nConstant pool:" << std::endl;
+        // print the constant pool with the index
+        for (size_t i = 0; i < module.constant_pool.size(); ++i) {
+            std::cout << i << ": " << module.constant_pool[i].to_string() << std::endl;
+        }
+
+        std::cout << "\nName pool:" << std::endl;
+        // print the name pool with the index
+        for (size_t i = 0; i < module.name_pool.size(); ++i) {
+            std::cout << i << ": " << module.name_pool[i] << std::endl;
+        }
             #endif
             vm.update_constants();
             auto obj = vm.run();

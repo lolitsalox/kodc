@@ -79,6 +79,24 @@ std::string IdentifierNode::to_string() const {
     return value;
 }
 
+// make one function that the tuple and list can use 
+std::string convertToString(const std::vector<std::unique_ptr<Node>>& nodes, std::string const& left, std::string const& right) {
+    std::string result = left;
+    for (size_t i = 0; i < nodes.size(); ++i) {
+        result += nodes[i]->to_string() + (i == nodes.size() - 1 ? "" : ", ");
+    }
+    result += right;
+    return result;
+}
+
+std::string TupleNode::to_string() const {
+    return convertToString(values, "(", ")");
+}
+
+std::string ListNode::to_string() const {
+    return convertToString(values, "[", "]");
+}
+
 Parser::Parser(kod::Lexer& lexer) 
     : lexer(lexer){
 
@@ -254,19 +272,26 @@ std::optional<std::unique_ptr<Node>> Parser::parse_after(std::optional<std::uniq
         // Function definition/Call
         case TokenType::LPAREN: {
             // Parse a list of args/params
-            auto args = parse_tuple(); // parses a () list
+            auto ls = parse_tuple(); // parses a () list
+            std::vector<std::unique_ptr<Node>> args;
+            if (TupleNode* tuple = dynamic_cast<TupleNode*>(ls.get())) {
+                args = std::move(tuple->values);
+            }
+            else {
+                args.push_back(std::move(ls)); // 1 object
+            }
 
             // check if value is from type identifier
             if (dynamic_cast<IdentifierNode*>(value.value().get())) {
                 if (lexer.peek().value_or(Token{}).type == TokenType::LBRACE) {
                     // Function definition
                     auto block = parse_block();
-                    return std::make_unique<FunctionDefNode>(std::move(value.value()), std::move(dynamic_cast<TupleNode*>(args.get()))->values, std::move(block));
+                    return std::make_unique<FunctionDefNode>(std::move(value.value()), std::move(args), std::move(block));
                 }
             } // call(1)
 
             // Function call
-            return std::make_unique<CallNode>(std::move(value.value()), std::move(dynamic_cast<TupleNode*>(args.get()))->values);
+            return std::make_unique<CallNode>(std::move(value.value()), std::move(args));
 
         } break;
 
@@ -336,6 +361,8 @@ std::optional<std::unique_ptr<Node>> Parser::parse_factor() {
         throw std::runtime_error("Unexpected token: " + lexer.peek().value_or(Token{}).to_string());
         break;
     }
+
+    return {};
 }
 
 std::optional<std::unique_ptr<Node>> Parser::parse_integer() {
@@ -362,9 +389,14 @@ std::optional<std::unique_ptr<Node>> Parser::parse_identifier() {
     );
 }
 
-std::vector<std::unique_ptr<Node>> Parser::parse_body(TokenType left_delim, TokenType right_delim, bool parse_commas = true, std::optional<bool&> got_comma = {}) {
+std::vector<std::unique_ptr<Node>> Parser::parse_body(
+    TokenType left_delim, 
+    TokenType right_delim, 
+    bool parse_commas = true, 
+    std::optional<bool*> got_comma = {}
+) {
     std::vector<std::unique_ptr<Node>> nodes;
-    if (got_comma) got_comma.value() = false;
+    if (got_comma) *got_comma.value() = false;
     eat(left_delim);
 
     skip_newlines();
@@ -388,7 +420,7 @@ std::vector<std::unique_ptr<Node>> Parser::parse_body(TokenType left_delim, Toke
         if (parse_commas) {
             if (lexer.peek().value_or(Token{}).type == TokenType::COMMA) {
                 eat(TokenType::COMMA);
-                if (got_comma) got_comma.value() = true;
+                if (got_comma) *got_comma.value() = true;
             } else {
                 eat(right_delim);
                 break;
@@ -398,11 +430,11 @@ std::vector<std::unique_ptr<Node>> Parser::parse_body(TokenType left_delim, Toke
 
     return nodes;
 }
-
+// (1,2) (,) () (1)
 std::unique_ptr<Node> Parser::parse_tuple() {
     bool got_comma = false;
-    auto body = parse_body(TokenType::LPAREN, TokenType::RPAREN, true, got_comma);
-    if (!got_comma) { // need to fix this part
+    auto body = parse_body(TokenType::LPAREN, TokenType::RPAREN, true, &got_comma);
+    if (!body.empty() && !got_comma) {
         return std::move(body.back());
     }
     return std::make_unique<TupleNode>(std::move(body));
@@ -689,12 +721,42 @@ void BinaryOpNode::compile(CompiledModule& module, Code& code) {
 }
 
 void TupleNode::compile(CompiledModule& module, Code& code) {
+    bool found = false;
+    // find at least one value that is not a constant
     for (auto& value : values) {
-        value->compile(module, code);
+        if (!value->is_constant()) {
+            found = true;
+            break;
+        }
     }
 
-    code.write8((uint8_t)Opcode::OP_BUILD_TUPLE);
-    code.write32((uint8_t)values.size());
+    if (found) {
+        for (auto& value : values) {
+            value->compile(module, code);
+        }
+
+        code.write8((uint8_t)Opcode::OP_BUILD_TUPLE);
+        code.write32((uint8_t)values.size());
+        return;
+    }
+
+    // Create a vector of constants
+    std::vector<Constant> constants;
+    for (auto& value : values) {
+        constants.push_back(value->to_constant());
+    }
+
+    auto constant = Constant(constants);
+    auto it = std::find(module.constant_pool.begin(), module.constant_pool.end(), constant);
+    if (it == module.constant_pool.end()) {
+        // Create a new entry in the constant pool
+        module.constant_pool.push_back(constant);
+        it = std::prev(module.constant_pool.end());
+    }
+
+    size_t index = std::distance(module.constant_pool.begin(), it);
+    code.write8((uint8_t)Opcode::OP_LOAD_CONST);
+    code.write32(index);
 }
 
 void ListNode::compile(CompiledModule& module, Code& code) {

@@ -23,7 +23,11 @@ struct Node {
         throw std::runtime_error("Unimplemented: " + to_string());
     };
     virtual bool pushes() const { return true; }
-    virtual bool returns() const {return false;}
+    virtual bool returns() const {return false; }
+    virtual bool is_constant() const { return false; }
+    virtual Constant to_constant() const {
+        throw std::runtime_error("Unimplemented to_constant: " + to_string());
+    }
 
     virtual void push(CompiledModule& module, Code& code) const {
         throw std::runtime_error("Unimplemented push: " + to_string());
@@ -41,12 +45,13 @@ struct BinaryOpNode : public Node {
     TokenType op;
     std::unique_ptr<Node> left;
     std::unique_ptr<Node> right;
-    std::string to_string() const override;
 
     BinaryOpNode(TokenType op, std::unique_ptr<Node> left, std::unique_ptr<Node> right)
         : op(op), left(std::move(left)), right(std::move(right)) {}
 
     void compile(CompiledModule& module, Code& code) override;
+    std::string to_string() const override;
+    bool is_constant() const { return left->is_constant() && right->is_constant(); }
 };
 
 struct UnaryOpNode : public Node {
@@ -57,7 +62,7 @@ struct UnaryOpNode : public Node {
     UnaryOpNode(TokenType op, std::unique_ptr<Node> value)
         : op(op), value(std::move(value)) {}
 
-    
+    bool is_constant() const { return value->is_constant(); }
 };
 
 struct AssignmentNode : public Node {
@@ -122,7 +127,7 @@ struct ReturnNode : public Node {
 
     void compile(CompiledModule& module, Code& code) override;
     bool pushes() const { return false; }
-    bool returns() const {return true;}
+    bool returns() const {return true; }
     
 };
 
@@ -133,6 +138,10 @@ struct IntegerNode : public Node {
     IntegerNode(int64_t value) : value(value) {}
 
     void compile(CompiledModule& module, Code& code) override;
+    bool is_constant() const { return true; }
+    Constant to_constant() const {
+        return Constant(value);
+    }
 
 };
 
@@ -143,7 +152,10 @@ struct FloatNode : public Node {
     FloatNode(double value) : value(value) {}
 
     void compile(CompiledModule& module, Code& code) override;
-
+    bool is_constant() const { return true; }
+    Constant to_constant() const {
+        return Constant(value);
+    }
 };
 
 struct StringNode : public Node {
@@ -153,7 +165,10 @@ struct StringNode : public Node {
     StringNode(std::string value) : value(std::move(value)) {}
 
     void compile(CompiledModule& module, Code& code) override;
-
+    bool is_constant() const { return true; }
+    Constant to_constant() const {
+        return Constant(value);
+    }
 };
 
 struct BooleanNode : public Node {
@@ -161,6 +176,10 @@ struct BooleanNode : public Node {
     std::string to_string() const override;
 
     BooleanNode(bool value) : value(value) {}
+    bool is_constant() const { return true; }
+    Constant to_constant() const {
+        return Constant(value);
+    }
 };
 
 struct IdentifierNode : public Node {
@@ -169,7 +188,6 @@ struct IdentifierNode : public Node {
 
     IdentifierNode(std::string value) : value(std::move(value)) {}
     void compile(CompiledModule& module, Code& code) override;
-
 };
 
 struct TupleNode : public Node {
@@ -178,6 +196,21 @@ struct TupleNode : public Node {
 
     TupleNode(std::vector<std::unique_ptr<Node>> values) : values(std::move(values)) {}
     void compile(CompiledModule& module, Code& code) override;
+    bool is_constant() const { 
+        for (auto const& value : values) {
+            if (!value->is_constant()) {
+                return false;
+            }
+        }
+        return true;
+    }
+    Constant to_constant() const {
+        std::vector<Constant> constants;
+        for (auto& value : values) {
+            constants.push_back(value->to_constant());
+        }
+        return Constant(constants);
+    }
 };
 
 struct ListNode : public TupleNode {
@@ -185,7 +218,7 @@ struct ListNode : public TupleNode {
 
     ListNode(std::vector<std::unique_ptr<Node>> values) : TupleNode(std::move(values)) {}
     void compile(CompiledModule& module, Code& code) override;
-}
+};
 
 
 
@@ -212,7 +245,7 @@ private:
     std::optional<std::unique_ptr<Node>> parse_boolean();
     std::optional<std::unique_ptr<Node>> parse_identifier();
 
-    std::vector<std::unique_ptr<Node>> parse_body(TokenType left_delim, TokenType right_delim, bool parse_commas, std::optional<bool&> got_comma);
+    std::vector<std::unique_ptr<Node>> parse_body(TokenType left_delim, TokenType right_delim, bool parse_commas, std::optional<bool*> got_comma);
     std::unique_ptr<Node> parse_tuple(); // (..., )
     std::vector<std::unique_ptr<Node>> parse_lambda_params(); // |..., |
     std::unique_ptr<ListNode> parse_list();  // [..., ]

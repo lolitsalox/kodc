@@ -145,6 +145,8 @@ struct Constant {
     Constant(double value) : tag(ConstantTag::C_FLOAT), _float(value) {}
     Constant(const std::string& value) : tag(ConstantTag::C_ASCII), _string(value) {}
     Constant(Code& value) : tag(ConstantTag::C_CODE), _code(value) {}
+    Constant(bool value) : tag(ConstantTag::C_BOOL), _bool(value) {}
+    Constant(std::vector<Constant>& value) : tag(ConstantTag::C_TUPLE), _tuple(value) {}
     ~Constant() {}
 
 };
