@@ -24,21 +24,7 @@ std::string Type::__str__(std::shared_ptr<Tuple> args) {
         return "<class '" + type_obj->type_name +"'>";
     }
 
-    return obj->type.__str__(args);
-}
-
-std::string TypeInt::__str__(std::shared_ptr<Tuple> args) {
-    if (args->values.size() != 1) {
-        throw std::runtime_error("Expected 1 argument.");
-    } 
-
-    auto& obj = args->values[0];
-
-    if (Int* int_obj = dynamic_cast<Int*>(obj.get())) {
-        return std::to_string(int_obj->value);
-    }
-
-    return obj->type.__str__(args);
+    return obj->type->__str__(args);
 }
 
 }

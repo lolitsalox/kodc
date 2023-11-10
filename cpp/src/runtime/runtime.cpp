@@ -1,21 +1,28 @@
 #include <runtime/runtime.hpp>
 #include <runtime/objects/Type.hpp>
 #include <runtime/objects/Tuple.hpp>
+#include <runtime/objects/Int.hpp>
+
+#include <algorithm>
 
 namespace kod {
 
 void test() {
-    Int i(42);
-    std::cout << i.to_string() << std::endl;
-    std::cout << i.type.to_string() << std::endl;
-    std::cout << i.type.type.to_string() << std::endl;
+    // Int i(42);
+    // std::cout << i.to_string() << std::endl;
+    // std::cout << i.type.to_string() << std::endl;
+    // std::cout << i.type.type.to_string() << std::endl;
 }
 
 void VM::load_globals() {
-    globals[kod_type_type.type_name] = std::make_shared<Object>(reinterpret_cast<Object&&>(kod_type_type));
-    globals[kod_type_int.type_name] = std::make_shared<Object>(TypeInt());
-    globals[kod_type_tuple.type_name] = std::make_shared<Object>(reinterpret_cast<Object&&>(kod_type_tuple));
-    globals[kod_type_null.type_name] = std::make_shared<Object>(reinterpret_cast<Object&&>(kod_type_null));
+    kod_type_type->type = kod_type_type;
+
+    globals[kod_type_type->type_name] = kod_type_type;
+    globals[kod_type_int->type_name] = kod_type_int;
+    globals[kod_type_tuple->type_name] = kod_type_tuple;
+    globals["null"] = std::make_shared<Null>();
+    // globals["true"] = std::make_shared<Bool>(true);
+    // globals["false"] = std::make_shared<Bool>(false);
 }
 
 std::shared_ptr<Object> constant_to_object(Constant const& constant) {
@@ -53,7 +60,7 @@ std::optional<std::shared_ptr<Object>> VM::run() {
                 auto obj = object_stack.back();
                 if (repl) {
                     auto tuple = std::make_shared<Tuple>(std::vector<std::shared_ptr<Object>>{obj});
-                    std::cout << obj->type.__str__(tuple) << std::endl;
+                    std::cout << obj->type->__str__(tuple) << std::endl;
                 }
                 object_stack.pop_back();
             } break;
@@ -96,12 +103,25 @@ std::optional<std::shared_ptr<Object>> VM::run() {
                 // Search the global environment
                 if (globals.count(name) > 0) {
                     auto& obj = globals[name];
-                    std::cout << obj->type.type_name << std::endl;
                     object_stack.push_back(obj);
                     break;
                 }
 
                 throw std::runtime_error("Name not found: " + name);
+            } break;
+
+            case Opcode::OP_BUILD_TUPLE: {
+                uint32_t count = frame->code.read32(frame->ip);
+                std::vector<std::shared_ptr<Object>> values;
+                for (uint32_t i = 0; i < count; i++) {
+                    auto obj = object_stack.back();
+                    object_stack.pop_back();
+                    values.push_back(obj);
+                }
+
+                std::reverse(values.begin(), values.end());
+                auto obj = std::make_shared<Tuple>(values);
+                object_stack.push_back(obj);
             } break;
 
             // case Opcode::OP_BINARY_ADD: {

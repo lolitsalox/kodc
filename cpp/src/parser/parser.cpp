@@ -411,9 +411,7 @@ std::vector<std::unique_ptr<Node>> Parser::parse_body(
         }
 
         skip_newlines();
-
         nodes.push_back(std::move(parse_expression().value()));
-
         skip_newlines();
 
         // parse commas
@@ -679,12 +677,11 @@ void FunctionDefNode::compile(CompiledModule& module, Code& code) {
 }
 
 void CallNode::compile(CompiledModule& module, Code& code) {
-    callee->compile(module, code);
-
     for (auto& arg : args) {
         arg->compile(module, code); // todo, build tuple before calling
     }
 
+    callee->compile(module, code);
     code.write8((uint8_t)Opcode::OP_CALL);
     code.write32((uint8_t)args.size());
 }

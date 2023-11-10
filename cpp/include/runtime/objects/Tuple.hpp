@@ -6,10 +6,13 @@ namespace kod {
 
 struct TypeTuple : public Type {
 
-    TypeTuple() : Type(kod_type_type, "tuple") {};
+    TypeTuple() : Type("tuple") {};
     ~TypeTuple() = default;
+
+    std::string __str__(std::shared_ptr<Tuple> args) override;
 };
-static TypeTuple kod_type_tuple;
+
+static std::shared_ptr<TypeTuple> kod_type_tuple = std::make_shared<TypeTuple>();
 
 struct Tuple : public Object {
 

@@ -3,6 +3,7 @@
 #include <cassert>
 #include <vector>
 #include <algorithm>
+#include <sstream>
 
 namespace kod {
 
@@ -19,9 +20,14 @@ std::ostream& operator<<(std::ostream& os, const kod::Token& token) {
     return os << token.to_string();
 }
 
+int Lexer::peek_string(int offset = 1) {
+    auto index = current_index + offset;
+    return index < (int)input.size() ? input[index] : -1;
+}
+
 bool Lexer::is_start_of_comment() {
-    return (current_char == '/' && input.peek() == '/') 
-    || (current_char == '/' && input.peek() == '*');
+    return (current_char == '/' && peek_string() == '/') 
+    || (current_char == '/' && peek_string() == '*');
 }
 
 std::optional<Token> Lexer::next() {
@@ -64,7 +70,7 @@ std::optional<Token> Lexer::peek() {
     auto old_line = line;
     auto old_column = column;
     auto old_char = current_char;
-    auto old_pos = input.tellg();
+    auto old_index = current_index;
     
     auto token = next();
     
@@ -72,8 +78,7 @@ std::optional<Token> Lexer::peek() {
     line = old_line;
     column = old_column;
     current_char = old_char;
-    input.clear();
-    input.seekg(old_pos);
+    current_index = old_index;
     return token;
 }
 
@@ -91,7 +96,7 @@ void Lexer::advance() {
         column++;
     }
 
-    current_char = input.get();
+    current_char = current_index < (int)input.size() ? input[++current_index] : -1;
 }
 
 void Lexer::skip_whitespace() {
@@ -114,7 +119,7 @@ void Lexer::skip_comment() {
     if (current_char != '/') return;
 
     // Check if the next character is a / or *
-    auto peek = input.peek();
+    auto peek = peek_string();
     switch (peek) {
         case '/': {
             skip_until('\n');
@@ -124,7 +129,7 @@ void Lexer::skip_comment() {
         case '*': {
             // skip until "*/"
             while (can_advance()) {
-                if (current_char == '*' && input.peek() == '/') {
+                if (current_char == '*' && peek_string() == '/') {
                     advance();
                     advance();
                     break;

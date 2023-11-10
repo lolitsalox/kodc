@@ -4,13 +4,14 @@
 namespace kod {
 
 struct Tuple;
+struct Type;
+static std::shared_ptr<Type> kod_type_type = std::make_shared<Type>();
 struct Type : public Object {
-    
     std::string type_name = "type";
     
-    Type() : Object(*this) {};
+    Type() = default;
     
-    Type(Type& type, std::string type_name) 
+    Type(std::string type_name, std::shared_ptr<Type> type = kod_type_type) 
         : Object(type), type_name(std::move(type_name)) {};
     
     virtual ~Type() = default;
@@ -25,35 +26,15 @@ struct Type : public Object {
 
 };
 
-static Type kod_type_type; // kod_type_class
-
-struct TypeInt : public Type {
-
-    TypeInt() : Type(kod_type_type, "int") {};
-    ~TypeInt() = default;
-
-    // std::string __new__(std::shared_ptr<Tuple> args) override;
-    std::string __str__(std::shared_ptr<Tuple> args) override;
-
-};
-
-static TypeInt kod_type_int;
-
-struct Int : public Object {
-    
-    Int(int64_t value) : Object(kod_type_int), value(value) {};
-    ~Int() = default;
-
-    int64_t value;
-
-};
-
 struct TypeNull : public Type {
-    TypeNull() : Type(kod_type_type, "null_type") {};
+    TypeNull() : Type("null_type") {};
     ~TypeNull() = default;
+    std::string __str__(std::shared_ptr<Tuple> args) override {
+        return "null";
+    }
 };
 
-static TypeNull kod_type_null;
+static std::shared_ptr<TypeNull> kod_type_null = std::make_shared<TypeNull>();
 
 struct Null : public Object {
     Null() : Object(kod_type_null) {}

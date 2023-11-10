@@ -2,8 +2,6 @@
 
 #include <iostream>
 #include <optional>
-#include <sstream>
-#include <fstream>
 #include <string>
 
 namespace kod {
@@ -112,12 +110,12 @@ struct Token {
 };
 
 struct Lexer {
-    std::stringstream& input;
-    int current_char = -1;
+    std::string input;
+    int current_char = -1, current_index = 0;
     size_t line = 1, column = 1;
 
-    Lexer(std::stringstream& input) : input(input) {
-        if ((current_char = input.get()) == -1) {
+    Lexer(std::string input) : input(input) {
+        if ((current_char = (input.empty() ? -1 : input[current_index])) == -1) {
             throw std::runtime_error("Unexpected end of file");
         }
     }
@@ -142,6 +140,7 @@ private:
     void advance();
     bool can_advance();
     bool is_start_of_comment();
+    int peek_string(int offset);
 };
 
 std::ostream& operator<<(std::ostream& os, const kod::Token& token);
