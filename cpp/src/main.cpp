@@ -2,6 +2,8 @@
 #include <fstream>
 #include <parser/parser.hpp>
 #include <runtime/runtime.hpp>
+#include <runtime/objects/Type.hpp>
+#include <runtime/objects/Tuple.hpp>
 
 namespace kod {
 
@@ -40,9 +42,11 @@ void repl() {
             }
             #endif
             vm.update_constants();
-            auto obj = vm.run();
-            if (obj) {
-                // std::cout << "Program returned: " << obj.value()->to_string() << std::endl;
+            auto opt_obj = vm.run();
+            if (opt_obj) {
+                auto obj = opt_obj.value();
+                auto tuple = std::make_shared<Tuple>(std::vector<std::shared_ptr<Object>>{obj});
+                std::cout << "Program returned: " + obj->type->__str__(tuple) << std::endl;
             }
         } 
         catch (std::exception const& e) {
