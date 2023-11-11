@@ -68,6 +68,7 @@ std::string Code::to_string() const {
             case Opcode::OP_CALL:
             case Opcode::OP_BUILD_TUPLE:
             case Opcode::OP_LOAD_NAME:
+            case Opcode::OP_LOAD_ATTRIBUTE:
             case Opcode::OP_STORE_NAME:
             case Opcode::OP_LOAD_CONST: {
                 auto index = static_cast<uint32_t>(read32(i));
@@ -99,7 +100,7 @@ std::string Code::to_string() const {
             case Opcode::OP_BINARY_BOOLEAN_LESS_THAN:
             case Opcode::OP_BINARY_BOOLEAN_LESS_THAN_OR_EQUAL_TO: break;
 
-            default: throw std::runtime_error("Unknown opcode: " + Opcode_to_string(static_cast<Opcode>(opcode)));
+            default: throw std::runtime_error("Code::to_string() - Unknown opcode: " + Opcode_to_string(static_cast<Opcode>(opcode)));
         }
         result += "\n";
     }
@@ -117,7 +118,7 @@ std::string Constant::to_string() const {
         case ConstantTag::C_ASCII: return "\"" + _string + "\"";
         case ConstantTag::C_CODE: return "Code object: " + _code.name;
         case ConstantTag::C_TUPLE: return vec_to_string(_tuple);
-        default: throw std::runtime_error("Unknown constant tag: " + std::to_string(static_cast<uint32_t>(tag)));
+        default: throw std::runtime_error("Constant::to_string() - Unknown constant tag: " + std::to_string(static_cast<uint32_t>(tag)));
     }
 }
 

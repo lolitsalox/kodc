@@ -20,7 +20,7 @@ struct Node {
     virtual ~Node() = default;
     virtual std::string to_string() const = 0;
     virtual void compile(CompiledModule& module, Code& code) {
-        throw std::runtime_error("Unimplemented: " + to_string());
+        throw std::runtime_error("Unimplemented compile: " + to_string());
     };
     virtual bool pushes() const { return true; }
     virtual bool returns() const {return false; }
@@ -32,6 +32,14 @@ struct Node {
     virtual void push(CompiledModule& module, Code& code) const {
         throw std::runtime_error("Unimplemented push: " + to_string());
     };
+};
+
+struct IdentifierNode : public Node {
+    std::string value;
+    std::string to_string() const override;
+
+    IdentifierNode(std::string value) : value(std::move(value)) {}
+    void compile(CompiledModule& module, Code& code) override;
 };
 
 struct ProgramNode : public Node {
@@ -116,6 +124,18 @@ struct LambdaNode : public Node {
         : args(std::move(args)), body(std::move(body)) {}
 
     
+    void compile(CompiledModule& module, Code& code) override;
+};
+
+struct AccessNode : public Node {
+    std::unique_ptr<Node> value;
+    std::unique_ptr<IdentifierNode> field;
+
+    AccessNode(std::unique_ptr<Node> value, std::unique_ptr<IdentifierNode> field)
+        : value(std::move(value)), field(std::move(field)) {}
+  
+    void compile(CompiledModule& module, Code& code) override;
+    std::string to_string() const override;
 };
 
 struct ReturnNode : public Node {
@@ -182,13 +202,6 @@ struct BooleanNode : public Node {
     }
 };
 
-struct IdentifierNode : public Node {
-    std::string value;
-    std::string to_string() const override;
-
-    IdentifierNode(std::string value) : value(std::move(value)) {}
-    void compile(CompiledModule& module, Code& code) override;
-};
 
 struct TupleNode : public Node {
     std::vector<std::unique_ptr<Node>> values;
@@ -243,7 +256,7 @@ private:
     std::optional<std::unique_ptr<Node>> parse_float();
     std::optional<std::unique_ptr<Node>> parse_string();
     std::optional<std::unique_ptr<Node>> parse_boolean();
-    std::optional<std::unique_ptr<Node>> parse_identifier();
+    std::optional<std::unique_ptr<IdentifierNode>> parse_identifier();
 
     std::vector<std::unique_ptr<Node>> parse_body(TokenType left_delim, TokenType right_delim, bool parse_commas, std::optional<bool*> got_comma);
     std::unique_ptr<Node> parse_tuple(); // (..., )

@@ -55,6 +55,10 @@ std::string LambdaNode::to_string() const {
     return result;
 }
 
+std::string kod::AccessNode::to_string() const {
+    return value->to_string() + "." + field->to_string();
+}
+
 std::string ReturnNode::to_string() const {
     return "ReturnNode: " + (value ? value.value()->to_string() : std::string("NULL"));
 }
@@ -295,6 +299,14 @@ std::optional<std::unique_ptr<Node>> Parser::parse_after(std::optional<std::uniq
 
         } break;
 
+        case TokenType::DOT: {
+            eat(TokenType::DOT);
+
+            auto id = parse_identifier();
+
+            return std::make_unique<AccessNode>(std::move(value.value()), std::move(id.value()));
+        } break;
+
         // case TokenType::LBRACE: {
         //     // subscript
         //     auto subscript = parse_list();
@@ -383,10 +395,12 @@ std::optional<std::unique_ptr<Node>> Parser::parse_string() {
     );
 }
 
-std::optional<std::unique_ptr<Node>> Parser::parse_identifier() {
-    return std::make_optional(
-        std::make_unique<IdentifierNode>(lexer.next().value().value)
-    );
+std::optional<std::unique_ptr<IdentifierNode>> Parser::parse_identifier() {
+    auto tok = lexer.next().value();
+    if (tok.type != TokenType::ID) {
+        throw std::runtime_error("Expected an identifer but got " + std::to_string(static_cast<int>(tok.type)));
+    }
+    return std::make_unique<IdentifierNode>(tok.value);
 }
 
 std::vector<std::unique_ptr<Node>> Parser::parse_body(
@@ -539,6 +553,21 @@ void IdentifierNode::compile(CompiledModule& module, Code& code) {
     code.write32(index);
 }
 
+void AccessNode::compile(CompiledModule& module, Code& code) {
+    value->compile(module, code);
+
+    auto it = std::find(module.name_pool.begin(), module.name_pool.end(), field->to_string());
+    if (it == module.name_pool.end()) {
+        // Create a new entry in the name pool
+        module.name_pool.push_back(field->to_string());
+        it = std::prev(module.name_pool.end());
+    }
+
+    size_t index = std::distance(module.name_pool.begin(), it);
+    code.write8((uint8_t)Opcode::OP_LOAD_ATTRIBUTE);
+    code.write32(index);
+}
+
 void ReturnNode::compile(CompiledModule& module, Code& code) {
     if (value) {
         value.value()->compile(module, code);
@@ -611,14 +640,17 @@ void AssignmentNode::push(CompiledModule& module, Code& code) const {
     }
 }
 
-void FunctionDefNode::compile(CompiledModule& module, Code& code) {
-    // Creating a Code object for the function
+void compile_code_constant(CompiledModule& module, Code& code, 
+    std::string name,
+    std::vector<std::unique_ptr<kod::Node>> const& func_args,
+    std::vector<std::unique_ptr<kod::Node>> const& body
+) {
     Code func;
-    func.name = this->callee->to_string();
+    func.name = name;
 
     // Convert the arguments to a vector of strings
     std::vector<std::string> args;
-    for (auto& arg : this->args) {
+    for (auto& arg : func_args) {
         args.push_back(arg->to_string());
     }
 
@@ -661,19 +693,28 @@ void FunctionDefNode::compile(CompiledModule& module, Code& code) {
     size_t index = std::distance(module.constant_pool.begin(), code_it);
     code.write8((uint8_t)Opcode::OP_LOAD_CONST);
     code.write32(index);
+}
+
+void FunctionDefNode::compile(CompiledModule& module, Code& code) {
+    auto name = callee->to_string();
+    compile_code_constant(module, code, name, args, body);
 
     // find the index of the callee name
-    auto name_it = std::find(module.name_pool.begin(), module.name_pool.end(), this->callee->to_string());
+    auto name_it = std::find(module.name_pool.begin(), module.name_pool.end(), name);
     if (name_it == module.name_pool.end()) {
         // Create a new entry in the name pool
-        module.name_pool.push_back(this->callee->to_string());
+        module.name_pool.push_back(name);
         name_it = std::prev(module.name_pool.end());
     }
 
-    index = std::distance(module.name_pool.begin(), name_it);
+    auto index = std::distance(module.name_pool.begin(), name_it);
     code.write8((uint8_t)Opcode::OP_STORE_NAME);
     code.write32(index);
 
+}
+
+void LambdaNode::compile(CompiledModule& module, Code& code) {
+    compile_code_constant(module, code, "<lambda>", args, body);
 }
 
 void CallNode::compile(CompiledModule& module, Code& code) {
