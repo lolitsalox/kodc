@@ -21,7 +21,15 @@ struct Type : public Object {
     }
 
     virtual std::shared_ptr<Object> __new__(std::shared_ptr<Tuple> args);
-    virtual std::string __str__(std::shared_ptr<Tuple> args);
+    virtual std::string __str__(std::shared_ptr<Object> obj);
+
+    virtual std::shared_ptr<Object> __add__(std::shared_ptr<Object> left, std::shared_ptr<Object> right) {
+        throw std::runtime_error("<" + type_name + "> doesn't have an __add__ method.");
+    }
+
+    virtual int64_t to_int(std::shared_ptr<Object> obj) {
+        throw std::runtime_error("Cannot convert " + obj->type->type_name + " to " + type_name);
+    }
 
 
 };
@@ -29,7 +37,7 @@ struct Type : public Object {
 struct TypeNull : public Type {
     TypeNull() : Type("null_type") {};
     ~TypeNull() = default;
-    std::string __str__(std::shared_ptr<Tuple> args) override {
+    std::string __str__(std::shared_ptr<Object> obj) override {
         return "null";
     }
 };

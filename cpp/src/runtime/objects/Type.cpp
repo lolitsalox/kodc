@@ -13,18 +13,12 @@ std::shared_ptr<Object> Type::__new__(std::shared_ptr<Tuple> args) {
     return std::make_shared<Object>(args->values[0]->type);
 }
 
-std::string Type::__str__(std::shared_ptr<Tuple> args) {
-    if (args->values.size() != 1) {
-        throw std::runtime_error("Expected 1 argument.");
-    } 
-
-    auto& obj = args->values[0];
-
+std::string Type::__str__(std::shared_ptr<Object> obj) {
     if (Type* type_obj = dynamic_cast<Type*>(obj.get())) {
         return "<class '" + type_obj->type_name +"'>";
     }
 
-    return obj->type->__str__(args);
+    return obj->type->__str__(obj);
 }
 
 }

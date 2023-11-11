@@ -9,7 +9,7 @@ struct TypeString : public Type {
     ~TypeString() = default;
 
     // std::string __new__(std::shared_ptr<Tuple> args) override;
-    std::string __str__(std::shared_ptr<Tuple> args) override;
+    std::string __str__(std::shared_ptr<Object> obj) override;
 
 };
 

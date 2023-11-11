@@ -3,13 +3,7 @@
 
 namespace kod {
 
-std::string TypeTuple::__str__(std::shared_ptr<Tuple> args) {
-    if (args->values.size() != 1) {
-        throw std::runtime_error(type_name + "() takes 1 argument.");
-    }
-
-    auto& obj = args->values[0];
-    
+std::string TypeTuple::__str__(std::shared_ptr<Object> obj) {
     if (Tuple* tuple_obj = dynamic_cast<Tuple*>(obj.get())) {
         std::string result = "(";
 
@@ -23,7 +17,7 @@ std::string TypeTuple::__str__(std::shared_ptr<Tuple> args) {
         return result + (tuple_obj->values.size() == 1 ? ",)" : ")");
     }
 
-    return obj->type->__str__(args);
+    return obj->type->__str__(obj);
 
     }
 }

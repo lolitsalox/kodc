@@ -125,15 +125,14 @@ std::optional<std::shared_ptr<Object>> VM::run() {
                 object_stack.push_back(obj);
             } break;
 
-            // case Opcode::OP_BINARY_ADD: {
-            //     auto right = object_stack.back();
-            //     object_stack.pop_back();
-            //     auto left = object_stack.back();
-            //     object_stack.pop_back();
+            case Opcode::OP_BINARY_ADD: {
+                auto right = object_stack.back();
+                object_stack.pop_back();
+                auto left = object_stack.back();
+                object_stack.pop_back();
 
-            //     auto obj = std::make_shared<ObjectInt>(left->to_int() + right->to_int());
-            //     object_stack.push_back(obj);
-            // } break;
+                object_stack.push_back(left->type->__add__(left, right));
+            } break;
 
             // case Opcode::OP_CALL: {
             //     auto arg_count = frame->code.read32(frame->ip);
