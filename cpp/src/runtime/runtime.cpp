@@ -3,6 +3,7 @@
 #include <runtime/objects/Tuple.hpp>
 #include <runtime/objects/Int.hpp>
 #include <runtime/objects/String.hpp>
+#include <runtime/objects/NativeFunc.hpp>
 
 #include <algorithm>
 
@@ -15,6 +16,13 @@ void test() {
     // std::cout << i.type.type.to_string() << std::endl;
 }
 
+std::shared_ptr<Object> native_globals(VM* vm, std::shared_ptr<Tuple> args) {
+    for (auto& global : vm->globals) {
+        std::cout << global.first + ": " + global.second->type->__str__(global.second) + "\n";
+    }
+    return vm->globals["null"];
+}
+
 void VM::load_globals() {
     kod_type_type->type = kod_type_type;
 
@@ -22,6 +30,8 @@ void VM::load_globals() {
     globals[kod_type_int->type_name] = kod_type_int;
     globals[kod_type_tuple->type_name] = kod_type_tuple;
     globals["null"] = std::make_shared<Null>();
+
+    globals["globals"] = std::make_shared<NativeFunc>(native_globals, "globals");
     // globals["true"] = std::make_shared<Bool>(true);
     // globals["false"] = std::make_shared<Bool>(false);
 }
@@ -59,7 +69,7 @@ std::optional<std::shared_ptr<Object>> VM::run() {
 
             case Opcode::OP_POP_TOP: {
                 auto obj = object_stack.back();
-                if (repl) {
+                if (repl && !dynamic_cast<Null*>(obj.get())) {
                     std::cout << obj->type->__str__(obj) << std::endl;
                 }
                 object_stack.pop_back();
@@ -133,40 +143,38 @@ std::optional<std::shared_ptr<Object>> VM::run() {
                 object_stack.push_back(left->type->__add__(left, right));
             } break;
 
-            // case Opcode::OP_CALL: {
-            //     auto arg_count = frame->code.read32(frame->ip);
+            case Opcode::OP_CALL: {
+                auto arg_count = frame->code.read32(frame->ip);
 
-            //     // pop the func
-            //     auto obj = object_stack.back();
-            //     object_stack.pop_back();
+                // pop the func
+                auto obj = object_stack.back();
+                object_stack.pop_back();
 
-            //     std::shared_ptr<ObjectCode> func;
+                std::vector<std::shared_ptr<Object>> args;
+                // pop all args
+                for (uint32_t i = 0; i < arg_count; i++) {
+                    auto arg = object_stack.back();
+                    object_stack.pop_back();
+                    args.push_back(arg);
+                }
 
-            //     // check if the func is a code object
-            //     if ((func = std::dynamic_pointer_cast<ObjectCode>(obj))) {
-            //         // nothing
-            //     } else {
-            //         throw std::runtime_error("Function is not a code object");
-            //     }
+                if (NativeFunc* func = dynamic_cast<NativeFunc*>(obj.get())) {
+                    object_stack.push_back(func->func(this, std::make_shared<Tuple>(args)));
+                } else {
+                    throw std::runtime_error("Function is not a native code object");
+                }
 
-            //     std::vector<std::shared_ptr<Object>> args;
-            //     // pop all args
-            //     for (uint32_t i = 0; i < arg_count; i++) {
-            //         auto arg = object_stack.back();
-            //         object_stack.pop_back();
-            //         args.push_back(arg);
-            //     }
 
-            //     // map the args to their names in the func def
-            //     ObjectMap arg_map;
-            //     for (size_t i = 0; i < args.size(); i++) {
-            //         const std::string& arg_name = func->value.params[i];
-            //         arg_map[arg_name] = args[i];
-            //     }
+                // // map the args to their names in the func def
+                // ObjectMap arg_map;
+                // for (size_t i = 0; i < args.size(); i++) {
+                //     const std::string& arg_name = func->value.params[i];
+                //     arg_map[arg_name] = args[i];
+                // }
 
-            //     // create a call frame->with the args
-            //     frame = &call_stack.emplace_back(func->value, arg_map);
-            // } break;
+                // // create a call frame->with the args
+                // frame = &call_stack.emplace_back(func->value, arg_map);
+            } break;
 
             default: throw std::runtime_error("Unknown opcode: " + Opcode_to_string(opcode));
         }

@@ -5,6 +5,7 @@ namespace kod {
 
 struct Tuple;
 struct Type;
+struct VM;
 static std::shared_ptr<Type> kod_type_type = std::make_shared<Type>();
 struct Type : public Object {
     std::string type_name = "type";
@@ -19,7 +20,12 @@ struct Type : public Object {
 
     virtual std::shared_ptr<Object> __new__(std::shared_ptr<Tuple> args);
 
+    virtual std::shared_ptr<Object> __call__(VM* vm, std::shared_ptr<Object> obj, std::shared_ptr<Tuple> args) {
+        throw std::runtime_error("<" + type_name + "> doesn't have a __call__ method.");
+    }
+
     virtual std::shared_ptr<Object> __add__(std::shared_ptr<Object> left, std::shared_ptr<Object> right) {
+        // make this a pure virtual
         throw std::runtime_error("<" + type_name + "> doesn't have an __add__ method.");
     }
 
