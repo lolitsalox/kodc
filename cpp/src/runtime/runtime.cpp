@@ -60,8 +60,7 @@ std::optional<std::shared_ptr<Object>> VM::run() {
             case Opcode::OP_POP_TOP: {
                 auto obj = object_stack.back();
                 if (repl) {
-                    auto tuple = std::make_shared<Tuple>(std::vector<std::shared_ptr<Object>>{obj});
-                    std::cout << obj->type->__str__(tuple) << std::endl;
+                    std::cout << obj->type->__str__(obj) << std::endl;
                 }
                 object_stack.pop_back();
             } break;

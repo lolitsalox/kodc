@@ -11,7 +11,7 @@ std::string TypeInt::__str__(std::shared_ptr<Object> obj) {
     return obj->type->__str__(obj);
 }
 
-int64_t TypeInt::to_int(std::shared_ptr<Object> obj) {
+int64_t TypeInt::__int__(std::shared_ptr<Object> obj) {
     if (Int* int_obj = dynamic_cast<Int*>(obj.get())) {
         return int_obj->value;
     }
@@ -20,8 +20,9 @@ int64_t TypeInt::to_int(std::shared_ptr<Object> obj) {
 }
 
 std::shared_ptr<Object> TypeInt::__add__(std::shared_ptr<Object> left, std::shared_ptr<Object> right) {
-    if (left->type == kod_type_int && right->type == kod_type_int) {
-        return std::make_shared<Int>(left->type->to_int(left) + right->type->to_int(right));
+    if (dynamic_cast<TypeInt*>(left->type.get()) && 
+        dynamic_cast<TypeInt*>(right->type.get())) {
+        return std::make_shared<Int>(left->type->__int__(left) + right->type->__int__(right));
     }
 
     throw std::runtime_error("Cannot add " + left->type->type_name + " and " + right->type->type_name);

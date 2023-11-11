@@ -44,9 +44,8 @@ void repl() {
             vm.update_constants();
             auto opt_obj = vm.run();
             if (opt_obj) {
-                auto obj = opt_obj.value();
-                auto tuple = std::make_shared<Tuple>(std::vector<std::shared_ptr<Object>>{obj});
-                std::cout << "Program returned: " + obj->type->__str__(tuple) << std::endl;
+                auto& obj = opt_obj.value();
+                std::cout << "Program returned: " + obj->type->__str__(obj) << std::endl;
             }
         } 
         catch (std::exception const& e) {

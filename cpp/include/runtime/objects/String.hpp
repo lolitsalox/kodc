@@ -10,6 +10,7 @@ struct TypeString : public Type {
 
     // std::string __new__(std::shared_ptr<Tuple> args) override;
     std::string __str__(std::shared_ptr<Object> obj) override;
+    int64_t __int__(std::shared_ptr<Object> obj) override;
 
 };
 

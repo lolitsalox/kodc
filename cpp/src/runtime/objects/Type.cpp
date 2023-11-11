@@ -10,7 +10,9 @@ std::shared_ptr<Object> Type::__new__(std::shared_ptr<Tuple> args) {
         throw std::runtime_error(type_name + "() takes 1 argument.");
     }
 
-    return std::make_shared<Object>(args->values[0]->type);
+    // return std::make_shared<Object>(args->values[0]->type);
+
+    throw std::runtime_error("<" + type_name + "> doesn't have a __new__ method.");
 }
 
 std::string Type::__str__(std::shared_ptr<Object> obj) {
@@ -18,7 +20,7 @@ std::string Type::__str__(std::shared_ptr<Object> obj) {
         return "<class '" + type_obj->type_name +"'>";
     }
 
-    return obj->type->__str__(obj);
+    throw std::runtime_error("Cannot convert " + obj->type->type_name + " to " + type_name);
 }
 
 }

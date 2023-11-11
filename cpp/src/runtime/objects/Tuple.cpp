@@ -9,9 +9,7 @@ std::string TypeTuple::__str__(std::shared_ptr<Object> obj) {
 
         for (size_t i = 0; i < tuple_obj->values.size(); ++i) {
             auto& elem = tuple_obj->values[i];
-            auto tup = std::make_shared<Tuple>(std::vector<std::shared_ptr<Object>>{elem});
-            
-            result += elem->type->__str__(tup) + (i == tuple_obj->values.size() - 1 ? "" : ", ");
+            result += elem->type->__str__(elem) + (i == tuple_obj->values.size() - 1 ? "" : ", ");
         }
 
         return result + (tuple_obj->values.size() == 1 ? ",)" : ")");
