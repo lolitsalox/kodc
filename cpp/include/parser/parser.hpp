@@ -92,10 +92,11 @@ struct AssignmentNode : public Node {
 struct CallNode : public Node {
     std::unique_ptr<Node> callee;
     std::vector<std::unique_ptr<Node>> args;
+    bool add_arg = false;
     std::string to_string() const override;
 
-    CallNode(std::unique_ptr<Node> callee, std::vector<std::unique_ptr<Node>> args)
-        : callee(std::move(callee)), args(std::move(args)) {}  
+    CallNode(std::unique_ptr<Node> callee, std::vector<std::unique_ptr<Node>> args, bool add_arg = false)
+        : callee(std::move(callee)), args(std::move(args)), add_arg(add_arg) {}  
 
     void compile(CompiledModule& module, Code& code) override;
 };
@@ -130,9 +131,10 @@ struct LambdaNode : public Node {
 struct AccessNode : public Node {
     std::unique_ptr<Node> value;
     std::unique_ptr<IdentifierNode> field;
+    bool load_self = false;
 
-    AccessNode(std::unique_ptr<Node> value, std::unique_ptr<IdentifierNode> field)
-        : value(std::move(value)), field(std::move(field)) {}
+    AccessNode(std::unique_ptr<Node> value, std::unique_ptr<IdentifierNode> field, bool load_self = false)
+        : value(std::move(value)), field(std::move(field)), load_self(load_self) {}
   
     void compile(CompiledModule& module, Code& code) override;
     std::string to_string() const override;

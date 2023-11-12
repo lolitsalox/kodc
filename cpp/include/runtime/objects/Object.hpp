@@ -8,12 +8,14 @@
 namespace kod {
 
 struct Type;
+struct Dict;
 
 struct Object {
     std::shared_ptr<Type> type;
+    std::shared_ptr<Dict> attributes;
 
     Object() = default;
-    Object(std::shared_ptr<Type> type) : type(type) {};
+    Object(std::shared_ptr<Type> type, std::shared_ptr<Dict> attributes = {});
     virtual ~Object() = default;
 
     virtual std::string to_string() const; 

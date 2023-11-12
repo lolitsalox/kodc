@@ -5,7 +5,7 @@ namespace kod {
 
 struct TypeInt : public Type {
 
-    TypeInt() : Type("int") {}
+    TypeInt();
     ~TypeInt() = default;
 
     // std::shared_ptr<Object> __new__(std::shared_ptr<Tuple> args) override;
@@ -28,7 +28,7 @@ static std::shared_ptr<TypeInt> kod_type_int = std::make_shared<TypeInt>();
 
 struct Int : public Object {
     
-    Int(int64_t value) : Object(kod_type_int), value(value) {};
+    Int(int64_t value) : Object(kod_type_int, kod_type_int->attributes), value(value) {};
     ~Int() = default;
 
     int64_t value;

@@ -18,6 +18,7 @@ std::string Opcode_to_string(Opcode opcode) {
         case Opcode::OP_LOAD_CONST:             return "LOAD_CONST";
         case Opcode::OP_LOAD_NAME:              return "LOAD_NAME";
         case Opcode::OP_LOAD_ATTRIBUTE:         return "LOAD_ATTRIBUTE";
+        case Opcode::OP_LOAD_ATTRIBUTE_SELF:         return "LOAD_ATTRIBUTE_SELF";
         case Opcode::OP_LOAD_METHOD:            return "LOAD_METHOD";
         case Opcode::OP_STORE_NAME:             return "STORE_NAME";
         case Opcode::OP_STORE_ATTRIBUTE:        return "STORE_ATTRIBUTE";
@@ -71,6 +72,7 @@ std::string Code::to_string() const {
             case Opcode::OP_BUILD_TUPLE:
             case Opcode::OP_LOAD_NAME:
             case Opcode::OP_LOAD_ATTRIBUTE:
+            case Opcode::OP_LOAD_ATTRIBUTE_SELF:
             case Opcode::OP_STORE_NAME:
             case Opcode::OP_LOAD_CONST: {
                 auto index = static_cast<uint32_t>(read32(i));

@@ -180,6 +180,7 @@ enum class Opcode : uint8_t {
     OP_LOAD_CONST,      // direct: constant index, stack: none
     OP_LOAD_NAME,       // direct: name index, stack: none
     OP_LOAD_ATTRIBUTE,  // direct: attribute index, stack: this
+    OP_LOAD_ATTRIBUTE_SELF,  // direct: attribute index, stack: this
     OP_LOAD_METHOD,     // direct: attribute index, stack: this
 
     // STOREs

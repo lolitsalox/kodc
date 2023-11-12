@@ -4,10 +4,12 @@
 #include <runtime/objects/Int.hpp>
 #include <runtime/objects/String.hpp>
 #include <runtime/objects/NativeFunc.hpp>
+#include <runtime/objects/NativeMethod.hpp>
 #include <runtime/objects/CodeObj.hpp>
 #include <runtime/objects/Dict.hpp>
 
 #include <algorithm>
+#include <thread>
 
 namespace kod {
 
@@ -18,14 +20,20 @@ void test() {
     // std::cout << i.type.type.to_string() << std::endl;
 }
 
+void VM::print_object_stack() {
+    std::cout << "Object stack:\n";
+    for (auto& obj : object_stack) {
+        std::cout << obj->type->type_name << " " << obj->type->__str__(obj) << std::endl;
+    }
+    std::cout << std::endl;
+}
+
 std::shared_ptr<Object> native_globals(VM* vm, std::shared_ptr<Tuple> args) {
-    std::cout << vm->globals.type->__str__(std::make_shared<Dict>(vm->globals)) << std::endl;
-    return vm->globals["null"];
+    return std::make_shared<Dict>(vm->globals);
 }
 
 std::shared_ptr<Object> native_locals(VM* vm, std::shared_ptr<Tuple> args) {
-    std::cout << vm->call_stack.back().locals.type->__str__(std::make_shared<Dict>(vm->call_stack.back().locals)) << std::endl;
-    return vm->globals["null"];
+    return std::make_shared<Dict>(vm->call_stack.back().locals);
 }
 
 std::shared_ptr<Object> native_print(VM* vm, std::shared_ptr<Tuple> args) {
@@ -50,6 +58,25 @@ std::shared_ptr<Object> native_input(VM* vm, std::shared_ptr<Tuple> args) {
     return std::make_shared<String>(line);
 }
 
+std::shared_ptr<Object> native_sleep(VM* vm, std::shared_ptr<Tuple> args) {
+    if (args->values.size() > 0) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(args->values[0]->type->__int__(args->values[0])));
+    }
+    return vm->globals["null"];
+}
+
+std::shared_ptr<Object> native_dir(VM* vm, std::shared_ptr<Tuple> args) {
+    if (args->values.size() < 1) {
+        throw std::runtime_error("Not enough arguments for dir");
+    }
+
+    auto& obj = args->values[0];
+    if (obj->attributes) {
+        return obj->attributes;
+    }
+    return vm->globals["null"];
+}
+
 std::shared_ptr<Object> native_exit(VM* vm, std::shared_ptr<Tuple> args) {
     if (args->values.size() > 0) {
         auto obj = args->values[0];
@@ -72,10 +99,13 @@ void VM::load_globals() {
     globals["dict"] = std::make_shared<TypeDict>();
 
     globals["null"] = std::make_shared<Null>();
+    
     globals["globals"] = std::make_shared<NativeFunc>(native_globals, "globals");
     globals["locals"] = std::make_shared<NativeFunc>(native_locals, "locals");
     globals["print"] = std::make_shared<NativeFunc>(native_print, "print");
     globals["input"] = std::make_shared<NativeFunc>(native_input, "input");
+    globals["sleep"] = std::make_shared<NativeFunc>(native_sleep, "sleep");
+    globals["dir"] = std::make_shared<NativeFunc>(native_dir, "dir");
     globals["exit"] = std::make_shared<NativeFunc>(native_exit, "exit");
 }
 
@@ -251,12 +281,43 @@ std::optional<std::shared_ptr<Object>> VM::run() {
                 object_stack.push_back(left->type->__eq__(left, right));
             } break;
 
-            case Opcode::OP_CALL: {
-                auto arg_count = frame->code.read32(frame->ip);
-
-                // pop the func
+            case Opcode::OP_LOAD_ATTRIBUTE: {
                 auto obj = object_stack.back();
                 object_stack.pop_back();
+
+                uint32_t index = frame->code.read32(frame->ip);
+                auto& name = module.name_pool[index];
+                
+                if (!obj->attributes) throw std::runtime_error("Object has no attributes");
+                auto attr = obj->attributes->operator[](name);
+
+                if (!attr) {
+                    throw std::runtime_error("Attribute not found: " + name);
+                }
+
+                object_stack.push_back(attr);
+            } break;
+
+            case Opcode::OP_LOAD_ATTRIBUTE_SELF: {
+                auto obj = object_stack.back();
+                object_stack.pop_back();
+
+                uint32_t index = frame->code.read32(frame->ip);
+                auto& name = module.name_pool[index];
+
+                if (!obj->attributes) throw std::runtime_error("Object has no attributes");
+                auto attr = obj->attributes->operator[](name);
+
+                if (!attr) {
+                    throw std::runtime_error("Attribute not found: " + name);
+                }
+
+                object_stack.push_back(attr);
+                object_stack.push_back(obj);
+            } break;
+
+            case Opcode::OP_CALL: {
+                auto arg_count = frame->code.read32(frame->ip);
 
                 std::vector<std::shared_ptr<Object>> args;
                 // pop all args and push to front of args
@@ -266,11 +327,16 @@ std::optional<std::shared_ptr<Object>> VM::run() {
                     args.push_back(obj);
                 }
 
+                // pop the func
+                auto obj = object_stack.back();
+                object_stack.pop_back();
+
                 std::reverse(args.begin(), args.end());
 
-                auto res = obj->type->__call__(this, obj, std::make_shared<Tuple>(args));
+                auto tup = std::make_shared<Tuple>(args);
+                auto res = obj->type->__call__(this, obj, tup);
 
-                if (dynamic_cast<NativeFunc*>(obj.get()) || dynamic_cast<Type*>(obj.get())) {
+                if (dynamic_cast<NativeFunc*>(obj.get()) || dynamic_cast<Type*>(obj.get()) || dynamic_cast<NativeMethod*>(obj.get())) {
                     object_stack.push_back(res);
                     
                 } else if (CodeObj* func = dynamic_cast<CodeObj*>(obj.get())) {

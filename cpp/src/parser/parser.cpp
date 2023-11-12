@@ -312,10 +312,17 @@ std::optional<std::unique_ptr<Node>> Parser::parse_after(std::optional<std::uniq
                     auto block = parse_block();
                     return std::make_unique<FunctionDefNode>(std::move(value.value()), std::move(args), std::move(block));
                 }
-            } // call(1)
+
+            }
+
+            bool is_access = false;
+            if (AccessNode* access = dynamic_cast<AccessNode*>(value.value().get())) {
+                access->load_self = true;
+                is_access = true; 
+            }
 
             // Function call
-            return parse_after(std::move(std::make_unique<CallNode>(std::move(value.value()), std::move(args))));
+            return parse_after(std::move(std::make_unique<CallNode>(std::move(value.value()), std::move(args), is_access)));
 
         } break;
 
@@ -611,7 +618,7 @@ void AccessNode::compile(CompiledModule& module, Code& code) {
     }
 
     size_t index = std::distance(module.name_pool.begin(), it);
-    code.write8((uint8_t)Opcode::OP_LOAD_ATTRIBUTE);
+    code.write8(load_self ? (uint8_t)Opcode::OP_LOAD_ATTRIBUTE_SELF : (uint8_t)Opcode::OP_LOAD_ATTRIBUTE);
     code.write32(index);
 }
 
@@ -821,13 +828,14 @@ void LambdaNode::compile(CompiledModule& module, Code& code) {
 }
 
 void CallNode::compile(CompiledModule& module, Code& code) {
+    callee->compile(module, code);
+
     for (auto& arg : args) {
         arg->compile(module, code); // todo, build tuple before calling
     }
 
-    callee->compile(module, code);
     code.write8((uint8_t)Opcode::OP_CALL);
-    code.write32((uint8_t)args.size());
+    code.write32((uint8_t)args.size() + (add_arg ? 1 : 0));
 }
 
 void BinaryOpNode::compile(CompiledModule& module, Code& code) {

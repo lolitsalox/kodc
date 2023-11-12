@@ -54,6 +54,8 @@ struct VM {
 
     std::optional<std::shared_ptr<Object>> search_name(const std::string& name);
     std::optional<std::shared_ptr<Object>> search_global_name(const std::string& name);
+
+    void print_object_stack();
 };
 
 }
