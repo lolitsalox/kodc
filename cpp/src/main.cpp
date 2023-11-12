@@ -108,9 +108,10 @@ int main(int argc, char* argv[]) {
         #endif
 
         kod::VM vm(module);
-        auto obj = vm.run();
-        if (obj) {
-            // std::cout << "Program returned: " << obj.value()->to_string() << std::endl;
+        auto opt_obj = vm.run();
+        if (opt_obj) {
+            auto& obj = opt_obj.value();
+            std::cout << "Program returned: " + obj->type->__str__(obj) << std::endl;
         }
         
     } catch (std::exception const& e) {

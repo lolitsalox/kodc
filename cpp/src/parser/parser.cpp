@@ -74,6 +74,14 @@ std::string IfNode::to_string() const {
     return result;
 }
 
+std::string WhileNode::to_string() const {
+    std::string result = "WhileNode:\n" + condition->to_string() + "\n";
+    for (auto const& st : body) {
+        result += " " + st->to_string() + "\n";
+    }
+    return result;
+}
+
 std::string IntegerNode::to_string() const {
     return "IntegerNode: " + std::to_string(value);
 }
@@ -287,8 +295,9 @@ std::optional<std::unique_ptr<Node>> Parser::parse_after(std::optional<std::uniq
         // Function definition/Call
         case TokenType::LPAREN: {
             // Parse a list of args/params
-            auto ls = parse_tuple(); // parses a () list
+            auto ls = parse_tuple(true); // parses a () list
             std::vector<std::unique_ptr<Node>> args;
+
             if (TupleNode* tuple = dynamic_cast<TupleNode*>(ls.get())) {
                 args = std::move(tuple->values);
             }
@@ -306,7 +315,7 @@ std::optional<std::unique_ptr<Node>> Parser::parse_after(std::optional<std::uniq
             } // call(1)
 
             // Function call
-            return std::make_unique<CallNode>(std::move(value.value()), std::move(args));
+            return parse_after(std::move(std::make_unique<CallNode>(std::move(value.value()), std::move(args))));
 
         } break;
 
@@ -315,7 +324,7 @@ std::optional<std::unique_ptr<Node>> Parser::parse_after(std::optional<std::uniq
 
             auto id = parse_identifier();
 
-            return std::make_unique<AccessNode>(std::move(value.value()), std::move(id.value()));
+            return parse_after(std::move(std::make_unique<AccessNode>(std::move(value.value()), std::move(id.value()))));
         } break;
 
         // case TokenType::LBRACE: {
@@ -370,6 +379,10 @@ std::optional<std::unique_ptr<Node>> Parser::parse_factor() {
 
             case KeywordType::IF: {
                 return parse_if();
+            } break;
+
+            case KeywordType::WHILE: {
+                return parse_while();
             } break;
 
             default: throw std::runtime_error("Unexpected keyword: " + keyword.to_string());
@@ -428,6 +441,12 @@ std::optional<std::unique_ptr<IfNode>> Parser::parse_if() {
     return std::make_unique<IfNode>(std::move(condition.value()), std::move(block));
 }
 
+std::optional<std::unique_ptr<WhileNode>> Parser::parse_while() {
+    auto condition = parse_expression();
+    auto block = parse_block();
+    return std::make_unique<WhileNode>(std::move(condition.value()), std::move(block));
+}
+
 std::vector<std::unique_ptr<Node>> Parser::parse_body(
     TokenType left_delim, 
     TokenType right_delim, 
@@ -468,9 +487,12 @@ std::vector<std::unique_ptr<Node>> Parser::parse_body(
     return nodes;
 }
 // (1,2) (,) () (1)
-std::unique_ptr<Node> Parser::parse_tuple() {
+std::unique_ptr<Node> Parser::parse_tuple(bool must_be_tuple) {
     bool got_comma = false;
+    
     auto body = parse_body(TokenType::LPAREN, TokenType::RPAREN, true, &got_comma);
+    if (must_be_tuple) return std::make_unique<TupleNode>(std::move(body));
+    
     if (!body.empty() && !got_comma) {
         return std::move(body.back());
     }
@@ -649,6 +671,29 @@ void IfNode::compile(CompiledModule& module, Code& code) {
     if (!orelse.empty()) {
         code.patch32(end_offset, code.code.size());
     }
+}
+
+
+void WhileNode::compile(CompiledModule& module, Code& code) {
+    size_t condition_offset = code.code.size();
+    condition->compile(module, code);
+    if (!condition->pushes()) {
+        condition->push(module, code);
+    }
+
+    code.write8((uint8_t)Opcode::OP_POP_JUMP_IF_FALSE);
+    size_t end_offset = code.write32(0);
+
+    for (auto& statement : body) {
+        statement->compile(module, code);
+        if (!statement->pushes()) continue;
+        code.write8((uint8_t)Opcode::OP_POP_TOP);
+    }
+
+    code.write8((uint8_t)Opcode::OP_JUMP);
+    code.write32(condition_offset);
+
+    code.patch32(end_offset, code.code.size());
 }
 
 void AssignmentNode::compile(CompiledModule& module, Code& code) {

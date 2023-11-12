@@ -36,6 +36,20 @@ std::shared_ptr<Object> native_print(VM* vm, std::shared_ptr<Tuple> args) {
     return vm->globals["null"];
 }
 
+std::shared_ptr<Object> native_input(VM* vm, std::shared_ptr<Tuple> args) {
+    std::string line;
+
+    // if there is a string in the first argument, print it
+    if (!args->values.empty()) {
+        if (auto str = std::dynamic_pointer_cast<String>(args->values[0])) {
+            std::cout << str->value;
+        }
+    }
+    std::getline(std::cin, line);
+    std::cin.clear();
+    return std::make_shared<String>(line);
+}
+
 std::shared_ptr<Object> native_exit(VM* vm, std::shared_ptr<Tuple> args) {
     if (args->values.size() > 0) {
         auto obj = args->values[0];
@@ -61,6 +75,7 @@ void VM::load_globals() {
     globals["globals"] = std::make_shared<NativeFunc>(native_globals, "globals");
     globals["locals"] = std::make_shared<NativeFunc>(native_locals, "locals");
     globals["print"] = std::make_shared<NativeFunc>(native_print, "print");
+    globals["input"] = std::make_shared<NativeFunc>(native_input, "input");
     globals["exit"] = std::make_shared<NativeFunc>(native_exit, "exit");
 }
 
@@ -105,6 +120,11 @@ std::optional<std::shared_ptr<Object>> VM::run() {
                     std::cout << obj->type->__str__(obj) << std::endl;
                 }
                 object_stack.pop_back();
+            } break;
+
+            case Opcode::OP_JUMP: {
+                uint32_t ip = frame->code.read32(frame->ip);
+                frame->ip = ip;
             } break;
 
             case Opcode::OP_POP_JUMP_IF_FALSE: {
@@ -195,6 +215,42 @@ std::optional<std::shared_ptr<Object>> VM::run() {
                 object_stack.push_back(left->type->__sub__(left, right));
             } break;
 
+            case Opcode::OP_BINARY_MUL: {
+                auto right = object_stack.back();
+                object_stack.pop_back();
+                auto left = object_stack.back();
+                object_stack.pop_back();
+
+                object_stack.push_back(left->type->__mul__(left, right));
+            } break;
+
+            case Opcode::OP_BINARY_BOOLEAN_LESS_THAN: {
+                auto right = object_stack.back();
+                object_stack.pop_back();
+                auto left = object_stack.back();
+                object_stack.pop_back();
+
+                object_stack.push_back(left->type->__lt__(left, right));
+            } break;
+
+            case Opcode::OP_BINARY_BOOLEAN_GREATER_THAN: {
+                auto right = object_stack.back();
+                object_stack.pop_back();
+                auto left = object_stack.back();
+                object_stack.pop_back();
+
+                object_stack.push_back(left->type->__gt__(left, right));
+            } break;
+
+            case Opcode::OP_BINARY_BOOLEAN_EQUAL: {
+                auto right = object_stack.back();
+                object_stack.pop_back();
+                auto left = object_stack.back();
+                object_stack.pop_back();
+
+                object_stack.push_back(left->type->__eq__(left, right));
+            } break;
+
             case Opcode::OP_CALL: {
                 auto arg_count = frame->code.read32(frame->ip);
 
@@ -214,13 +270,10 @@ std::optional<std::shared_ptr<Object>> VM::run() {
 
                 auto res = obj->type->__call__(this, obj, std::make_shared<Tuple>(args));
 
-                if (dynamic_cast<NativeFunc*>(obj.get())) {
+                if (dynamic_cast<NativeFunc*>(obj.get()) || dynamic_cast<Type*>(obj.get())) {
                     object_stack.push_back(res);
                     
                 } else if (CodeObj* func = dynamic_cast<CodeObj*>(obj.get())) {
-                    if (func->code.params.size() != arg_count) {
-                        throw std::runtime_error("Invalid number of arguments: " + std::to_string(arg_count) + " != " + std::to_string(func->code.params.size()));
-                    }
                     frame = &call_stack.emplace_back(func->code, func->locals);
 
                 } else {

@@ -5,6 +5,9 @@ namespace kod {
 
 std::shared_ptr<Object> TypeCode::__call__(VM* vm, std::shared_ptr<Object> obj, std::shared_ptr<Tuple> args) {
     if (CodeObj* code_obj = dynamic_cast<CodeObj*>(obj.get())) {
+        if (args->values.size() != code_obj->code.params.size()) {
+            throw std::runtime_error("Invalid number of arguments: " + std::to_string(args->values.size()) + " != " + std::to_string(code_obj->code.params.size()));
+        }
 
         for (size_t i = 0; i < args->values.size(); i++) {
             const std::string& arg_name = code_obj->code.params[i];

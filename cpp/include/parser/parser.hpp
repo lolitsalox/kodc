@@ -170,6 +170,24 @@ struct IfNode : public Node {
     // }
 };
 
+struct WhileNode : public Node {
+    std::unique_ptr<Node> condition;
+    std::vector<std::unique_ptr<Node>> body;
+    std::string to_string() const override;
+
+    WhileNode(std::unique_ptr<Node> condition, std::vector<std::unique_ptr<Node>> body)
+        : condition(std::move(condition)), body(std::move(body)) {}
+
+    void compile(CompiledModule& module, Code& code) override;
+    bool pushes() const { return false; }
+    // bool returns() const {
+        // for (auto& statement : body) {
+        //     if (statement->returns()) return true;
+        // }
+        // return false;
+    // }
+};
+
 struct IntegerNode : public Node {
     int64_t value;
     std::string to_string() const override;
@@ -279,9 +297,10 @@ private:
 
     std::optional<std::unique_ptr<ReturnNode>> parse_return();
     std::optional<std::unique_ptr<IfNode>> parse_if();
+    std::optional<std::unique_ptr<WhileNode>> parse_while();
 
     std::vector<std::unique_ptr<Node>> parse_body(TokenType left_delim, TokenType right_delim, bool parse_commas, std::optional<bool*> got_comma);
-    std::unique_ptr<Node> parse_tuple(); // (..., )
+    std::unique_ptr<Node> parse_tuple(bool must_be_tuple = false); // (..., )
     std::vector<std::unique_ptr<Node>> parse_lambda_params(); // |..., |
     std::unique_ptr<ListNode> parse_list();  // [..., ]
     std::vector<std::unique_ptr<Node>> parse_block();  // {...}
