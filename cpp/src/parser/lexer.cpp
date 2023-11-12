@@ -211,6 +211,7 @@ std::optional<Token> Lexer::collect_string() {
                     // Invalid escape sequence
                     throw std::runtime_error("Invalid escape sequence");
             }
+            advance();
             continue;
         }
         string += current_char;

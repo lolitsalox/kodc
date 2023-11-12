@@ -3,6 +3,7 @@
 #include <parser/parser.hpp>
 #include <unordered_map>
 #include <runtime/objects/Object.hpp>
+#include <runtime/objects/Dict.hpp>
 
 namespace kod {
 
@@ -13,11 +14,11 @@ std::shared_ptr<Object> constant_to_object(Constant const& constant);
 
 struct CallFrame {
     Code code;
-    ObjectMap locals;
+    Dict locals;
     size_t ip = 0;
 
     CallFrame() = default;
-    CallFrame(Code code, ObjectMap locals = {}) : code(code), locals(std::move(locals)) {}
+    CallFrame(Code code, Dict locals = {}) : code(code), locals(locals) {}
     ~CallFrame() = default;
 
 };
@@ -27,7 +28,7 @@ struct VM {
     std::vector<CallFrame> call_stack;
     std::vector<std::shared_ptr<Object>> object_stack;
     std::vector<std::shared_ptr<Object>> constant_objects;
-    ObjectMap globals;
+    Dict globals;
 
     bool repl = false;
 

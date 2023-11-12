@@ -31,23 +31,26 @@ struct Code {
         return true;
     }
 
-    void write8(uint8_t value) {
+    size_t write8(uint8_t value) {
         code.push_back(value);
+        return code.size() - sizeof(value);
     }
 
-    void write16(uint16_t value) {
+    size_t write16(uint16_t value) {
         code.push_back(value & 0xFF);
         code.push_back((value >> 8) & 0xFF);
+        return code.size() - sizeof(value);
     }
 
-    void write32(uint32_t value) {
+    size_t write32(uint32_t value) {
         code.push_back(value & 0xFF);
         code.push_back((value >> 8) & 0xFF);
         code.push_back((value >> 16) & 0xFF);
         code.push_back((value >> 24) & 0xFF);
+        return code.size() - sizeof(value);
     }
 
-    void write64(uint64_t value) {
+    size_t write64(uint64_t value) {
         code.push_back(value & 0xFF);
         code.push_back((value >> 8) & 0xFF);
         code.push_back((value >> 16) & 0xFF);
@@ -56,6 +59,7 @@ struct Code {
         code.push_back((value >> 40) & 0xFF);
         code.push_back((value >> 48) & 0xFF);
         code.push_back((value >> 56) & 0xFF);
+        return code.size() - sizeof(value);
     }
 
     uint8_t read8(size_t& offset) const {
@@ -99,6 +103,13 @@ struct Code {
         result |= static_cast<uint64_t>(code[offset + 7] & 0xFF) << 56;
         offset += 8;
         return result;
+    }
+
+    void patch32(size_t offset, uint32_t value) {
+        code[offset] = value & 0xFF;
+        code[offset + 1] = (value >> 8) & 0xFF;
+        code[offset + 2] = (value >> 16) & 0xFF;
+        code[offset + 3] = (value >> 24) & 0xFF;
     }
 };
 

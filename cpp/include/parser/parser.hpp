@@ -151,6 +151,25 @@ struct ReturnNode : public Node {
     
 };
 
+struct IfNode : public Node {
+    std::unique_ptr<Node> condition;
+    std::vector<std::unique_ptr<Node>> body;
+    std::vector<std::unique_ptr<Node>> orelse;
+    std::string to_string() const override;
+
+    IfNode(std::unique_ptr<Node> condition, std::vector<std::unique_ptr<Node>> body, std::vector<std::unique_ptr<Node>> orelse = {})
+        : condition(std::move(condition)), body(std::move(body)), orelse(std::move(orelse)) {}
+
+    void compile(CompiledModule& module, Code& code) override;
+    bool pushes() const { return false; }
+    // bool returns() const {
+        // for (auto& statement : body) {
+        //     if (statement->returns()) return true;
+        // }
+        // return false;
+    // }
+};
+
 struct IntegerNode : public Node {
     int64_t value;
     std::string to_string() const override;
@@ -257,6 +276,9 @@ private:
     std::optional<std::unique_ptr<Node>> parse_string();
     std::optional<std::unique_ptr<Node>> parse_boolean();
     std::optional<std::unique_ptr<IdentifierNode>> parse_identifier();
+
+    std::optional<std::unique_ptr<ReturnNode>> parse_return();
+    std::optional<std::unique_ptr<IfNode>> parse_if();
 
     std::vector<std::unique_ptr<Node>> parse_body(TokenType left_delim, TokenType right_delim, bool parse_commas, std::optional<bool*> got_comma);
     std::unique_ptr<Node> parse_tuple(); // (..., )

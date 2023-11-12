@@ -4,6 +4,8 @@
 #include <runtime/objects/Int.hpp>
 #include <runtime/objects/String.hpp>
 #include <runtime/objects/NativeFunc.hpp>
+#include <runtime/objects/CodeObj.hpp>
+#include <runtime/objects/Dict.hpp>
 
 #include <algorithm>
 
@@ -17,23 +19,49 @@ void test() {
 }
 
 std::shared_ptr<Object> native_globals(VM* vm, std::shared_ptr<Tuple> args) {
-    for (auto& global : vm->globals) {
-        std::cout << global.first + ": " + global.second->type->__str__(global.second) + "\n";
+    std::cout << vm->globals.type->__str__(std::make_shared<Dict>(vm->globals)) << std::endl;
+    return vm->globals["null"];
+}
+
+std::shared_ptr<Object> native_locals(VM* vm, std::shared_ptr<Tuple> args) {
+    std::cout << vm->call_stack.back().locals.type->__str__(std::make_shared<Dict>(vm->call_stack.back().locals)) << std::endl;
+    return vm->globals["null"];
+}
+
+std::shared_ptr<Object> native_print(VM* vm, std::shared_ptr<Tuple> args) {
+    for (size_t i = 0; i < args->values.size(); i++) {
+        std::cout << args->values[i]->type->__str__(args->values[i]) << " ";
     }
+    std::cout << std::endl;
+    return vm->globals["null"];
+}
+
+std::shared_ptr<Object> native_exit(VM* vm, std::shared_ptr<Tuple> args) {
+    if (args->values.size() > 0) {
+        auto obj = args->values[0];
+        if (dynamic_cast<Int*>(obj.get()) || dynamic_cast<Null*>(obj.get())) {
+            exit(obj->type->__int__(obj));
+        }
+        throw std::runtime_error("exit argument must be an integer or null");
+    }
+    exit(0);
     return vm->globals["null"];
 }
 
 void VM::load_globals() {
     kod_type_type->type = kod_type_type;
 
-    globals[kod_type_type->type_name] = kod_type_type;
-    globals[kod_type_int->type_name] = kod_type_int;
-    globals[kod_type_tuple->type_name] = kod_type_tuple;
-    globals["null"] = std::make_shared<Null>();
+    globals["type"] = std::make_shared<Type>("type", kod_type_type);
+    globals["int"] = std::make_shared<TypeInt>();
+    globals["str"] = std::make_shared<TypeString>();
+    globals["tuple"] = std::make_shared<TypeTuple>();
+    globals["dict"] = std::make_shared<TypeDict>();
 
+    globals["null"] = std::make_shared<Null>();
     globals["globals"] = std::make_shared<NativeFunc>(native_globals, "globals");
-    // globals["true"] = std::make_shared<Bool>(true);
-    // globals["false"] = std::make_shared<Bool>(false);
+    globals["locals"] = std::make_shared<NativeFunc>(native_locals, "locals");
+    globals["print"] = std::make_shared<NativeFunc>(native_print, "print");
+    globals["exit"] = std::make_shared<NativeFunc>(native_exit, "exit");
 }
 
 std::shared_ptr<Object> constant_to_object(Constant const& constant) {
@@ -42,9 +70,9 @@ std::shared_ptr<Object> constant_to_object(Constant const& constant) {
         case ConstantTag::C_INTEGER: return std::make_shared<Int>(constant._int);
         case ConstantTag::C_TUPLE: return std::make_shared<Tuple>(constant._tuple);
         case ConstantTag::C_ASCII: return std::make_shared<String>(constant._string);
+        case ConstantTag::C_CODE: return std::make_shared<CodeObj>(constant._code);
         // case ConstantTag::C_BOOL: return std::make_shared<ObjectBool>(constant._bool);
         // case ConstantTag::C_FLOAT: return std::make_shared<ObjectFloat>(constant._float);
-        // case ConstantTag::C_CODE: return std::make_shared<ObjectCode>(constant._code);
         default: throw std::runtime_error("Unknown constant tag: " + std::to_string(static_cast<uint32_t>(constant.tag)));
     }
 }
@@ -55,9 +83,13 @@ std::optional<std::shared_ptr<Object>> VM::run() {
     if (call_stack.empty()) {
         call_stack.emplace_back(module.entry);
     }
+
     CallFrame* frame = &call_stack.back();
 
     while (frame->ip < frame->code.code.size()) {
+        if (call_stack.size() >= 100) {
+            throw std::runtime_error("Stack overflow");
+        }
         auto opcode = static_cast<Opcode>(frame->code.read8(frame->ip));
         switch (opcode) {
             case Opcode::OP_LOAD_CONST: {
@@ -73,6 +105,17 @@ std::optional<std::shared_ptr<Object>> VM::run() {
                     std::cout << obj->type->__str__(obj) << std::endl;
                 }
                 object_stack.pop_back();
+            } break;
+
+            case Opcode::OP_POP_JUMP_IF_FALSE: {
+                auto obj = object_stack.back();
+                object_stack.pop_back();
+
+                auto ip = frame->code.read32(frame->ip);
+
+                if (!obj->type->__bool__(obj)) {
+                    frame->ip = ip;
+                }
             } break;
 
             case Opcode::OP_RETURN: {
@@ -111,7 +154,7 @@ std::optional<std::shared_ptr<Object>> VM::run() {
                 }
 
                 // Search the global environment
-                if (globals.count(name) > 0) {
+                if (globals.dict.count(std::make_shared<String>(name)) > 0) {
                     auto& obj = globals[name];
                     object_stack.push_back(obj);
                     break;
@@ -143,6 +186,15 @@ std::optional<std::shared_ptr<Object>> VM::run() {
                 object_stack.push_back(left->type->__add__(left, right));
             } break;
 
+            case Opcode::OP_BINARY_SUB: {
+                auto right = object_stack.back();
+                object_stack.pop_back();
+                auto left = object_stack.back();
+                object_stack.pop_back();
+
+                object_stack.push_back(left->type->__sub__(left, right));
+            } break;
+
             case Opcode::OP_CALL: {
                 auto arg_count = frame->code.read32(frame->ip);
 
@@ -151,29 +203,30 @@ std::optional<std::shared_ptr<Object>> VM::run() {
                 object_stack.pop_back();
 
                 std::vector<std::shared_ptr<Object>> args;
-                // pop all args
+                // pop all args and push to front of args
                 for (uint32_t i = 0; i < arg_count; i++) {
-                    auto arg = object_stack.back();
+                    auto obj = object_stack.back();
                     object_stack.pop_back();
-                    args.push_back(arg);
+                    args.push_back(obj);
                 }
 
-                if (NativeFunc* func = dynamic_cast<NativeFunc*>(obj.get())) {
-                    object_stack.push_back(func->func(this, std::make_shared<Tuple>(args)));
+                std::reverse(args.begin(), args.end());
+
+                auto res = obj->type->__call__(this, obj, std::make_shared<Tuple>(args));
+
+                if (dynamic_cast<NativeFunc*>(obj.get())) {
+                    object_stack.push_back(res);
+                    
+                } else if (CodeObj* func = dynamic_cast<CodeObj*>(obj.get())) {
+                    if (func->code.params.size() != arg_count) {
+                        throw std::runtime_error("Invalid number of arguments: " + std::to_string(arg_count) + " != " + std::to_string(func->code.params.size()));
+                    }
+                    frame = &call_stack.emplace_back(func->code, func->locals);
+
                 } else {
-                    throw std::runtime_error("Function is not a native code object");
+                    throw std::runtime_error("Function object is not a native/code object");
                 }
 
-
-                // // map the args to their names in the func def
-                // ObjectMap arg_map;
-                // for (size_t i = 0; i < args.size(); i++) {
-                //     const std::string& arg_name = func->value.params[i];
-                //     arg_map[arg_name] = args[i];
-                // }
-
-                // // create a call frame->with the args
-                // frame = &call_stack.emplace_back(func->value, arg_map);
             } break;
 
             default: throw std::runtime_error("Unknown opcode: " + Opcode_to_string(opcode));
@@ -184,9 +237,9 @@ std::optional<std::shared_ptr<Object>> VM::run() {
 }
 
 std::optional<std::shared_ptr<Object>> VM::search_name(const std::string& name) {
-    // Search through the call stack
+    auto s_obj = std::make_shared<String>(name);
     for (int i = call_stack.size() - 1; i >= 0; i--) {
-        if (call_stack[i].locals.count(name) > 0) {
+        if (call_stack[i].locals.dict.count(s_obj) > 0) {
             return call_stack[i].locals[name];
         }
     }
@@ -195,7 +248,8 @@ std::optional<std::shared_ptr<Object>> VM::search_name(const std::string& name) 
 
 std::optional<std::shared_ptr<Object>> VM::search_global_name(const std::string& name) {
     // Search the global environment
-    if (globals.count(name) > 0) {
+    auto s_obj = std::make_shared<String>(name);
+    if (globals.dict.count(s_obj) > 0) {
         return globals[name];
     }
     return {};

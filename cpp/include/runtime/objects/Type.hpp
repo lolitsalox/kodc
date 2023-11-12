@@ -29,9 +29,18 @@ struct Type : public Object {
         throw std::runtime_error("<" + type_name + "> doesn't have an __add__ method.");
     }
 
+    virtual std::shared_ptr<Object> __sub__(std::shared_ptr<Object> left, std::shared_ptr<Object> right) {
+        // make this a pure virtual
+        throw std::runtime_error("<" + type_name + "> doesn't have an __sub__ method.");
+    }
+
     virtual std::string __str__(std::shared_ptr<Object> obj);
 
     virtual int64_t __int__(std::shared_ptr<Object> obj) {
+        throw std::runtime_error("Cannot convert " + obj->type->type_name + " to " + type_name);
+    }
+
+    virtual bool __bool__(std::shared_ptr<Object> obj) {
         throw std::runtime_error("Cannot convert " + obj->type->type_name + " to " + type_name);
     }
 
@@ -43,6 +52,10 @@ struct TypeNull : public Type {
     ~TypeNull() = default;
     std::string __str__(std::shared_ptr<Object> obj) override {
         return "null";
+    }
+
+    int64_t __int__(std::shared_ptr<Object> obj) override {
+        return 0;
     }
 };
 

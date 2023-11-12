@@ -63,6 +63,17 @@ std::string ReturnNode::to_string() const {
     return "ReturnNode: " + (value ? value.value()->to_string() : std::string("NULL"));
 }
 
+std::string IfNode::to_string() const {
+    std::string result = "IfNode:\n" + condition->to_string() + "\n";
+    for (auto const& st : body) {
+        result += " " + st->to_string() + "\n";
+    }
+    for (auto const& st : orelse) {
+        result += " " + st->to_string() + "\n";
+    }
+    return result;
+}
+
 std::string IntegerNode::to_string() const {
     return "IntegerNode: " + std::to_string(value);
 }
@@ -354,11 +365,11 @@ std::optional<std::unique_ptr<Node>> Parser::parse_factor() {
 
         switch (keyword.ktype) {
             case KeywordType::RETURN: {
-                std::optional<std::unique_ptr<Node>> value = {}; 
-                if (lexer.peek().value_or(Token{}).type != TokenType::NEW_LINE) {
-                    value = parse_expression();
-                }
-                return std::make_unique<ReturnNode>(std::move(value));
+                return parse_return();
+            } break;
+
+            case KeywordType::IF: {
+                return parse_if();
             } break;
 
             default: throw std::runtime_error("Unexpected keyword: " + keyword.to_string());
@@ -401,6 +412,20 @@ std::optional<std::unique_ptr<IdentifierNode>> Parser::parse_identifier() {
         throw std::runtime_error("Expected an identifer but got " + std::to_string(static_cast<int>(tok.type)));
     }
     return std::make_unique<IdentifierNode>(tok.value);
+}
+
+std::optional<std::unique_ptr<ReturnNode>> Parser::parse_return() {
+    std::optional<std::unique_ptr<Node>> value = {}; 
+    if (lexer.peek().value_or(Token{}).type != TokenType::NEW_LINE) {
+        value = parse_expression();
+    }
+    return std::make_unique<ReturnNode>(std::move(value));
+}
+
+std::optional<std::unique_ptr<IfNode>> Parser::parse_if() {
+    auto condition = parse_expression();
+    auto block = parse_block();
+    return std::make_unique<IfNode>(std::move(condition.value()), std::move(block));
 }
 
 std::vector<std::unique_ptr<Node>> Parser::parse_body(
@@ -591,6 +616,39 @@ void ReturnNode::compile(CompiledModule& module, Code& code) {
         code.write32(index);
     }
     code.write8((uint8_t)Opcode::OP_RETURN);
+}
+
+void IfNode::compile(CompiledModule& module, Code& code) {
+    condition->compile(module, code);
+    if (!condition->pushes()) {
+        condition->push(module, code);
+
+    }
+
+    code.write8((uint8_t)Opcode::OP_POP_JUMP_IF_FALSE);
+    size_t else_offset = code.write32(0);
+
+    for (auto& statement : body) {
+        statement->compile(module, code);
+        if (!statement->pushes()) continue;
+        code.write8((uint8_t)Opcode::OP_POP_TOP);
+    }
+
+    size_t end_offset = 0;
+    if (!orelse.empty()) {
+        code.write8((uint8_t)Opcode::OP_JUMP);
+        end_offset = code.write32(0);
+    }
+
+    code.patch32(else_offset, code.code.size());
+
+    for (auto& statement : orelse) {
+        statement->compile(module, code);
+    }
+
+    if (!orelse.empty()) {
+        code.patch32(end_offset, code.code.size());
+    }
 }
 
 void AssignmentNode::compile(CompiledModule& module, Code& code) {

@@ -62,9 +62,11 @@ std::string Code::to_string() const {
     for (size_t i = 0; i < code.size();) {
         auto opcode = static_cast<Opcode>(read8(i));
 
-        result += std::to_string(i) + ": " + Opcode_to_string(opcode) + " ";
+        result += std::to_string(i - 1) + ": " + Opcode_to_string(opcode) + " ";
 
         switch (opcode) {
+            case Opcode::OP_JUMP:
+            case Opcode::OP_POP_JUMP_IF_FALSE:
             case Opcode::OP_CALL:
             case Opcode::OP_BUILD_TUPLE:
             case Opcode::OP_LOAD_NAME:

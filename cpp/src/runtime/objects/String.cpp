@@ -19,4 +19,12 @@ int64_t TypeString::__int__(std::shared_ptr<Object> obj) {
     return obj->type->__int__(obj);
 }
 
+bool TypeString::__bool__(std::shared_ptr<Object> obj) {
+    if (String* str_obj = dynamic_cast<String*>(obj.get())) {
+        return !str_obj->value.empty();
+    }
+
+    return obj->type->__bool__(obj);
+}
+
 }
