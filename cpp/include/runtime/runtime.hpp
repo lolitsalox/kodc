@@ -9,7 +9,6 @@ namespace kod {
 
 void test();
 
-
 std::shared_ptr<Object> constant_to_object(Constant const& constant);
 
 struct CallFrame {

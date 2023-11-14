@@ -53,6 +53,7 @@ std::string Opcode_to_string(Opcode opcode) {
         case Opcode::OP_BUILD_TUPLE:        return "BUILD_TUPLE";
         case Opcode::OP_BUILD_LIST:         return "BUILD_LIST";
         case Opcode::OP_BUILD_DICT:         return "BUILD_DICT";
+        case Opcode::OP_EXTEND_LIST:        return "EXTEND_LIST";
         case Opcode::OP_UNKNOWN: return "OP_UNKNOWN";
     }
     return "Unknown opcode: " + std::to_string(static_cast<uint32_t>(opcode));
@@ -70,6 +71,8 @@ std::string Code::to_string() const {
             case Opcode::OP_POP_JUMP_IF_FALSE:
             case Opcode::OP_CALL:
             case Opcode::OP_BUILD_TUPLE:
+            case Opcode::OP_BUILD_LIST:
+            case Opcode::OP_BUILD_DICT:
             case Opcode::OP_LOAD_NAME:
             case Opcode::OP_LOAD_ATTRIBUTE:
             case Opcode::OP_LOAD_ATTRIBUTE_SELF:
@@ -102,7 +105,9 @@ std::string Code::to_string() const {
             case Opcode::OP_BINARY_BOOLEAN_GREATER_THAN:
             case Opcode::OP_BINARY_BOOLEAN_GREATER_THAN_OR_EQUAL_TO:
             case Opcode::OP_BINARY_BOOLEAN_LESS_THAN:
-            case Opcode::OP_BINARY_BOOLEAN_LESS_THAN_OR_EQUAL_TO: break;
+            case Opcode::OP_BINARY_BOOLEAN_LESS_THAN_OR_EQUAL_TO: 
+            case Opcode::OP_EXTEND_LIST:
+            break;
 
             default: throw std::runtime_error("Code::to_string() - Unknown opcode: " + Opcode_to_string(static_cast<Opcode>(opcode)));
         }

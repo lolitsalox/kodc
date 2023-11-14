@@ -113,11 +113,7 @@ std::string convertToString(const std::vector<std::unique_ptr<Node>>& nodes, std
 }
 
 std::string TupleNode::to_string() const {
-    return convertToString(values, "(", ")");
-}
-
-std::string ListNode::to_string() const {
-    return convertToString(values, "[", "]");
+    return convertToString(values, is_list ? "[" : "(", is_list ? "]" : ")");
 }
 
 Parser::Parser(kod::Lexer& lexer) 
@@ -370,6 +366,10 @@ std::optional<std::unique_ptr<Node>> Parser::parse_factor() {
         return parse_tuple();
     } break;
 
+    case TokenType::LBRACKET: {
+        return parse_list();
+    } break;
+
     case TokenType::OR: {
         auto params = parse_lambda_params();
         auto block = parse_block();
@@ -476,7 +476,11 @@ std::vector<std::unique_ptr<Node>> Parser::parse_body(
         }
 
         skip_newlines();
-        nodes.push_back(std::move(parse_expression().value()));
+        auto expr = parse_expression();
+        if (!expr) {
+            throw std::runtime_error("Expected an expression but got " + lexer.peek().value_or(Token{TokenType::END_OF_FILE}).to_string());
+        }
+        nodes.push_back(std::move(expr.value()));
         skip_newlines();
 
         // parse commas
@@ -513,8 +517,8 @@ std::vector<std::unique_ptr<Node>> Parser::parse_lambda_params() {
     return body;
 }
 
-std::unique_ptr<ListNode> Parser::parse_list() {
-    return std::make_unique<ListNode>(parse_body(TokenType::LBRACKET, TokenType::RBRACKET));
+std::unique_ptr<TupleNode> Parser::parse_list() {
+    return std::make_unique<TupleNode>(parse_body(TokenType::LBRACKET, TokenType::RBRACKET), true);
 }
 
 std::vector<std::unique_ptr<Node>> Parser::parse_block() {
@@ -526,25 +530,30 @@ void ProgramNode::compile(CompiledModule& module, Code& code) {
 
     for (auto& statement : statements) {
         statement->compile(module, code);
-        if (!statement->pushes()) continue;;
-        code.write8((uint8_t)Opcode::OP_POP_TOP);
+        if (!statement->pushes()) continue;
+
+        if (statements.back() != statement)
+            code.write8((uint8_t)Opcode::OP_POP_TOP);
     }
 
     if (statements.empty() || (statements.size() > 0 && !statements.back()->returns())) {
-        // Find the index of the null constant in the constant pool (if there isn't, create one)
-        auto it = std::find(module.constant_pool.begin(), module.constant_pool.end(), Constant(ConstantTag::C_NULL));
-        if (it == module.constant_pool.end()) {
-            // Create a new entry in the constant pool
-            module.constant_pool.push_back(Constant(ConstantTag::C_NULL));
-            it = std::prev(module.constant_pool.end());
-        }
 
-        // Get the index of the null constant
-        size_t index = std::distance(module.constant_pool.begin(), it);
+        if (!statements.back()->pushes()) {
+            // Find the index of the null constant in the constant pool (if there isn't, create one)
+            auto it = std::find(module.constant_pool.begin(), module.constant_pool.end(), Constant(ConstantTag::C_NULL));
+            if (it == module.constant_pool.end()) {
+                // Create a new entry in the constant pool
+                module.constant_pool.push_back(Constant(ConstantTag::C_NULL));
+                it = std::prev(module.constant_pool.end());
+            }
 
+            // Get the index of the null constant
+            size_t index = std::distance(module.constant_pool.begin(), it);
         // Push the null constant
         code.write8((uint8_t)Opcode::OP_LOAD_CONST);
         code.write32(index);
+        }
+
         code.write8((uint8_t)Opcode::OP_RETURN);
     }
 }
@@ -870,21 +879,12 @@ void BinaryOpNode::compile(CompiledModule& module, Code& code) {
 }
 
 void TupleNode::compile(CompiledModule& module, Code& code) {
-    bool found = false;
-    // find at least one value that is not a constant
-    for (auto& value : values) {
-        if (!value->is_constant()) {
-            found = true;
-            break;
-        }
-    }
-
-    if (found) {
+    if (!is_constant()) {
         for (auto& value : values) {
             value->compile(module, code);
         }
 
-        code.write8((uint8_t)Opcode::OP_BUILD_TUPLE);
+        code.write8(is_list ? (uint8_t)Opcode::OP_BUILD_LIST : (uint8_t)Opcode::OP_BUILD_TUPLE);
         code.write32((uint8_t)values.size());
         return;
     }
@@ -904,17 +904,10 @@ void TupleNode::compile(CompiledModule& module, Code& code) {
     }
 
     size_t index = std::distance(module.constant_pool.begin(), it);
+
     code.write8((uint8_t)Opcode::OP_LOAD_CONST);
     code.write32(index);
-}
-
-void ListNode::compile(CompiledModule& module, Code& code) {
-    for (auto& value : values) {
-        value->compile(module, code);
-    }
-
-    code.write8((uint8_t)Opcode::OP_BUILD_LIST);
-    code.write32((uint8_t)values.size());
+    if (is_list) code.write8((uint8_t)Opcode::OP_EXTEND_LIST);
 }
 
 }

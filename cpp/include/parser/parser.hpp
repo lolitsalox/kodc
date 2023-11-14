@@ -245,8 +245,9 @@ struct BooleanNode : public Node {
 struct TupleNode : public Node {
     std::vector<std::unique_ptr<Node>> values;
     virtual std::string to_string() const override;
+    bool is_list = false;
 
-    TupleNode(std::vector<std::unique_ptr<Node>> values) : values(std::move(values)) {}
+    TupleNode(std::vector<std::unique_ptr<Node>> values, bool is_list = false) : values(std::move(values)), is_list(is_list) {}
     void compile(CompiledModule& module, Code& code) override;
     bool is_constant() const { 
         for (auto const& value : values) {
@@ -264,15 +265,6 @@ struct TupleNode : public Node {
         return Constant(constants);
     }
 };
-
-struct ListNode : public TupleNode {
-    std::string to_string() const override;
-
-    ListNode(std::vector<std::unique_ptr<Node>> values) : TupleNode(std::move(values)) {}
-    void compile(CompiledModule& module, Code& code) override;
-};
-
-
 
 class Parser {
 public:
@@ -304,7 +296,7 @@ private:
     std::vector<std::unique_ptr<Node>> parse_body(TokenType left_delim, TokenType right_delim, bool parse_commas, std::optional<bool*> got_comma);
     std::unique_ptr<Node> parse_tuple(bool must_be_tuple = false); // (..., )
     std::vector<std::unique_ptr<Node>> parse_lambda_params(); // |..., |
-    std::unique_ptr<ListNode> parse_list();  // [..., ]
+    std::unique_ptr<TupleNode> parse_list();  // [..., ]
     std::vector<std::unique_ptr<Node>> parse_block();  // {...}
 
     std::optional<std::unique_ptr<Node>> parse_bool_or();
