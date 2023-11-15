@@ -55,6 +55,11 @@
         "typeinfo": "cpp",
         "variant": "cpp",
         "cstring": "cpp",
-        "cinttypes": "cpp"
+        "cinttypes": "cpp",
+        "ctime": "cpp",
+        "ratio": "cpp",
+        "semaphore": "cpp",
+        "stop_token": "cpp",
+        "thread": "cpp"
     }
 }
