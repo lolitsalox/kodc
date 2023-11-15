@@ -580,6 +580,10 @@ std::optional<std::unique_ptr<ImportNode>> Parser::parse_import(bool from) {
         return std::make_unique<ImportNode>(path, std::move(asNode.value()));
     }
 
+    if (lexer.peek().value_or(Token{}).ktype == KeywordType::FROM) {
+        throw std::runtime_error("Maybe you meant from ? import " + path.string());
+    }
+
     return std::make_unique<ImportNode>(path);
 }
 
