@@ -294,6 +294,7 @@ private:
     std::optional<std::unique_ptr<Node>> parse_statement();
     std::optional<std::unique_ptr<Node>> parse_expression();
     std::optional<std::unique_ptr<Node>> parse_assignment();
+    std::optional<std::unique_ptr<Node>> parse_commas();
     std::optional<std::unique_ptr<Node>> parse_integer();
     std::optional<std::unique_ptr<Node>> parse_float();
     std::optional<std::unique_ptr<Node>> parse_string();

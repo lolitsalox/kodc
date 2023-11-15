@@ -233,6 +233,8 @@ enum class Opcode : uint8_t {
     OP_EXTEND_LIST, // direct: none, stack: tuple
     OP_SUBSCRIPT,
 
+    OP_UNPACK_SEQUENCE,
+
     OP_UNKNOWN,
 };
 

@@ -159,7 +159,7 @@ std::optional<std::unique_ptr<Node>> Parser::parse_expression() {
 }
 
 std::optional<std::unique_ptr<Node>> Parser::parse_assignment() {
-    auto left = parse_bool_or();
+    auto left = parse_commas();
     if (!left) return {};
     
     // Check if current token is EQUALS
@@ -178,6 +178,25 @@ std::optional<std::unique_ptr<Node>> Parser::parse_assignment() {
         std::move(left.value()), 
         std::move(right.value())
     );
+}
+
+std::optional<std::unique_ptr<Node>> Parser::parse_commas() {
+    auto value = parse_bool_or();
+
+    if (value && lexer.peek().value_or(Token{}).type == TokenType::COMMA) {
+        auto tuple = std::make_unique<TupleNode>();
+        tuple->values.push_back(std::move(value.value()));
+
+        do {
+            eat(TokenType::COMMA);
+            tuple->values.push_back(std::move(parse_bool_or().value()));
+        } while (lexer.peek().value_or(Token{}).type == TokenType::COMMA);
+
+        return std::move(tuple);
+    }
+
+    return value;
+
 }
 
 std::optional<std::unique_ptr<Node>> 
@@ -342,19 +361,6 @@ std::optional<std::unique_ptr<Node>> Parser::parse_after(std::optional<std::uniq
 
             return std::make_unique<SubscriptNode>(std::move(value.value()), std::move(subscript.value()));
         } break;
-
-        case TokenType::COMMA: {
-            // tuple
-            auto tuple = std::make_unique<TupleNode>();
-            tuple->values.push_back(std::move(value.value()));
-
-            do {
-                eat(TokenType::COMMA);
-                tuple->values.push_back(std::move(parse_after().value()));
-            } while (lexer.peek().value_or(Token{}).type == TokenType::COMMA);
-
-            return std::move(tuple);
-        }
 
         default: break;
     }
@@ -726,14 +732,16 @@ void WhileNode::compile(CompiledModule& module, Code& code) {
     code.patch32(end_offset, code.code.size());
 }
 
-void AssignmentNode::compile(CompiledModule& module, Code& code) {
-    right->compile(module, code);
-    if (!right->pushes()) {
-        right->push(module, code);
+void assign(CompiledModule& module, Code& code, Node* left, Node* right) {
+    if (right) {
+        right->compile(module, code);
+        if (!right->pushes()) {
+            right->push(module, code);
+        }
     }
 
     // Check if the left side is an identifier
-    if (auto identifier = dynamic_cast<IdentifierNode*>(left.get())) {
+    if (auto identifier = dynamic_cast<IdentifierNode*>(left)) {
         // Get the index of the identifier
         auto it = std::find(module.name_pool.begin(), module.name_pool.end(), identifier->value);
 
@@ -747,9 +755,22 @@ void AssignmentNode::compile(CompiledModule& module, Code& code) {
         code.write8((uint8_t)Opcode::OP_STORE_NAME);
         code.write32(index);
 
+    } else if (auto tuple = dynamic_cast<TupleNode*>(left)) {
+        code.write8((uint8_t)Opcode::OP_UNPACK_SEQUENCE);
+        code.write32(tuple->values.size());
+        
+        for (auto& value : tuple->values) {
+            // make an assignment node for each value
+            assign(module, code, value.get(), nullptr);
+        }
+
     } else {
         throw std::runtime_error("Left side of assignment must be an identifier (unimplemented)");
     }
+}
+
+void AssignmentNode::compile(CompiledModule& module, Code& code) {
+    assign(module, code, left.get(), right.get());
 }
 
 void AssignmentNode::push(CompiledModule& module, Code& code) const {

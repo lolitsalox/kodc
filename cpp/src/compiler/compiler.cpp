@@ -55,6 +55,7 @@ std::string Opcode_to_string(Opcode opcode) {
         case Opcode::OP_BUILD_DICT:         return "BUILD_DICT";
         case Opcode::OP_EXTEND_LIST:        return "EXTEND_LIST";
         case Opcode::OP_SUBSCRIPT:          return "SUBSCRIPT";
+        case Opcode::OP_UNPACK_SEQUENCE:    return "UNPACK_SEQUENCE";
         case Opcode::OP_UNKNOWN: return "OP_UNKNOWN";
     }
     return "Unknown opcode: " + std::to_string(static_cast<uint32_t>(opcode));
@@ -78,7 +79,8 @@ std::string Code::to_string() const {
             case Opcode::OP_LOAD_ATTRIBUTE:
             case Opcode::OP_LOAD_ATTRIBUTE_SELF:
             case Opcode::OP_STORE_NAME:
-            case Opcode::OP_LOAD_CONST: {
+            case Opcode::OP_LOAD_CONST:
+            case Opcode::OP_UNPACK_SEQUENCE: {
                 auto index = static_cast<uint32_t>(read32(i));
                 result += std::to_string(index);
             } break;
