@@ -153,6 +153,17 @@ struct ReturnNode : public Node {
     
 };
 
+struct SubscriptNode : public Node {
+    std::unique_ptr<Node> value;
+    std::unique_ptr<Node> subscript;
+
+    SubscriptNode(std::unique_ptr<Node> value, std::unique_ptr<Node> subscript)
+        : value(std::move(value)), subscript(std::move(subscript)) {}
+
+    void compile(CompiledModule& module, Code& code) override;
+    std::string to_string() const override;
+};
+
 struct IfNode : public Node {
     std::unique_ptr<Node> condition;
     std::vector<std::unique_ptr<Node>> body;
@@ -247,7 +258,7 @@ struct TupleNode : public Node {
     virtual std::string to_string() const override;
     bool is_list = false;
 
-    TupleNode(std::vector<std::unique_ptr<Node>> values, bool is_list = false) : values(std::move(values)), is_list(is_list) {}
+    TupleNode(std::vector<std::unique_ptr<Node>> values = {}, bool is_list = false) : values(std::move(values)), is_list(is_list) {}
     void compile(CompiledModule& module, Code& code) override;
     bool is_constant() const { 
         for (auto const& value : values) {
@@ -311,7 +322,7 @@ private:
     std::optional<std::unique_ptr<Node>> parse_mul_div_mod();
     std::optional<std::unique_ptr<Node>> parse_pow();
     std::optional<std::unique_ptr<Node>> parse_before(); // unary like: ! - + ++ -- & ~ *
-    std::optional<std::unique_ptr<Node>> parse_after(std::optional<std::unique_ptr<Node>> value);
+    std::optional<std::unique_ptr<Node>> parse_after(std::optional<std::unique_ptr<Node>> value = {});
     std::optional<std::unique_ptr<Node>> parse_factor();
 
     std::optional<std::unique_ptr<Node>> parseBinaryOperators(

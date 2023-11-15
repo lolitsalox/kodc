@@ -63,6 +63,10 @@ std::string ReturnNode::to_string() const {
     return "ReturnNode: " + (value ? value.value()->to_string() : std::string("NULL"));
 }
 
+std::string SubscriptNode::to_string() const {
+    return value->to_string() + "[" + subscript->to_string() + "]";
+}
+
 std::string IfNode::to_string() const {
     std::string result = "IfNode:\n" + condition->to_string() + "\n";
     for (auto const& st : body) {
@@ -280,7 +284,7 @@ std::optional<std::unique_ptr<Node>> Parser::parse_before() {
         return std::make_unique<UnaryOpNode>(ttype, std::move(value.value()));
     }
 
-    return parse_after({});
+    return parse_after();
 }
 
 std::optional<std::unique_ptr<Node>> Parser::parse_after(std::optional<std::unique_ptr<Node>> value) {
@@ -330,17 +334,27 @@ std::optional<std::unique_ptr<Node>> Parser::parse_after(std::optional<std::uniq
             return parse_after(std::move(std::make_unique<AccessNode>(std::move(value.value()), std::move(id.value()))));
         } break;
 
-        // case TokenType::LBRACE: {
-        //     // subscript
-        //     auto subscript = parse_list();
+        case TokenType::LBRACKET: {
+            // subscript
+            eat(TokenType::LBRACKET);
+            auto subscript = parse_expression();
+            eat(TokenType::RBRACKET);
 
-        //     // check if it's empty, if so throw an error
-        //     if (subscript.empty()) {
-        //         throw std::runtime_error("Subscript is empty");
-        //     }
+            return std::make_unique<SubscriptNode>(std::move(value.value()), std::move(subscript.value()));
+        } break;
 
-        //     return std::make_unique<SubscriptNode>(std::move(value.value()), std::move(subscript));
-        // }
+        case TokenType::COMMA: {
+            // tuple
+            auto tuple = std::make_unique<TupleNode>();
+            tuple->values.push_back(std::move(value.value()));
+
+            do {
+                eat(TokenType::COMMA);
+                tuple->values.push_back(std::move(parse_after().value()));
+            } while (lexer.peek().value_or(Token{}).type == TokenType::COMMA);
+
+            return std::move(tuple);
+        }
 
         default: break;
     }
@@ -908,6 +922,12 @@ void TupleNode::compile(CompiledModule& module, Code& code) {
     code.write8((uint8_t)Opcode::OP_LOAD_CONST);
     code.write32(index);
     if (is_list) code.write8((uint8_t)Opcode::OP_EXTEND_LIST);
+}
+
+void SubscriptNode::compile(CompiledModule& module, Code& code) {
+    value->compile(module, code);
+    subscript->compile(module, code);
+    code.write8((uint8_t)Opcode::OP_SUBSCRIPT);
 }
 
 }

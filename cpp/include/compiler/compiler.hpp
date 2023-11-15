@@ -231,6 +231,7 @@ enum class Opcode : uint8_t {
     OP_BUILD_DICT,
 
     OP_EXTEND_LIST, // direct: none, stack: tuple
+    OP_SUBSCRIPT,
 
     OP_UNKNOWN,
 };
