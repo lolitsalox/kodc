@@ -189,6 +189,9 @@ std::optional<std::unique_ptr<Node>> Parser::parse_commas() {
 
         do {
             eat(TokenType::COMMA);
+            if (lexer.peek().value_or(Token{}).type == TokenType::END_OF_FILE) {
+                break;
+            }
             tuple->values.push_back(std::move(parse_bool_or().value()));
         } while (lexer.peek().value_or(Token{}).type == TokenType::COMMA);
 

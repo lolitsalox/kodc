@@ -93,7 +93,7 @@ enum class KeywordType {
 };
 
 struct Token {
-    TokenType type = TokenType::UNKNOWN;
+    TokenType type = TokenType::END_OF_FILE;
     KeywordType ktype = KeywordType::UNKNOWN;
     std::string value;
     int int_value;
