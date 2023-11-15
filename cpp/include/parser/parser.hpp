@@ -3,6 +3,8 @@
 #include <memory>
 #include <vector>
 #include <type_traits>
+#include <filesystem>
+#include <variant>
 
 #include <parser/lexer.hpp>
 #include <compiler/compiler.hpp>
@@ -138,6 +140,39 @@ struct AccessNode : public Node {
   
     void compile(CompiledModule& module, Code& code) override;
     std::string to_string() const override;
+};
+
+
+
+struct AsNode : public Node {
+    std::unique_ptr<IdentifierNode> value;
+    std::unique_ptr<IdentifierNode> as;
+
+    AsNode(std::unique_ptr<IdentifierNode> value, std::unique_ptr<IdentifierNode> as)
+        : value(std::move(value)), as(std::move(as)) {}
+
+    // void compile(CompiledModule& module, Code& code) override;
+    std::string to_string() const override;
+};
+
+struct ImportNode : public Node {
+    std::filesystem::path path;
+    std::vector<std::unique_ptr<Node>> names;  // can be identifiers or as_nodes
+    std::unique_ptr<Node> as;
+
+    bool is_star = false;
+    std::string to_string() const override;
+    
+    ImportNode(std::filesystem::path path, bool is_star = false)
+        : path(path), is_star(is_star) {}
+
+    ImportNode(std::filesystem::path path, std::unique_ptr<Node> as)
+        : path(path), as(std::move(as)) {}
+
+    ImportNode(std::filesystem::path path, std::vector<std::unique_ptr<Node>> names)
+        : path(path), names(std::move(names)) {}
+    
+    // void compile(CompiledModule& module, Code& code) override;
 };
 
 struct ReturnNode : public Node {
@@ -304,6 +339,10 @@ private:
     std::optional<std::unique_ptr<ReturnNode>> parse_return();
     std::optional<std::unique_ptr<IfNode>> parse_if();
     std::optional<std::unique_ptr<WhileNode>> parse_while();
+    std::optional<std::unique_ptr<ImportNode>> parse_import(bool from = false);
+    std::optional<std::unique_ptr<Node>> parse_as();
+
+    std::filesystem::path parse_path();
 
     std::vector<std::unique_ptr<Node>> parse_body(TokenType left_delim, TokenType right_delim, bool parse_commas, std::optional<bool*> got_comma);
     std::unique_ptr<Node> parse_tuple(bool must_be_tuple = false); // (..., )

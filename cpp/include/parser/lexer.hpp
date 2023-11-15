@@ -41,7 +41,6 @@ enum class TokenType {
     ID,                 //  main x y foo
     KEYWORD,            //  NOT USED
     SIZEOF,             //  sizeof
-    AS,                 //  as
 
     CHAR,               //  'a'
     STRING,             //  "Hello world"

@@ -299,6 +299,9 @@ KeywordType Lexer::find_keyword_type(const std::string& identifier) {
         {"return", KeywordType::RETURN},
         {"break", KeywordType::BREAK},
         {"continue", KeywordType::CONTINUE},
+        {"import", KeywordType::IMPORT},
+        {"as", KeywordType::AS},
+        {"from", KeywordType::FROM},
     };
 
     // use a std function to find the keyword
@@ -365,7 +368,6 @@ TokenType Lexer::find_symbol_type(const std::string& s) {
         case '}': return TokenType::RBRACE;
         case '=': return TokenType::EQUALS;
         case ',': return TokenType::COMMA;
-        case '.': return TokenType::DOT;
         case ':': return TokenType::COLON;
         case ';': return TokenType::SEMI;
         case '?': return TokenType::QUESTION;
@@ -384,6 +386,7 @@ TokenType Lexer::find_symbol_type(const std::string& s) {
         case '>': return TokenType::BOOL_GT;
         case '~': return TokenType::NOT;
         case '!': return TokenType::BOOL_NOT;
+        case '.': return TokenType::DOT;
         default: return TokenType::UNKNOWN;
     }
     return ttype;

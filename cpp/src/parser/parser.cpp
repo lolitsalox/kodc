@@ -55,6 +55,25 @@ std::string LambdaNode::to_string() const {
     return result;
 }
 
+std::string AsNode::to_string() const {
+    return value->to_string() + " as " + as->to_string();
+}
+
+std::string ImportNode::to_string() const {
+    std::string result = "ImportNode: " + path.string();
+    if (is_star) {
+        result += " *";
+    }
+    if (as) {
+        result += " as " + as->to_string();
+    }
+    // add all the names
+    for (const auto& name : names) {
+        result += " " + name->to_string();
+    }
+    return result;
+}
+
 std::string kod::AccessNode::to_string() const {
     return value->to_string() + "." + field->to_string();
 }
@@ -415,6 +434,11 @@ std::optional<std::unique_ptr<Node>> Parser::parse_factor() {
                 return parse_while();
             } break;
 
+            case KeywordType::FROM:
+            case KeywordType::IMPORT: {
+                return parse_import(keyword.ktype == KeywordType::FROM);
+            } break;
+
             default: throw std::runtime_error("Unexpected keyword: " + keyword.to_string());
         }
     } break;
@@ -475,6 +499,88 @@ std::optional<std::unique_ptr<WhileNode>> Parser::parse_while() {
     auto condition = parse_expression();
     auto block = parse_block();
     return std::make_unique<WhileNode>(std::move(condition.value()), std::move(block));
+}
+
+std::optional<std::unique_ptr<Node>> Parser::parse_as() {
+    auto value = parse_identifier();
+    if (lexer.peek().value_or(Token{}).ktype != KeywordType::AS) {
+        return value;
+    }
+
+    eat(TokenType::KEYWORD);
+    auto as = parse_identifier();
+    return std::make_unique<AsNode>(std::move(value.value()), std::move(as.value()));
+}
+
+std::filesystem::path Parser::parse_path() {
+    // a path looks like this
+    // a.b.c
+    std::filesystem::path path;
+    while (true) {
+        auto identifier = parse_identifier();
+        path /= identifier.value()->value;
+        auto tok = lexer.peek().value_or(Token{});
+        if (tok.type != TokenType::DOT) {
+            break;
+        }
+        eat(TokenType::DOT);
+    }
+    return path;
+}
+
+/*
+import a.b.c
+import a.b.c as d
+from a.b.c import d
+from a.b.c import d as e, f as g
+from a.b.c import *
+from a.b.c import d, e, f
+*/
+
+std::optional<std::unique_ptr<ImportNode>> Parser::parse_import(bool from) {
+    auto path = parse_path(); // getting path
+
+    if (from) {
+        // check if ktype is IMPORT and eat it
+        if (lexer.peek().value_or(Token{}).ktype == KeywordType::IMPORT) {
+            eat(TokenType::KEYWORD); // eating import
+        } else {
+            throw std::runtime_error("Expected an import but got " + lexer.peek().value_or(Token{TokenType::END_OF_FILE}).to_string());
+        }
+
+        // check if star
+        if (lexer.peek().value_or(Token{}).type == TokenType::MUL) {
+            eat(TokenType::MUL); // eating *
+            return std::make_unique<ImportNode>(path, true);
+        }
+
+        std::vector<std::unique_ptr<Node>> names;
+
+        while (true) {
+            auto value = parse_as();
+            if (!value) {
+                throw std::runtime_error("Expected an identifier or as node but got " + lexer.peek().value_or(Token{TokenType::END_OF_FILE}).to_string());
+            }
+            names.push_back(std::move(value.value()));
+            if (lexer.peek().value_or(Token{}).type != TokenType::COMMA) {
+                break;
+            }
+            eat(TokenType::COMMA);
+        }
+        return std::make_unique<ImportNode>(path, std::move(names));
+    }
+
+    // check if as keyword
+    if (lexer.peek().value_or(Token{}).ktype == KeywordType::AS) {
+        eat(TokenType::KEYWORD); // eating as
+        auto asNode = parse_as();
+        if (!asNode) {
+            throw std::runtime_error("Expected an identifier or as node but got " + lexer.peek().value_or(Token{TokenType::END_OF_FILE}).to_string());
+        }
+        return std::make_unique<ImportNode>(path, std::move(asNode.value()));
+    }
+
+    return std::make_unique<ImportNode>(path);
 }
 
 std::vector<std::unique_ptr<Node>> Parser::parse_body(
